@@ -1,0 +1,78 @@
+{
+  "frequency_GHz": 28,
+  "standard": "ITU-R P.838-3",
+  "location": "Tokyo (subtropical, heavy rain seasons May-Oct)",
+  "computed_at": "2026-04-30T23:54:00.534980Z",
+  "coefficients": {
+    "kH": 0.1391,
+    "alphaH": 1.0568,
+    "kV": 0.125,
+    "alphaV": 1.0245
+  },
+  "attenuation_table": [
+    {
+      "rain_rate_mm_per_h": 0,
+      "specific_attenuation_h_dB_per_km": 0.0,
+      "specific_attenuation_v_dB_per_km": 0.0,
+      "path_loss_1km_h_dB": 0.0,
+      "path_loss_5km_h_dB": 0.0,
+      "note": "ITU-R P.838-3, 28 GHz, horizontal/vertical polarization"
+    },
+    {
+      "rain_rate_mm_per_h": 1,
+      "specific_attenuation_h_dB_per_km": 0.1391,
+      "specific_attenuation_v_dB_per_km": 0.125,
+      "path_loss_1km_h_dB": 0.1391,
+      "path_loss_5km_h_dB": 0.6955,
+      "note": "ITU-R P.838-3, 28 GHz, horizontal/vertical polarization"
+    },
+    {
+      "rain_rate_mm_per_h": 5,
+      "specific_attenuation_h_dB_per_km": 0.7621,
+      "specific_attenuation_v_dB_per_km": 0.6501,
+      "path_loss_1km_h_dB": 0.7621,
+      "path_loss_5km_h_dB": 3.8104,
+      "note": "ITU-R P.838-3, 28 GHz, horizontal/vertical polarization"
+    },
+    {
+      "rain_rate_mm_per_h": 10,
+      "specific_attenuation_h_dB_per_km": 1.5854,
+      "specific_attenuation_v_dB_per_km": 1.3225,
+      "path_loss_1km_h_dB": 1.5854,
+      "path_loss_5km_h_dB": 7.9268,
+      "note": "ITU-R P.838-3, 28 GHz, horizontal/vertical polarization"
+    },
+    {
+      "rain_rate_mm_per_h": 25,
+      "specific_attenuation_h_dB_per_km": 4.1751,
+      "specific_attenuation_v_dB_per_km": 3.3814,
+      "path_loss_1km_h_dB": 4.1751,
+      "path_loss_5km_h_dB": 20.8757,
+      "note": "ITU-R P.838-3, 28 GHz, horizontal/vertical polarization"
+    },
+    {
+      "rain_rate_mm_per_h": 50,
+      "specific_attenuation_h_dB_per_km": 8.6856,
+      "specific_attenuation_v_dB_per_km": 6.8787,
+      "path_loss_1km_h_dB": 8.6856,
+      "path_loss_5km_h_dB": 43.4279,
+      "note": "ITU-R P.838-3, 28 GHz, horizontal/vertical polarization"
+    },
+    {
+      "rain_rate_mm_per_h": 100,
+      "specific_attenuation_h_dB_per_km": 18.0687,
+      "specific_attenuation_v_dB_per_km": 13.993,
+      "path_loss_1km_h_dB": 18.0687,
+      "path_loss_5km_h_dB": 90.3435,
+      "note": "ITU-R P.838-3, 28 GHz, horizontal/vertical polarization"
+    },
+    {
+      "rain_rate_mm_per_h": 150,
+      "specific_attenuation_h_dB_per_km": 27.7345,
+      "specific_attenuation_v_dB_per_km": 21.199,
+      "path_loss_1km_h_dB": 27.7345,
+      "path_loss_5km_h_dB": 138.6725,
+      "note": "ITU-R P.838-3, 28 GHz, horizontal/vertical polarization"
+    }
+  ]
+}

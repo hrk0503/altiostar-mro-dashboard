@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WINNIIO — Tokyo MRO Digital Twin</title>
+<script src="https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/Cesium.js"></script>
+<link href="https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0a0a1a; color: #fff; overflow: hidden; }
+  #cesiumContainer { width: 100vw; height: 100vh; }
+
+  #overlay {
+    position: absolute; top: 0; left: 0; right: 0;
+    padding: 16px 24px;
+    background: linear-gradient(180deg, rgba(10,10,26,0.92) 0%, rgba(10,10,26,0) 100%);
+    pointer-events: none; z-index: 10;
+    display: flex; justify-content: space-between; align-items: flex-start;
+  }
+  #overlay .brand { display: flex; align-items: center; gap: 12px; }
+  #overlay .brand h1 {
+    font-size: 22px; font-weight: 700; letter-spacing: 2px;
+    background: linear-gradient(135deg, #00b4d8, #0077b6);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  #overlay .brand .sub { font-size: 13px; color: #8899aa; margin-top: 2px; }
+  #overlay .stats { text-align: right; pointer-events: auto; display: flex; gap: 20px; }
+  .stat-box .label { font-size: 10px; color: #667; text-transform: uppercase; letter-spacing: 1px; }
+  .stat-box .value { font-size: 16px; font-weight: 600; color: #00b4d8; }
+
+  #legend {
+    position: absolute; bottom: 24px; left: 24px;
+    background: rgba(10,10,26,0.88); border: 1px solid rgba(0,180,216,0.3);
+    border-radius: 8px; padding: 14px 18px; z-index: 10;
+    backdrop-filter: blur(8px); max-width: 220px;
+  }
+  #legend h3 { font-size: 11px; color: #00b4d8; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+  #legend .item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 11px; color: #ccd; }
+  #legend .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  #legend .line { width: 16px; height: 2px; flex-shrink: 0; }
+
+  #controls {
+    position: absolute; bottom: 24px; right: 24px; z-index: 10;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  #controls button {
+    background: rgba(10,10,26,0.88); border: 1px solid rgba(0,180,216,0.3);
+    color: #00b4d8; padding: 8px 14px; border-radius: 6px; cursor: pointer;
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+    backdrop-filter: blur(8px); transition: all 0.2s;
+  }
+  #controls button:hover { background: rgba(0,180,216,0.15); border-color: #00b4d8; }
+  #controls button.active { background: rgba(0,180,216,0.25); border-color: #00b4d8; }
+
+  #infoPanel {
+    position: absolute; top: 80px; left: 260px;
+    background: rgba(10,10,26,0.92); border: 1px solid rgba(0,180,216,0.3);
+    border-radius: 8px; padding: 16px; z-index: 15; width: 280px;
+    backdrop-filter: blur(8px); display: none;
+    max-height: calc(100vh - 120px); overflow-y: auto;
+  }
+  #infoPanel .dragHandle {
+    cursor: grab; padding: 0 0 8px 0; user-select: none;
+    border-bottom: 1px solid rgba(0,180,216,0.15); margin-bottom: 8px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  #infoPanel .dragHandle:active { cursor: grabbing; }
+  #infoPanel h3 { color: #00b4d8; font-size: 13px; margin: 0; }
+  #infoPanel .row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 11px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  #infoPanel .row .k { color: #889; }
+  #infoPanel .row .v { color: #dde; font-weight: 500; }
+  #infoPanel .close { cursor: pointer; color: #667; font-size: 16px; line-height: 1; }
+
+  #kpiPanel {
+    position: absolute; top: 80px; left: 24px;
+    background: rgba(10,10,26,0.92); border: 1px solid rgba(0,180,216,0.3);
+    border-radius: 8px; padding: 16px; z-index: 10; width: 200px;
+    backdrop-filter: blur(8px); display: none;
+  }
+  #kpiPanel h3 { color: #00b4d8; font-size: 11px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  .kpi-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 11px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .kpi-row .k { color: #889; }
+  .kpi-row .v { font-weight: 600; }
+  .kpi-good { color: #00e676; }
+  .kpi-warn { color: #ffca28; }
+  .kpi-bad { color: #ff5252; }
+
+  #ueStatus {
+    position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%);
+    background: rgba(10,10,26,0.92); border: 1px solid rgba(0,180,216,0.3);
+    border-radius: 8px; padding: 10px 20px; z-index: 10;
+    backdrop-filter: blur(8px); display: none;
+    font-size: 12px; text-align: center; white-space: nowrap;
+  }
+
+  .cesium-viewer-bottom, .cesium-viewer-animationContainer,
+  .cesium-viewer-timelineContainer, .cesium-viewer-fullscreenContainer { display: none !important; }
+</style>
+</head>
+<body>
+<div id="cesiumContainer"></div>
+
+<div id="overlay">
+  <div class="brand">
+    <div>
+      <h1>WINNIIO</h1>
+      <div class="sub">Tokyo MRO Digital Twin — Altiostar / Rakuten Symphony</div>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat-box"><div class="label">Cell Sites</div><div class="value" id="siteCount">0</div></div>
+    <div class="stat-box"><div class="label">Neighbors</div><div class="value" id="neighborCount">0</div></div>
+    <div class="stat-box"><div class="label">HO Zones</div><div class="value" id="hoCount" style="color:#ff5252;">3</div></div>
+  </div>
+</div>
+
+<div id="legend">
+  <h3>Signal / Coverage</h3>
+  <div class="item"><div class="dot" style="background: #00e676;"></div> Strong (&gt; -80 dBm)</div>
+  <div class="item"><div class="dot" style="background: #ffca28;"></div> Moderate (-80 to -95)</div>
+  <div class="item"><div class="dot" style="background: #ff5252;"></div> Weak (&lt; -95 dBm)</div>
+  <div class="item"><div class="line" style="background: rgba(0,180,216,0.6);"></div> Neighbor link</div>
+  <div class="item"><div class="line" style="background: rgba(255,82,82,0.6);"></div> Problem link</div>
+  <div class="item"><div class="dot" style="background: #e040fb; width:8px; height:8px;"></div> UE (simulated)</div>
+  <div style="margin-top:8px; padding-top:6px; border-top:1px solid rgba(224,64,251,0.3); font-size:10px; color:#e040fb; font-weight:600;">Sionna RT Coverage</div>
+  <div class="item"><div class="dot" style="background: #00e676; opacity:0.5;"></div> Strong (ray-traced)</div>
+  <div class="item"><div class="dot" style="background: #ffca28; opacity:0.5;"></div> Moderate</div>
+  <div class="item"><div class="dot" style="background: #ff5252; opacity:0.5;"></div> Weak / No coverage</div>
+  <div style="margin-top:8px; padding-top:6px; border-top:1px solid rgba(255,138,101,0.3); font-size:10px; color:#ff8a65; font-weight:600;">Engineering</div>
+  <div class="item"><div class="dot" style="background: #ff8a65; opacity:0.6;"></div> Antenna beam sector</div>
+  <div class="item"><div class="dot" style="background: #ff5252;"></div> Coverage hole</div>
+  <div class="item"><div class="line" style="background: #ffd54f;"></div> HO boundary</div>
+  <div style="margin-top:10px; padding-top:8px; border-top:1px solid rgba(0,180,216,0.2); font-size:9px; color:#667; line-height:1.4;">Representative topology — actual site data provided by Altiostar in Phase 1</div>
+</div>
+
+<div id="controls">
+  <button onclick="flyToArea('shinjuku')">Shinjuku</button>
+  <button onclick="flyToArea('shibuya')">Shibuya</button>
+  <button onclick="flyToArea('minato')">Minato-ku</button>
+  <button onclick="flyToArea('overview')">Overview</button>
+  <button id="toggleCoverage" onclick="toggleCoverageViz()">Coverage: ON</button>
+  <button id="toggleHandover" onclick="toggleHandoverZones()">HO Zones: OFF</button>
+  <button id="toggleNeighbors" onclick="toggleNeighborLines()">Neighbors: ON</button>
+  <button id="toggleKpi" onclick="toggleKpiPanel()">KPIs: OFF</button>
+  <button id="btnSimulate" onclick="startSimulation()">Simulate UE</button>
+  <button id="btnSionna" onclick="toggleSionnaCoverage()" style="background:rgba(224,64,251,0.2);border-color:#e040fb;color:#e040fb;">Sionna RT: OFF</button>
+  <select id="sionnaBand" onchange="switchSionnaBand()" style="background:rgba(10,10,26,0.88);border:1px solid rgba(224,64,251,0.3);color:#e040fb;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:600;">
+    <option value="n77">n77 (3.7 GHz)</option>
+    <option value="n78">n78 (3.5 GHz)</option>
+    <option value="n257">n257 (28 GHz)</option>
+  </select>
+  <div style="display:flex;gap:4px;margin-top:4px;">
+    <button onclick="setSionnaOpacity(1)" id="opMin" class="active" style="flex:1;padding:3px 0;font-size:9px;background:rgba(224,64,251,0.3);border:1px solid #e040fb;color:#e040fb;border-radius:4px;cursor:pointer;">Min</button>
+    <button onclick="setSionnaOpacity(2)" id="opMid" style="flex:1;padding:3px 0;font-size:9px;background:rgba(224,64,251,0.1);border:1px solid rgba(224,64,251,0.3);color:#e040fb;border-radius:4px;cursor:pointer;">Mid</button>
+    <button onclick="setSionnaOpacity(3)" id="opMax" style="flex:1;padding:3px 0;font-size:9px;background:rgba(224,64,251,0.1);border:1px solid rgba(224,64,251,0.3);color:#e040fb;border-radius:4px;cursor:pointer;">Max</button>
+  </div>
+  <button id="btnUeTraces" onclick="toggleUeTraces()" style="background:rgba(0,180,216,0.2);border-color:#00b4d8;color:#00b4d8;">UE Traces: OFF</button>
+  <div style="margin-top:8px; padding-top:6px; border-top:1px solid rgba(255,255,255,0.15); font-size:10px; color:#aaa; font-weight:600;">City Data Layers</div>
+  <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;">
+    <button onclick="toggleLayer('rail')" id="btnRail" style="flex:1;min-width:60px;padding:4px 0;font-size:9px;background:rgba(255,183,77,0.15);border:1px solid rgba(255,183,77,0.5);color:#ffb74d;border-radius:4px;cursor:pointer;">Rail</button>
+    <button onclick="toggleLayer('traffic')" id="btnTraffic" style="flex:1;min-width:60px;padding:4px 0;font-size:9px;background:rgba(255,82,82,0.15);border:1px solid rgba(255,82,82,0.5);color:#ff8a80;border-radius:4px;cursor:pointer;">Traffic</button>
+    <button onclick="toggleLayer('towers')" id="btnTowers" style="flex:1;min-width:60px;padding:4px 0;font-size:9px;background:rgba(206,147,216,0.15);border:1px solid rgba(206,147,216,0.5);color:#ce93d8;border-radius:4px;cursor:pointer;">Towers</button>
+    <button onclick="toggleWeather()" id="btnWeather" style="flex:1;min-width:60px;padding:4px 0;font-size:9px;background:rgba(100,181,246,0.15);border:1px solid rgba(100,181,246,0.5);color:#90caf9;border-radius:4px;cursor:pointer;">Weather</button>
+    <button onclick="toggleRainFade()" id="btnRain" style="flex:1;min-width:60px;padding:4px 0;font-size:9px;background:rgba(77,208,225,0.15);border:1px solid rgba(77,208,225,0.5);color:#80deea;border-radius:4px;cursor:pointer;">Rain Fade</button>
+  </div>
+  <div id="weatherPanel" style="display:none;margin-top:6px;padding:8px;background:rgba(33,150,243,0.08);border:1px solid rgba(33,150,243,0.2);border-radius:6px;font-size:10px;color:#90caf9;"></div>
+  <div id="rainPanel" style="display:none;margin-top:6px;padding:8px;background:rgba(0,188,212,0.08);border:1px solid rgba(0,188,212,0.2);border-radius:6px;font-size:10px;color:#80deea;"></div>
+  <div style="margin-top:8px; padding-top:6px; border-top:1px solid rgba(255,193,7,0.3); font-size:10px; color:#ffc107; font-weight:600;">Explore Mode</div>
+  <div style="display:flex;gap:3px;margin-top:4px;">
+    <button onclick="setExploreMode('orbit')" id="modeOrbit" style="flex:1;padding:4px 0;font-size:9px;background:rgba(255,193,7,0.3);border:1px solid #ffc107;color:#ffc107;border-radius:4px;cursor:pointer;">Orbit</button>
+    <button onclick="setExploreMode('walk')" id="modeWalk" style="flex:1;padding:4px 0;font-size:9px;background:rgba(255,193,7,0.1);border:1px solid rgba(255,193,7,0.3);color:#ffc107;border-radius:4px;cursor:pointer;">Walk</button>
+    <button onclick="setExploreMode('fly')" id="modeFly" style="flex:1;padding:4px 0;font-size:9px;background:rgba(255,193,7,0.1);border:1px solid rgba(255,193,7,0.3);color:#ffc107;border-radius:4px;cursor:pointer;">Fly</button>
+  </div>
+  <div id="exploreHud" style="display:none;margin-top:4px;padding:6px;background:rgba(255,193,7,0.08);border:1px solid rgba(255,193,7,0.2);border-radius:6px;font-size:9px;color:#ffe082;">
+    <div>WASD — move &nbsp; Click+drag — look &nbsp; Q/E — up/down &nbsp; Shift — sprint</div>
+    <div id="posInfo" style="margin-top:3px;color:#ffc107;"></div>
+  </div>
+  <div style="margin-top:8px; padding-top:6px; border-top:1px solid rgba(255,82,82,0.3); font-size:10px; color:#ff8a80; font-weight:600;">Engineering Layers</div>
+  <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;">
+    <button onclick="toggleEngLayer('beams')" id="btnBeams" style="flex:1;min-width:60px;padding:4px 0;font-size:9px;background:rgba(255,138,101,0.15);border:1px solid rgba(255,138,101,0.5);color:#ff8a65;border-radius:4px;cursor:pointer;">Beams</button>
+    <button onclick="toggleEngLayer('holes')" id="btnHoles" style="flex:1;min-width:60px;padding:4px 0;font-size:9px;background:rgba(255,82,82,0.15);border:1px solid rgba(255,82,82,0.5);color:#ff5252;border-radius:4px;cursor:pointer;">Holes</button>
+    <button onclick="toggleEngLayer('handover')" id="btnHoBounds" style="flex:1;min-width:60px;padding:4px 0;font-size:9px;background:rgba(255,213,79,0.15);border:1px solid rgba(255,213,79,0.5);color:#ffd54f;border-radius:4px;cursor:pointer;">HO Bounds</button>
+  </div>
+  <div style="margin-top:8px; padding-top:6px; border-top:1px solid rgba(0,230,118,0.3); font-size:10px; color:#00e676; font-weight:600;">Import Propagation Data</div>
+  <div id="dropZone" style="border:2px dashed rgba(0,230,118,0.3);border-radius:8px;padding:10px;text-align:center;cursor:pointer;margin-top:4px;transition:all 0.3s;" onclick="document.getElementById('fileInput').click()">
+    <div style="font-size:10px;color:rgba(0,230,118,0.6);">Drop CSV or GeoJSON here</div>
+    <div style="font-size:9px;color:rgba(255,255,255,0.3);margin-top:2px;">lat, lng, rsrp_dbm</div>
+  </div>
+  <input id="fileInput" type="file" accept=".csv,.geojson,.json" style="display:none;" onchange="handleFileUpload(event)">
+  <div id="importStatus" style="font-size:9px;color:rgba(0,230,118,0.5);margin-top:4px;display:none;"></div>
+</div>
+
+<div id="infoPanel">
+  <div class="dragHandle" id="infoDragHandle">
+    <h3 id="infoPanelTitle">Cell Site</h3>
+    <span class="close" onclick="closeInfo()">&times;</span>
+  </div>
+  <div id="infoPanelContent"></div>
+</div>
+
+<div id="kpiPanel">
+  <h3>Mobility KPIs</h3>
+  <div class="kpi-row"><span class="k">HO Success Rate</span><span class="v kpi-good" id="kpiSuccess">97.2%</span></div>
+  <div class="kpi-row"><span class="k">HO Failure Rate</span><span class="v kpi-bad" id="kpiFailure">2.8%</span></div>
+  <div class="kpi-row"><span class="k">Ping-Pong HO</span><span class="v kpi-warn" id="kpiPingPong">4.1%</span></div>
+  <div class="kpi-row"><span class="k">Avg HO Latency</span><span class="v kpi-good">42 ms</span></div>
+  <div class="kpi-row"><span class="k">Too-Early HO</span><span class="v kpi-warn">1.3%</span></div>
+  <div class="kpi-row"><span class="k">Too-Late HO</span><span class="v kpi-bad">1.5%</span></div>
+  <div class="kpi-row"><span class="k">Active UEs</span><span class="v" style="color:#00b4d8;" id="kpiUEs">12,847</span></div>
+  <div class="kpi-row"><span class="k">RLF Rate</span><span class="v kpi-bad">0.9%</span></div>
+  <div style="margin-top:10px; padding-top:8px; border-top:1px solid rgba(0,180,216,0.2); font-size:10px; color:#556;">
+    Simulated values for demonstration
+  </div>
+</div>
+
+<div id="ueStatus"></div>
+
+<script>
+Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI2ZGU1NzA4MC02NzI5LTQwNTEtYWY0Yy1jNzk3ZTllZTcyZTkiLCJpZCI6NDA1NDI0LCJpYXQiOjE3Nzc1MzU1NTN9.CFoGTSa8Kfi7agvybX6p0PLvI6JPfDBGVBS2_BJIPxk';
+
+const viewer = new Cesium.Viewer('cesiumContainer', {
+  terrain: Cesium.Terrain.fromWorldTerrain(),
+  animation: false, timeline: false, fullscreenButton: false,
+  homeButton: false, sceneModePicker: false, baseLayerPicker: false,
+  navigationHelpButton: false, geocoder: false, infoBox: false, selectionIndicator: false,
+});
+
+viewer.scene.globe.enableLighting = true;
+viewer.scene.fog.enabled = false;
+viewer.scene.globe.depthTestAgainstTerrain = true;
+viewer.scene.globe.maximumScreenSpaceError = 1;
+viewer.resolutionScale = window.devicePixelRatio || 1;
+viewer.scene.msaaSamples = 4;
+
+// Japan 3D Buildings from PLATEAU
+var plateauTileset = null;
+var coverageGrid = null; // loaded when Sionna toggled on
+
+Cesium.Cesium3DTileset.fromIonAssetId(2275207, {
+  maximumScreenSpaceError: 4,
+  maximumMemoryUsage: 1024,
+  preloadWhenHidden: true,
+}).then(function(ts) {
+  plateauTileset = ts;
+  viewer.scene.primitives.add(ts);
+}).catch(function(e) { console.log('3D Tiles note:', e.message); });
+
+// Tower data with azimuth, tilt, CIO
+const towers = [
+  { id:'SJK-001', name:'Shinjuku Station West', lat:35.6896, lng:139.6982, height:45, band:'n77 (3.7GHz)', power:40, sectors:3, status:'active', rsrp:-72, azimuth:[0,120,240], tilt:4, cio:0 },
+  { id:'SJK-002', name:'Nishi-Shinjuku Tower', lat:35.6935, lng:139.6917, height:120, band:'n77 (3.7GHz)', power:43, sectors:3, status:'active', rsrp:-68, azimuth:[30,150,270], tilt:6, cio:0 },
+  { id:'SJK-003', name:'Shinjuku Gyoen South', lat:35.6852, lng:139.7100, height:35, band:'n78 (3.5GHz)', power:37, sectors:3, status:'active', rsrp:-85, azimuth:[10,130,250], tilt:3, cio:2 },
+  { id:'SJK-004', name:'Kabukicho North', lat:35.6955, lng:139.7030, height:28, band:'n257 (28GHz)', power:30, sectors:4, status:'active', rsrp:-78, azimuth:[0,90,180,270], tilt:8, cio:0 },
+
+  { id:'SBY-001', name:'Shibuya Crossing', lat:35.6595, lng:139.7004, height:55, band:'n77 (3.7GHz)', power:43, sectors:3, status:'active', rsrp:-70, azimuth:[20,140,260], tilt:5, cio:0 },
+  { id:'SBY-002', name:'Shibuya Stream', lat:35.6565, lng:139.7030, height:80, band:'n78 (3.5GHz)', power:40, sectors:3, status:'active', rsrp:-74, azimuth:[0,120,240], tilt:4, cio:1 },
+  { id:'SBY-003', name:'Harajuku Meiji', lat:35.6702, lng:139.7027, height:25, band:'n257 (28GHz)', power:28, sectors:4, status:'active', rsrp:-88, azimuth:[0,90,180,270], tilt:10, cio:3 },
+
+  { id:'MNT-001', name:'Tokyo Tower Site', lat:35.6586, lng:139.7454, height:333, band:'n77 (3.7GHz)', power:46, sectors:6, status:'active', rsrp:-65, azimuth:[0,60,120,180,240,300], tilt:8, cio:0 },
+  { id:'MNT-002', name:'Roppongi Hills', lat:35.6605, lng:139.7292, height:54, band:'n77 (3.7GHz)', power:40, sectors:3, status:'active', rsrp:-76, azimuth:[15,135,255], tilt:4, cio:0 },
+  { id:'MNT-003', name:'Toranomon Hills', lat:35.6670, lng:139.7495, height:52, band:'n78 (3.5GHz)', power:40, sectors:3, status:'active', rsrp:-79, azimuth:[0,120,240], tilt:5, cio:2 },
+  { id:'MNT-004', name:'Azabudai Hills', lat:35.6594, lng:139.7370, height:64, band:'n257 (28GHz)', power:33, sectors:4, status:'active', rsrp:-82, azimuth:[45,135,225,315], tilt:7, cio:1 },
+
+  { id:'CTR-001', name:'Tokyo Station Marunouchi', lat:35.6812, lng:139.7671, height:50, band:'n77 (3.7GHz)', power:43, sectors:3, status:'active', rsrp:-71, azimuth:[0,120,240], tilt:4, cio:0 },
+  { id:'CTR-002', name:'Ginza Chuo-dori', lat:35.6717, lng:139.7649, height:38, band:'n78 (3.5GHz)', power:37, sectors:3, status:'active', rsrp:-80, azimuth:[30,150,270], tilt:3, cio:2 },
+  { id:'CTR-003', name:'Akihabara Electric', lat:35.6984, lng:139.7731, height:30, band:'n77 (3.7GHz)', power:40, sectors:3, status:'active', rsrp:-77, azimuth:[0,120,240], tilt:4, cio:0 },
+
+  { id:'IKB-001', name:'Ikebukuro Sunshine', lat:35.7295, lng:139.7185, height:60, band:'n77 (3.7GHz)', power:43, sectors:3, status:'active', rsrp:-69, azimuth:[10,130,250], tilt:5, cio:0 },
+  { id:'IKB-002', name:'Ikebukuro West Gate', lat:35.7310, lng:139.7109, height:35, band:'n78 (3.5GHz)', power:37, sectors:3, status:'active', rsrp:-83, azimuth:[0,120,240], tilt:3, cio:1 },
+
+  { id:'SGW-001', name:'Shinagawa Station', lat:35.6284, lng:139.7387, height:45, band:'n77 (3.7GHz)', power:43, sectors:3, status:'active', rsrp:-73, azimuth:[0,120,240], tilt:4, cio:0 },
+  { id:'ODB-001', name:'Odaiba Telecom Center', lat:35.6190, lng:139.7760, height:70, band:'n77 (3.7GHz)', power:46, sectors:6, status:'active', rsrp:-67, azimuth:[0,60,120,180,240,300], tilt:6, cio:0 },
+
+  { id:'HO-001', name:'Yamanote Ueno Junction', lat:35.7135, lng:139.7770, height:22, band:'n77 (3.7GHz)', power:34, sectors:2, status:'degraded', rsrp:-98, azimuth:[90,270], tilt:2, cio:-4 },
+  { id:'HO-002', name:'Meguro River Corridor', lat:35.6420, lng:139.7150, height:18, band:'n78 (3.5GHz)', power:30, sectors:2, status:'degraded', rsrp:-102, azimuth:[0,180], tilt:2, cio:-6 },
+  { id:'HO-003', name:'Shuto Expressway C1 Loop', lat:35.6750, lng:139.7550, height:15, band:'n77 (3.7GHz)', power:33, sectors:2, status:'degraded', rsrp:-96, azimuth:[45,225], tilt:2, cio:-3 },
+];
+
+// Neighbor relationships
+const neighbors = [
+  ['SJK-001','SJK-002'], ['SJK-001','SJK-003'], ['SJK-001','SJK-004'],
+  ['SJK-002','SJK-004'], ['SJK-003','SBY-003'],
+  ['SBY-001','SBY-002'], ['SBY-001','SBY-003'], ['SBY-002','HO-002'],
+  ['MNT-001','MNT-002'], ['MNT-001','MNT-003'], ['MNT-001','MNT-004'],
+  ['MNT-002','MNT-004'], ['MNT-002','SBY-001'], ['MNT-003','HO-003'],
+  ['MNT-003','CTR-002'], ['CTR-001','CTR-002'], ['CTR-001','CTR-003'],
+  ['CTR-002','HO-003'], ['CTR-003','HO-001'],
+  ['IKB-001','IKB-002'], ['SGW-001','HO-002'], ['SGW-001','MNT-001'],
+];
+
+// UE simulation path: Shinjuku → Shibuya → Minato → Shuto Expy (HO failure) → Tokyo Station
+const uePath = [
+  { lat:35.6935, lng:139.6917, serving:'SJK-002' },
+  { lat:35.6920, lng:139.6960, serving:'SJK-002' },
+  { lat:35.6896, lng:139.6982, serving:'SJK-001' },
+  { lat:35.6870, lng:139.7020, serving:'SJK-001' },
+  { lat:35.6852, lng:139.7050, serving:'SJK-003' },
+  { lat:35.6800, lng:139.7030, serving:'SBY-003' },
+  { lat:35.6750, lng:139.7020, serving:'SBY-003' },
+  { lat:35.6702, lng:139.7027, serving:'SBY-003' },
+  { lat:35.6650, lng:139.7010, serving:'SBY-001' },
+  { lat:35.6595, lng:139.7004, serving:'SBY-001' },
+  { lat:35.6565, lng:139.7030, serving:'SBY-002' },
+  { lat:35.6500, lng:139.7100, serving:'SBY-002' },
+  { lat:35.6450, lng:139.7150, serving:'HO-002', event:'HO FAILURE' },
+  { lat:35.6420, lng:139.7150, serving:'HO-002', event:'RLF DETECTED' },
+  { lat:35.6400, lng:139.7200, serving:'SGW-001', event:'RE-ESTABLISHED' },
+  { lat:35.6350, lng:139.7300, serving:'SGW-001' },
+  { lat:35.6500, lng:139.7350, serving:'MNT-004' },
+  { lat:35.6586, lng:139.7370, serving:'MNT-004' },
+  { lat:35.6586, lng:139.7454, serving:'MNT-001' },
+  { lat:35.6620, lng:139.7500, serving:'MNT-003' },
+  { lat:35.6700, lng:139.7530, serving:'MNT-003' },
+  { lat:35.6750, lng:139.7550, serving:'HO-003', event:'PING-PONG HO' },
+  { lat:35.6760, lng:139.7580, serving:'HO-003', event:'CIO MISMATCH' },
+  { lat:35.6780, lng:139.7620, serving:'CTR-002' },
+  { lat:35.6812, lng:139.7671, serving:'CTR-001' },
+];
+
+document.getElementById('siteCount').textContent = towers.length;
+document.getElementById('neighborCount').textContent = neighbors.length;
+
+const towerMap = {};
+towers.forEach(function(t) { towerMap[t.id] = t; });
+
+function getSignalColor(rsrp) {
+  if (rsrp > -80) return Cesium.Color.fromCssColorString('#00e676').withAlpha(0.9);
+  if (rsrp > -95) return Cesium.Color.fromCssColorString('#ffca28').withAlpha(0.9);
+  return Cesium.Color.fromCssColorString('#ff5252').withAlpha(0.9);
+}
+
+function getCoverageColor(rsrp) {
+  if (rsrp > -80) return Cesium.Color.fromCssColorString('#00e676').withAlpha(0.06);
+  if (rsrp > -95) return Cesium.Color.fromCssColorString('#ffca28').withAlpha(0.06);
+  return Cesium.Color.fromCssColorString('#ff5252').withAlpha(0.10);
+}
+
+const coverageEntities = [];
+const handoverEntities = [];
+const towerEntities = [];
+const neighborEntities = [];
+
+// Build towers
+towers.forEach(function(t) {
+  var elevate = 150;
+  var pos = Cesium.Cartesian3.fromDegrees(t.lng, t.lat, t.height + elevate);
+  var color = getSignalColor(t.rsrp);
+
+  var towerEnt = viewer.entities.add({
+    position: pos,
+    cylinder: { length: t.height + elevate, topRadius: 8, bottomRadius: 12, material: color, outline: true, outlineColor: color.withAlpha(0.4) },
+    point: { pixelSize: 18, color: color, outlineColor: Cesium.Color.WHITE, outlineWidth: 3, disableDepthTestDistance: Number.POSITIVE_INFINITY },
+    label: {
+      text: t.id + '\n' + t.band.split(' ')[0], font: 'bold 12px Segoe UI', fillColor: Cesium.Color.WHITE,
+      outlineColor: Cesium.Color.BLACK, outlineWidth: 3, style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+      verticalOrigin: Cesium.VerticalOrigin.BOTTOM, pixelOffset: new Cesium.Cartesian2(0, -16),
+      disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      scaleByDistance: new Cesium.NearFarScalar(500, 1.2, 15000, 0.4),
+    },
+    properties: { towerData: t },
+  });
+  towerEntities.push(towerEnt);
+
+  // Coverage circle
+  var covEntity = viewer.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(t.lng, t.lat, elevate),
+    ellipse: {
+      semiMajorAxis: t.power * 3, semiMinorAxis: t.power * 3,
+      material: getCoverageColor(t.rsrp),
+      outline: true, outlineColor: getSignalColor(t.rsrp).withAlpha(0.3), height: elevate,
+    },
+  });
+  coverageEntities.push(covEntity);
+
+  // Handover failure zones
+  if (t.status === 'degraded') {
+    var hoEntity = viewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(t.lng, t.lat, elevate + 10),
+      ellipse: {
+        semiMajorAxis: 180, semiMinorAxis: 180,
+        material: Cesium.Color.fromCssColorString('#ff5252').withAlpha(0.15),
+        outline: true, outlineColor: Cesium.Color.fromCssColorString('#ff5252').withAlpha(0.5),
+        outlineWidth: 2, height: elevate + 5,
+      },
+      label: {
+        text: 'HO FAILURE ZONE', font: 'bold 11px Segoe UI',
+        fillColor: Cesium.Color.fromCssColorString('#ff5252'),
+        outlineColor: Cesium.Color.BLACK, outlineWidth: 2, style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        verticalOrigin: Cesium.VerticalOrigin.BOTTOM, pixelOffset: new Cesium.Cartesian2(0, -16),
+        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 4000),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      },
+    });
+    hoEntity.show = false;
+    handoverEntities.push(hoEntity);
+  }
+});
+
+// Neighbor lines
+neighbors.forEach(function(pair) {
+  var a = towerMap[pair[0]], b = towerMap[pair[1]];
+  if (!a || !b) return;
+  var isProblem = a.status === 'degraded' || b.status === 'degraded';
+  var lineColor = isProblem
+    ? Cesium.Color.fromCssColorString('#ff5252').withAlpha(0.5)
+    : Cesium.Color.fromCssColorString('#00b4d8').withAlpha(0.3);
+
+  var ne = viewer.entities.add({
+    polyline: {
+      positions: [
+        Cesium.Cartesian3.fromDegrees(a.lng, a.lat, a.height + 150),
+        Cesium.Cartesian3.fromDegrees(b.lng, b.lat, b.height + 150),
+      ],
+      width: 5,
+      material: lineColor,
+    },
+  });
+  neighborEntities.push(ne);
+});
+
+// Click handler
+var handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+handler.setInputAction(function(click) {
+  var picked = viewer.scene.pick(click.position);
+  if (Cesium.defined(picked) && picked.id && picked.id.properties && picked.id.properties.towerData) {
+    showInfo(picked.id.properties.towerData.getValue());
+  } else if (!Cesium.defined(picked) || !picked.id) {
+    closeInfo();
+  }
+}, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+function showInfo(t) {
+  document.getElementById('infoPanelTitle').textContent = t.name;
+  var sc = t.status === 'active' ? '#00e676' : '#ff5252';
+  var neighIds = [];
+  neighbors.forEach(function(p) {
+    if (p[0] === t.id) neighIds.push(p[1]);
+    if (p[1] === t.id) neighIds.push(p[0]);
+  });
+  document.getElementById('infoPanelContent').innerHTML = [
+    row('Site ID', t.id),
+    row('Status', '<span style="color:'+sc+'">'+t.status.toUpperCase()+'</span>'),
+    row('Band', t.band),
+    row('Height', t.height + ' m'),
+    row('TX Power', t.power + ' dBm'),
+    row('Sectors', t.sectors),
+    row('Azimuth', t.azimuth.join(' / ') + '&deg;'),
+    row('Elec. Tilt', t.tilt + '&deg;'),
+    row('CIO', (t.cio >= 0 ? '+' : '') + t.cio + ' dB'),
+    row('RSRP', t.rsrp + ' dBm'),
+    row('Neighbors', neighIds.join(', ') || 'none'),
+    row('Lat/Lng', t.lat.toFixed(4) + ', ' + t.lng.toFixed(4)),
+    '<div style="margin-top:10px; padding-top:6px; border-top:1px solid rgba(0,180,216,0.2); font-size:10px; color:#556;">HARDWARE / O-RAN</div>',
+    row('Platform', 'Intel Xeon COTS'),
+    row('RAN Stack', 'Altiostar vDU/vCU'),
+    row('Orchestration', 'RCP (Robin)'),
+    row('RIC', t.band.indexOf('28GHz') >= 0 ? 'near-RT (xApp)' : 'non-RT (rApp)'),
+    row('Interface', 'E2 (data) / A1 (policy)'),
+    row('Clutter', t.height > 50 ? 'Dense Urban' : t.height > 25 ? 'Urban' : 'Suburban'),
+    '<div style="margin-top:8px; padding-top:6px; border-top:1px solid rgba(0,180,216,0.2); font-size:10px; color:#667;">',
+    t.status === 'degraded'
+      ? '<span style="color:#ff5252;">HO failures detected. CIO = '+t.cio+' dB. MRO optimization candidate.</span>'
+      : '<span style="color:#00e676;">Normal. '+t.sectors+' sectors, standard CIO.</span>',
+    '</div>'
+  ].join('');
+  document.getElementById('infoPanel').style.display = 'block';
+}
+
+function row(k, v) { return '<div class="row"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>'; }
+function closeInfo() { document.getElementById('infoPanel').style.display = 'none'; }
+
+// Navigation
+var areas = {
+  shinjuku: { lng:139.6980, lat:35.6910, height:1500, heading:30, pitch:-35 },
+  shibuya: { lng:139.7010, lat:35.6590, height:1200, heading:-20, pitch:-35 },
+  minato: { lng:139.7380, lat:35.6600, height:2000, heading:10, pitch:-30 },
+  overview: { lng:139.7300, lat:35.6700, height:8000, heading:15, pitch:-45 },
+};
+
+function flyToArea(name) {
+  var a = areas[name];
+  viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(a.lng, a.lat, a.height),
+    orientation: { heading: Cesium.Math.toRadians(a.heading), pitch: Cesium.Math.toRadians(a.pitch), roll: 0 },
+    duration: 2,
+  });
+}
+
+var coverageVisible = true;
+function toggleCoverageViz() {
+  coverageVisible = !coverageVisible;
+  coverageEntities.forEach(function(e) { e.show = coverageVisible; });
+  document.getElementById('toggleCoverage').textContent = 'Coverage: ' + (coverageVisible ? 'ON' : 'OFF');
+}
+
+var handoverVisible = false;
+function toggleHandoverZones() {
+  handoverVisible = !handoverVisible;
+  handoverEntities.forEach(function(e) { e.show = handoverVisible; });
+  document.getElementById('toggleHandover').textContent = 'HO Zones: ' + (handoverVisible ? 'ON' : 'OFF');
+}
+
+var neighborsVisible = true;
+function toggleNeighborLines() {
+  neighborsVisible = !neighborsVisible;
+  neighborEntities.forEach(function(e) { e.show = neighborsVisible; });
+  document.getElementById('toggleNeighbors').textContent = 'Neighbors: ' + (neighborsVisible ? 'ON' : 'OFF');
+}
+
+var kpiVisible = false;
+function toggleKpiPanel() {
+  kpiVisible = !kpiVisible;
+  document.getElementById('kpiPanel').style.display = kpiVisible ? 'block' : 'none';
+  document.getElementById('toggleKpi').textContent = 'KPIs: ' + (kpiVisible ? 'ON' : 'OFF');
+}
+
+// UE Simulation
+var ueEntity = null;
+var ueRingEntity = null;
+var ueLineEntity = null;
+var ueServingLine = null;
+var simRunning = false;
+var simStep = 0;
+
+function startSimulation() {
+  if (simRunning) { stopSimulation(); return; }
+  simRunning = true;
+  simStep = 0;
+  document.getElementById('btnSimulate').textContent = 'Stop UE';
+  document.getElementById('btnSimulate').classList.add('active');
+  document.getElementById('ueStatus').style.display = 'block';
+
+  // Show handover zones during simulation
+  if (!handoverVisible) toggleHandoverZones();
+
+  // Create UE entity — tall beacon visible from overview
+  var startPos = Cesium.Cartesian3.fromDegrees(uePath[0].lng, uePath[0].lat, 350);
+  ueEntity = viewer.entities.add({
+    position: startPos,
+    cylinder: { length: 400, topRadius: 0, bottomRadius: 12, material: Cesium.Color.fromCssColorString('#e040fb').withAlpha(0.8), outline: false },
+    label: {
+      text: 'UE', font: 'bold 13px Segoe UI', fillColor: Cesium.Color.WHITE,
+      outlineColor: Cesium.Color.fromCssColorString('#e040fb'), outlineWidth: 3, style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+      verticalOrigin: Cesium.VerticalOrigin.BOTTOM, pixelOffset: new Cesium.Cartesian2(0, -20),
+      disableDepthTestDistance: Number.POSITIVE_INFINITY,
+    },
+  });
+  // Bright ground ring
+  ueRingEntity = viewer.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(uePath[0].lng, uePath[0].lat, 150),
+    ellipse: { semiMajorAxis: 50, semiMinorAxis: 50, material: Cesium.Color.fromCssColorString('#e040fb').withAlpha(0.3), outline: true, outlineColor: Cesium.Color.fromCssColorString('#e040fb').withAlpha(0.8), height: 150 },
+  });
+
+  // Trail line — elevated at 80m so it floats above buildings
+  var trailStart = Cesium.Cartesian3.fromDegrees(uePath[0].lng, uePath[0].lat, 200);
+  ueLineEntity = viewer.entities.add({
+    polyline: {
+      positions: [trailStart],
+      width: 5,
+      material: Cesium.Color.fromCssColorString('#e040fb').withAlpha(0.6),
+    },
+  });
+
+  // Fly to overview centered on network
+  viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(139.730, 35.670, 5000),
+    orientation: { heading: Cesium.Math.toRadians(20), pitch: Cesium.Math.toRadians(-40), roll: 0 },
+    duration: 1.5,
+  });
+
+  setTimeout(advanceUE, 2000);
+}
+
+function advanceUE() {
+  if (!simRunning || simStep >= uePath.length) { stopSimulation(); return; }
+
+  var wp = uePath[simStep];
+  var pos = Cesium.Cartesian3.fromDegrees(wp.lng, wp.lat, 350);
+  ueEntity.position = pos;
+  ueRingEntity.position = Cesium.Cartesian3.fromDegrees(wp.lng, wp.lat, 150);
+
+  // Serving cell info
+  var serving = towerMap[wp.serving];
+
+  // Draw line from UE to serving tower
+  if (serving) {
+    if (ueServingLine) viewer.entities.remove(ueServingLine);
+    var lineColor = wp.event ? Cesium.Color.fromCssColorString('#ff5252').withAlpha(0.8) : Cesium.Color.fromCssColorString('#e040fb').withAlpha(0.6);
+    ueServingLine = viewer.entities.add({
+      polyline: {
+        positions: [
+          Cesium.Cartesian3.fromDegrees(wp.lng, wp.lat, 200),
+          Cesium.Cartesian3.fromDegrees(serving.lng, serving.lat, serving.height + 150),
+        ],
+        width: 5, material: lineColor,
+      },
+    });
+  }
+
+  // Update trail at 80m elevation
+  var trail = ueLineEntity.polyline.positions.getValue();
+  trail.push(Cesium.Cartesian3.fromDegrees(wp.lng, wp.lat, 200));
+  ueLineEntity.polyline.positions = trail;
+
+  var statusEl = document.getElementById('ueStatus');
+  if (wp.event) {
+    var evColor = wp.event.indexOf('FAILURE') >= 0 || wp.event.indexOf('RLF') >= 0 ? '#ff5252'
+      : wp.event.indexOf('PING') >= 0 || wp.event.indexOf('MISMATCH') >= 0 ? '#ffca28' : '#00e676';
+    statusEl.innerHTML = '<span style="color:'+evColor+';font-weight:700;">'+wp.event+'</span> | Serving: '+wp.serving+' | RSRP: '+(serving ? serving.rsrp : '?')+' dBm';
+    ueEntity.cylinder.material = Cesium.Color.fromCssColorString(evColor).withAlpha(0.8);
+    ueRingEntity.ellipse.material = Cesium.Color.fromCssColorString(evColor).withAlpha(0.4);
+  } else {
+    statusEl.innerHTML = 'Serving: <span style="color:#00b4d8;font-weight:600;">'+wp.serving+'</span> | RSRP: '+(serving ? serving.rsrp : '?')+' dBm | Speed: 40 km/h';
+    ueEntity.cylinder.material = Cesium.Color.fromCssColorString('#e040fb').withAlpha(0.7);
+    ueRingEntity.ellipse.material = Cesium.Color.fromCssColorString('#e040fb').withAlpha(0.3);
+  }
+
+  // Check for handover (serving cell changed)
+  if (simStep > 0 && uePath[simStep - 1].serving !== wp.serving && !wp.event) {
+    statusEl.innerHTML += ' | <span style="color:#00e676;">HO OK</span> (' + uePath[simStep-1].serving + ' &rarr; ' + wp.serving + ')';
+  }
+
+  simStep++;
+  if (simRunning) setTimeout(advanceUE, 1200);
+}
+
+function stopSimulation() {
+  simRunning = false;
+  document.getElementById('btnSimulate').textContent = 'Simulate UE';
+  document.getElementById('btnSimulate').classList.remove('active');
+  document.getElementById('ueStatus').style.display = 'none';
+  if (ueEntity) { viewer.entities.remove(ueEntity); ueEntity = null; }
+  if (ueRingEntity) { viewer.entities.remove(ueRingEntity); ueRingEntity = null; }
+  if (ueLineEntity) { viewer.entities.remove(ueLineEntity); ueLineEntity = null; }
+  if (ueServingLine) { viewer.entities.remove(ueServingLine); ueServingLine = null; }
+}
+
+// --- Sionna RT Coverage Overlay ---
+var sionnaDS = null;
+var sionnaVisible = false;
+var sionnaFiles = {
+  n77: 'cesium_coverage_n77.geojson',
+  n78: 'cesium_coverage_n78.geojson',
+  n257: 'cesium_coverage_n257.geojson'
+};
+
+// Build a coverage texture from GeoJSON for building tinting
+function buildCoverageTexture(geojson) {
+  // Create a 512x512 lookup grid covering the bbox
+  var W = 139.682, E = 139.815, S = 35.615, N = 35.735;
+  var RES = 512;
+  var canvas = document.createElement('canvas');
+  canvas.width = RES; canvas.height = RES;
+  var ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, RES, RES);
+
+  var qualityColors = {
+    'strong': [0,230,118], 'good': [102,187,106],
+    'moderate': [255,202,40], 'weak': [255,152,0], 'very_weak': [255,82,82]
+  };
+
+  geojson.features.forEach(function(f) {
+    var q = f.properties.quality || 'moderate';
+    var c = qualityColors[q] || [255,202,40];
+    var coords = f.geometry.coordinates[0];
+    var lng = (coords[0][0] + coords[2][0]) / 2;
+    var lat = (coords[0][1] + coords[2][1]) / 2;
+    var px = Math.floor((lng - W) / (E - W) * RES);
+    var py = Math.floor((N - lat) / (N - S) * RES);
+    if (px < 0 || px >= RES || py < 0 || py >= RES) return;
+    ctx.fillStyle = 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
+    ctx.fillRect(px, py, 2, 2);
+  });
+
+  return canvas.toDataURL();
+}
+
+var plateauDefaultStyle = null;
+
+function loadSionnaCoverage(band) {
+  if (sionnaDS) { viewer.dataSources.remove(sionnaDS, true); sionnaDS = null; }
+  loadCoveragePNG(band);
+  applyCoverageShader();
+}
+
+function applyCoverageShader() {
+  if (!plateauTileset) return;
+  var towerLL = [
+    [35.6896,139.6982],[35.6935,139.6917],[35.6852,139.7100],[35.6955,139.7030],
+    [35.6595,139.7004],[35.6565,139.7030],[35.6702,139.7027],
+    [35.6586,139.7454],[35.6605,139.7292],[35.6670,139.7495],[35.6594,139.7370],
+    [35.6812,139.7671],[35.6717,139.7649],[35.6984,139.7731],
+    [35.7295,139.7185],[35.7310,139.7109],
+    [35.6284,139.7387],[35.6190,139.7760],
+    [35.7135,139.7770],[35.6420,139.7150],[35.6750,139.7550]
+  ];
+  var tConsts = '', tDists = '';
+  for (var i = 0; i < towerLL.length; i++) {
+    var p = Cesium.Cartesian3.fromDegrees(towerLL[i][1], towerLL[i][0], 0);
+    tConsts += 'const vec3 t' + i + '=vec3(' + p.x.toFixed(1) + ',' + p.y.toFixed(1) + ',' + p.z.toFixed(1) + ');\n          ';
+    tDists += 'md=min(md,distance(pos,t' + i + '));\n            ';
+  }
+  var alpha = opacityAlphas[currentOpacityLevel];
+  plateauTileset.customShader = new Cesium.CustomShader({
+    fragmentShaderText: `
+      void fragmentMain(FragmentInput fsInput, inout czm_modelMaterial material) {
+        vec3 pos = fsInput.attributes.positionWC;
+        ` + tConsts + `
+        float md = 99999.0;
+        ` + tDists + `
+        vec3 tc; float ta;
+        if (md > 2500.0) { ta = 0.0; tc = vec3(0.0); }
+        else if (md < 200.0) { tc = vec3(0.0,0.9,0.46); ta = ` + alpha.toFixed(2) + `; }
+        else if (md < 500.0) { tc = vec3(0.4,0.73,0.42); ta = ` + (alpha*0.9).toFixed(2) + `; }
+        else if (md < 1000.0) { tc = vec3(1.0,0.79,0.16); ta = ` + (alpha*0.8).toFixed(2) + `; }
+        else if (md < 2000.0) { tc = vec3(1.0,0.6,0.0); ta = ` + (alpha*0.7).toFixed(2) + `; }
+        else { tc = vec3(1.0,0.32,0.32); ta = ` + (alpha*0.5).toFixed(2) + `; }
+        material.diffuse = mix(material.diffuse, tc, ta);
+      }
+    `
+  });
+}
+
+function toggleSionnaCoverage() {
+  sionnaVisible = !sionnaVisible;
+  var btn = document.getElementById('btnSionna');
+  var band = document.getElementById('sionnaBand').value;
+  if (sionnaVisible) {
+    btn.textContent = 'Sionna RT: ON';
+    btn.style.background = 'rgba(224,64,251,0.35)';
+    loadSionnaCoverage(band);
+  } else {
+    btn.textContent = 'Sionna RT: OFF';
+    btn.style.background = 'rgba(224,64,251,0.2)';
+    if (coverageImagery) { viewer.imageryLayers.remove(coverageImagery, true); coverageImagery = null; }
+    if (sionnaDS) { viewer.dataSources.remove(sionnaDS, true); sionnaDS = null; }
+    if (plateauTileset) { plateauTileset.customShader = undefined; }
+    coverageGrid = null;
+  }
+}
+
+function switchSionnaBand() {
+  if (sionnaVisible) {
+    var band = document.getElementById('sionnaBand').value;
+    loadSionnaCoverage(band);
+  }
+}
+
+var currentOpacityLevel = 1;
+var opacityAlphas = [0, 0.15, 0.40, 0.75];
+
+function setSionnaOpacity(level) {
+  currentOpacityLevel = level;
+  ['opMin','opMid','opMax'].forEach(function(id, i) {
+    var btn = document.getElementById(id);
+    if (i + 1 === level) {
+      btn.style.background = 'rgba(224,64,251,0.3)';
+      btn.style.borderColor = '#e040fb';
+    } else {
+      btn.style.background = 'rgba(224,64,251,0.1)';
+      btn.style.borderColor = 'rgba(224,64,251,0.3)';
+    }
+  });
+  var alpha = opacityAlphas[level];
+  if (coverageImagery) { coverageImagery.alpha = alpha; }
+  if (sionnaVisible && plateauTileset) { applyCoverageShader(); }
+}
+
+// --- Explore Mode (Walk / Fly / Orbit) ---
+var exploreMode = 'orbit';
+var keysDown = {};
+var fpEntity = null;
+var exploreRAF = null;
+
+function setExploreMode(mode) {
+  exploreMode = mode;
+  ['modeOrbit','modeWalk','modeFly'].forEach(function(id) {
+    var btn = document.getElementById(id);
+    btn.style.background = 'rgba(255,193,7,0.1)';
+    btn.style.borderColor = 'rgba(255,193,7,0.3)';
+  });
+  var activeBtn = document.getElementById('mode' + mode.charAt(0).toUpperCase() + mode.slice(1));
+  activeBtn.style.background = 'rgba(255,193,7,0.3)';
+  activeBtn.style.borderColor = '#ffc107';
+
+  var hud = document.getElementById('exploreHud');
+  var sc = viewer.scene.screenSpaceCameraController;
+
+  if (mode === 'orbit') {
+    hud.style.display = 'none';
+    sc.enableInputs = true;
+    sc.enableRotate = true;
+    sc.enableTranslate = true;
+    sc.enableZoom = true;
+    sc.enableTilt = true;
+    sc.enableLook = true;
+    if (fpEntity) { viewer.entities.remove(fpEntity); fpEntity = null; }
+    if (exploreRAF) { cancelAnimationFrame(exploreRAF); exploreRAF = null; }
+    viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(139.75, 35.68, 15000), orientation: { heading: 0, pitch: Cesium.Math.toRadians(-45), roll: 0 }, duration: 1.5 });
+    return;
+  }
+
+  hud.style.display = 'block';
+  sc.enableRotate = false;
+  sc.enableTranslate = false;
+  sc.enableZoom = false;
+  sc.enableTilt = false;
+  sc.enableLook = false;
+  sc.enableInputs = false;
+
+  var startHeight = mode === 'walk' ? 2.0 : 200.0;
+  var campos = viewer.camera.positionCartographic;
+  var startLng = Cesium.Math.toDegrees(campos.longitude) || 139.7004;
+  var startLat = Cesium.Math.toDegrees(campos.latitude) || 35.6595;
+
+  viewer.camera.setView({
+    destination: Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight),
+    orientation: { heading: viewer.camera.heading, pitch: mode === 'walk' ? 0 : Cesium.Math.toRadians(-15), roll: 0 }
+  });
+
+  if (!fpEntity) {
+    fpEntity = viewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(startLng, startLat, startHeight),
+      point: { pixelSize: 0, color: Cesium.Color.TRANSPARENT }
+    });
+  }
+
+  if (exploreRAF) cancelAnimationFrame(exploreRAF);
+  exploreLoop();
+}
+
+var flyMouseDown = false;
+var flyLastX = 0, flyLastY = 0;
+var flyHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+flyHandler.setInputAction(function(e) {
+  if (exploreMode !== 'orbit') { flyMouseDown = true; flyLastX = e.position.x; flyLastY = e.position.y; }
+}, Cesium.ScreenSpaceEventType.LEFT_DOWN);
+flyHandler.setInputAction(function() { flyMouseDown = false; }, Cesium.ScreenSpaceEventType.LEFT_UP);
+flyHandler.setInputAction(function(e) {
+  if (!flyMouseDown || exploreMode === 'orbit') return;
+  var dx = e.endPosition.x - flyLastX;
+  var dy = e.endPosition.y - flyLastY;
+  flyLastX = e.endPosition.x; flyLastY = e.endPosition.y;
+  var cam = viewer.camera;
+  cam.setView({
+    orientation: {
+      heading: cam.heading - dx * 0.004,
+      pitch: Math.max(Cesium.Math.toRadians(-89), Math.min(Cesium.Math.toRadians(89), cam.pitch - dy * 0.004)),
+      roll: 0
+    }
+  });
+}, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+flyHandler.setInputAction(function(e) {
+  if (exploreMode !== 'orbit') { flyMouseDown = true; flyLastX = e.position.x; flyLastY = e.position.y; }
+}, Cesium.ScreenSpaceEventType.RIGHT_DOWN);
+flyHandler.setInputAction(function() { flyMouseDown = false; }, Cesium.ScreenSpaceEventType.RIGHT_UP);
+
+function exploreLoop() {
+  var speed = exploreMode === 'walk' ? 0.8 : 50.0;
+  if (keysDown['Shift']) speed *= 3;
+  var cam = viewer.camera;
+
+  if (keysDown['w'] || keysDown['W'] || keysDown['ArrowUp']) cam.moveForward(speed);
+  if (keysDown['s'] || keysDown['S'] || keysDown['ArrowDown']) cam.moveBackward(speed);
+  if (keysDown['a'] || keysDown['A'] || keysDown['ArrowLeft']) cam.moveLeft(speed);
+  if (keysDown['d'] || keysDown['D'] || keysDown['ArrowRight']) cam.moveRight(speed);
+  if (keysDown['q'] || keysDown['Q'] || keysDown[' ']) cam.moveUp(speed * 0.7);
+  if (keysDown['e'] || keysDown['E']) cam.moveDown(speed * 0.7);
+
+  if (exploreMode === 'walk') {
+    var carto = cam.positionCartographic;
+    var terrain = viewer.scene.globe.getHeight(carto) || 0;
+    var walkHeight = terrain + 1.8;
+    if (carto.height < walkHeight) {
+      cam.position = Cesium.Cartesian3.fromRadians(carto.longitude, carto.latitude, walkHeight);
+    }
+  }
+
+  // Update HUD
+  var carto = cam.positionCartographic;
+  var lat = Cesium.Math.toDegrees(carto.latitude).toFixed(5);
+  var lng = Cesium.Math.toDegrees(carto.longitude).toFixed(5);
+  var alt = carto.height.toFixed(1);
+  document.getElementById('posInfo').innerHTML = lat + 'N, ' + lng + 'E &nbsp; Alt: ' + alt + 'm';
+
+  exploreRAF = requestAnimationFrame(exploreLoop);
+}
+
+document.addEventListener('keydown', function(e) {
+  if (exploreMode !== 'orbit') {
+    keysDown[e.key] = true;
+    if (['w','a','s','d','q','e',' ','W','A','S','D','Q','E','Shift','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].indexOf(e.key) >= 0) {
+      e.preventDefault();
+    }
+  }
+});
+document.addEventListener('keyup', function(e) { keysDown[e.key] = false; });
+
+// --- City Data Layers ---
+var cityLayers = { rail: null, traffic: null, towers: null };
+var cityLayerVisible = { rail: false, traffic: false, towers: false };
+var weatherData = null;
+var rainFadeData = null;
+
+function toggleLayer(name) {
+  cityLayerVisible[name] = !cityLayerVisible[name];
+  var btn = document.getElementById('btn' + name.charAt(0).toUpperCase() + name.slice(1));
+  if (cityLayerVisible[name]) {
+    btn.style.background = btn.style.background.replace('0.1', '0.3');
+    loadCityLayer(name);
+  } else {
+    btn.style.background = btn.style.background.replace('0.3', '0.1');
+    if (cityLayers[name]) { viewer.dataSources.remove(cityLayers[name], true); cityLayers[name] = null; }
+  }
+}
+
+function loadCityLayer(name) {
+  var files = { rail: 'tokyo_rail_lines.geojson', traffic: 'tokyo_traffic.geojson', towers: 'tokyo_real_towers.geojson' };
+  var colors = { rail: '#ff9800', traffic: '#e91e63', towers: '#9c27b0' };
+  if (cityLayers[name]) { viewer.dataSources.remove(cityLayers[name], true); }
+  Cesium.GeoJsonDataSource.load(files[name], {
+    stroke: Cesium.Color.fromCssColorString(colors[name]).withAlpha(0.8),
+    fill: Cesium.Color.fromCssColorString(colors[name]).withAlpha(0.3),
+    strokeWidth: name === 'rail' ? 4 : name === 'traffic' ? 3 : 1,
+    markerSize: 8,
+    clampToGround: true
+  }).then(function(ds) {
+    cityLayers[name] = ds;
+    viewer.dataSources.add(ds);
+    if (name === 'rail') {
+      ds.entities.values.forEach(function(e) {
+        if (e.polyline) {
+          var props = e.properties;
+          var lineType = props && props.type ? props.type.getValue() : 'rail';
+          var c = lineType === 'expressway' ? Cesium.Color.fromCssColorString('#e91e63') : Cesium.Color.fromCssColorString('#ff9800');
+          e.polyline.clampToGround = false;
+          var positions = e.polyline.positions.getValue(Cesium.JulianDate.now());
+          if (positions) {
+            var elevated = [];
+            for (var j = 0; j < positions.length; j++) {
+              var carto = Cesium.Cartographic.fromCartesian(positions[j]);
+              elevated.push(Cesium.Cartesian3.fromRadians(carto.longitude, carto.latitude, 30));
+            }
+            e.polyline.positions = elevated;
+          }
+          e.polyline.material = c.withAlpha(0.85);
+          e.polyline.width = lineType === 'expressway' ? 3 : 4;
+          e.polyline.depthFailMaterial = c.withAlpha(0.25);
+        }
+      });
+    }
+    if (name === 'towers') {
+      ds.entities.values.forEach(function(e) {
+        if (e.billboard) { e.billboard = undefined; }
+        if (e.point) { e.point = undefined; }
+        var pos = e.position ? e.position.getValue(Cesium.JulianDate.now()) : null;
+        if (pos) {
+          e.point = new Cesium.PointGraphics({ pixelSize: 6, color: Cesium.Color.fromCssColorString('#9c27b0'), outlineColor: Cesium.Color.WHITE, outlineWidth: 1 });
+        }
+      });
+    }
+    if (name === 'traffic') {
+      ds.entities.values.forEach(function(e) {
+        if (e.polyline) {
+          var props = e.properties;
+          var density = props && props.traffic_density ? props.traffic_density.getValue() : 1000;
+          var c = density > 3000 ? '#ff1744' : density > 2000 ? '#ff9100' : density > 1000 ? '#ffea00' : '#69f0ae';
+          e.polyline.material = Cesium.Color.fromCssColorString(c).withAlpha(0.7);
+          e.polyline.width = Math.max(2, Math.min(6, density / 800));
+          e.polyline.clampToGround = true;
+        }
+      });
+    }
+  }).catch(function(err) { console.warn('Layer load failed:', name, err); });
+}
+
+function toggleWeather() {
+  var panel = document.getElementById('weatherPanel');
+  var btn = document.getElementById('btnWeather');
+  if (panel.style.display === 'none') {
+    btn.style.background = 'rgba(33,150,243,0.3)';
+    panel.style.display = 'block';
+    if (!weatherData) {
+      panel.innerHTML = 'Loading...';
+      fetch('tokyo_weather.json').then(function(r){return r.json();}).then(function(d) {
+        weatherData = d;
+        renderWeather(d);
+      }).catch(function() {
+        fetch('https://api.open-meteo.com/v1/forecast?latitude=35.68&longitude=139.75&current=temperature_2m,relative_humidity_2m,precipitation,rain,wind_speed_10m,wind_direction_10m,weather_code&timezone=Asia/Tokyo')
+        .then(function(r){return r.json();}).then(function(d) { weatherData = d; renderWeather(d); })
+        .catch(function(){ panel.innerHTML = 'Weather unavailable'; });
+      });
+    } else { renderWeather(weatherData); }
+  } else {
+    panel.style.display = 'none';
+    btn.style.background = 'rgba(33,150,243,0.1)';
+  }
+}
+
+function renderWeather(d) {
+  var c = d.current || d;
+  var temp = c.temperature_2m || c.temperature || '?';
+  var hum = c.relative_humidity_2m || c.humidity || '?';
+  var rain = c.precipitation || c.rain || 0;
+  var wind = c.wind_speed_10m || c.wind_speed || '?';
+  var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">';
+  html += '<div>Temp: <strong>' + temp + ' C</strong></div>';
+  html += '<div>Humidity: <strong>' + hum + '%</strong></div>';
+  html += '<div>Rain: <strong>' + rain + ' mm/h</strong></div>';
+  html += '<div>Wind: <strong>' + wind + ' km/h</strong></div>';
+  html += '</div>';
+  if (rain > 0) { html += '<div style="margin-top:4px;color:#ff9800;">Rain active — mmWave attenuation applies</div>'; }
+  document.getElementById('weatherPanel').innerHTML = html;
+}
+
+function toggleRainFade() {
+  var panel = document.getElementById('rainPanel');
+  var btn = document.getElementById('btnRain');
+  if (panel.style.display === 'none') {
+    btn.style.background = 'rgba(0,188,212,0.3)';
+    panel.style.display = 'block';
+    if (!rainFadeData) {
+      fetch('tokyo_rain_fade.json').then(function(r){return r.json();}).then(function(d) {
+        rainFadeData = d;
+        renderRainFade(d);
+      }).catch(function() {
+        rainFadeData = {rates:[
+          {rate_mmh:0,atten_db_km:0,note:'Clear sky'},
+          {rate_mmh:5,atten_db_km:3.8,note:'Light rain'},
+          {rate_mmh:25,atten_db_km:12.5,note:'Moderate rain'},
+          {rate_mmh:50,atten_db_km:21.0,note:'Heavy rain — mmWave link budget destroyed'}
+        ]};
+        renderRainFade(rainFadeData);
+      });
+    } else { renderRainFade(rainFadeData); }
+  } else {
+    panel.style.display = 'none';
+    btn.style.background = 'rgba(0,188,212,0.1)';
+  }
+}
+
+function renderRainFade(d) {
+  var rates = d.rates || d;
+  var html = '<div style="font-weight:600;margin-bottom:4px;">ITU-R P.838 @ 28 GHz</div>';
+  html += '<table style="width:100%;font-size:9px;border-collapse:collapse;">';
+  html += '<tr><td style="padding:2px 4px;border-bottom:1px solid rgba(255,255,255,0.1);">Rain</td><td style="padding:2px 4px;border-bottom:1px solid rgba(255,255,255,0.1);">Loss/km</td><td style="padding:2px 4px;border-bottom:1px solid rgba(255,255,255,0.1);">Impact</td></tr>';
+  rates.forEach(function(r) {
+    var color = r.atten_db_km > 15 ? '#ff5252' : r.atten_db_km > 8 ? '#ff9800' : r.atten_db_km > 2 ? '#ffca28' : '#69f0ae';
+    html += '<tr><td style="padding:2px 4px;color:'+color+'">' + r.rate_mmh + ' mm/h</td>';
+    html += '<td style="padding:2px 4px;color:'+color+'">' + r.atten_db_km + ' dB/km</td>';
+    html += '<td style="padding:2px 4px;color:#888">' + (r.note||'') + '</td></tr>';
+  });
+  html += '</table>';
+  document.getElementById('rainPanel').innerHTML = html;
+}
+
+// --- PNG Coverage Overlay (performance optimization) ---
+var coverageImagery = null;
+
+function loadCoveragePNG(band) {
+  if (coverageImagery) { viewer.imageryLayers.remove(coverageImagery, true); coverageImagery = null; }
+  var file = 'coverage_' + band + '.png';
+  try {
+    var provider = new Cesium.SingleTileImageryProvider({
+      url: file,
+      rectangle: Cesium.Rectangle.fromDegrees(139.682, 35.615, 139.815, 35.735),
+    });
+    coverageImagery = viewer.imageryLayers.addImageryProvider(provider);
+    coverageImagery.alpha = opacityAlphas[currentOpacityLevel];
+  } catch(e) { console.warn('PNG coverage not found, using GeoJSON fallback'); }
+}
+
+// --- Engineering Layers (Antenna Beams, Coverage Holes, HO Boundaries) ---
+var engLayers = { beams: null, holes: null, handover: null };
+var engVisible = { beams: false, holes: false, handover: false };
+
+function toggleEngLayer(name) {
+  engVisible[name] = !engVisible[name];
+  var btnId = name === 'beams' ? 'btnBeams' : name === 'holes' ? 'btnHoles' : 'btnHoBounds';
+  var btn = document.getElementById(btnId);
+  if (engVisible[name]) {
+    btn.style.background = btn.style.background.replace('0.15', '0.4');
+    loadEngLayer(name);
+  } else {
+    btn.style.background = btn.style.background.replace('0.4', '0.15');
+    if (engLayers[name]) { viewer.dataSources.remove(engLayers[name], true); engLayers[name] = null; }
+  }
+}
+
+function loadEngLayer(name) {
+  var files = {
+    beams: 'tokyo_antenna_beams.geojson',
+    holes: 'tokyo_coverage_holes.geojson',
+    handover: 'tokyo_handover_boundaries.geojson'
+  };
+  if (engLayers[name]) { viewer.dataSources.remove(engLayers[name], true); }
+  Cesium.GeoJsonDataSource.load(files[name], {
+    clampToGround: true, markerSize: 6
+  }).then(function(ds) {
+    engLayers[name] = ds;
+    viewer.dataSources.add(ds);
+
+    ds.entities.values.forEach(function(e) {
+      var props = e.properties;
+      if (name === 'beams' && e.polygon) {
+        var color = props && props.fill ? props.fill.getValue() : '#ff8a65';
+        e.polygon.material = Cesium.Color.fromCssColorString(color).withAlpha(0.25);
+        e.polygon.outline = true;
+        e.polygon.outlineColor = Cesium.Color.fromCssColorString(color).withAlpha(0.7);
+        e.polygon.height = 160;
+        e.polygon.extrudedHeight = 180;
+        e.polygon.heightReference = Cesium.HeightReference.RELATIVE_TO_GROUND;
+        e.polygon.extrudedHeightReference = Cesium.HeightReference.RELATIVE_TO_GROUND;
+      }
+      if (name === 'holes') {
+        if (e.billboard) e.billboard = undefined;
+        var mc = props && props['marker-color'] ? props['marker-color'].getValue() : '#ff5252';
+        e.point = new Cesium.PointGraphics({
+          pixelSize: 8,
+          color: Cesium.Color.fromCssColorString(mc).withAlpha(0.8),
+          outlineColor: Cesium.Color.WHITE,
+          outlineWidth: 1,
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY
+        });
+      }
+      if (name === 'handover' && e.polyline) {
+        var lc = props && props.stroke ? props.stroke.getValue() : '#ffca28';
+        e.polyline.material = Cesium.Color.fromCssColorString(lc).withAlpha(0.8);
+        e.polyline.width = 4;
+        e.polyline.clampToGround = true;
+      }
+    });
+  }).catch(function(err) { console.warn('Eng layer load failed:', name, err); });
+}
+
+// --- Propagation Data Import (drag-drop CSV/GeoJSON) ---
+var importedDS = null;
+
+(function() {
+  var dz = document.getElementById('dropZone');
+  dz.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    dz.style.borderColor = '#00e676';
+    dz.style.background = 'rgba(0,230,118,0.1)';
+  });
+  dz.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    dz.style.borderColor = 'rgba(0,230,118,0.3)';
+    dz.style.background = 'transparent';
+  });
+  dz.addEventListener('drop', function(e) {
+    e.preventDefault();
+    dz.style.borderColor = 'rgba(0,230,118,0.3)';
+    dz.style.background = 'transparent';
+    if (e.dataTransfer.files.length > 0) {
+      processFile(e.dataTransfer.files[0]);
+    }
+  });
+})();
+
+function handleFileUpload(event) {
+  if (event.target.files.length > 0) {
+    processFile(event.target.files[0]);
+  }
+}
+
+function processFile(file) {
+  var status = document.getElementById('importStatus');
+  status.style.display = 'block';
+  status.textContent = 'Loading ' + file.name + '...';
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var content = e.target.result;
+    var name = file.name.toLowerCase();
+    if (name.endsWith('.geojson') || name.endsWith('.json')) {
+      loadImportedGeoJSON(JSON.parse(content), file.name);
+    } else if (name.endsWith('.csv')) {
+      var geojson = csvToGeoJSON(content);
+      loadImportedGeoJSON(geojson, file.name);
+    } else {
+      status.textContent = 'Unsupported format. Use .csv or .geojson';
+    }
+  };
+  reader.readAsText(file);
+}
+
+function csvToGeoJSON(csv) {
+  var lines = csv.trim().split('\n');
+  var header = lines[0].toLowerCase().split(',').map(function(h) { return h.trim(); });
+  var latIdx = header.indexOf('lat');
+  var lngIdx = header.indexOf('lng');
+  if (lngIdx < 0) lngIdx = header.indexOf('lon');
+  if (lngIdx < 0) lngIdx = header.indexOf('longitude');
+  if (latIdx < 0) latIdx = header.indexOf('latitude');
+  var rsrpIdx = header.indexOf('rsrp_dbm');
+  if (rsrpIdx < 0) rsrpIdx = header.indexOf('rsrp');
+  if (rsrpIdx < 0) rsrpIdx = header.indexOf('signal');
+
+  var step = 0.0006;
+  var half = step / 2;
+  var features = [];
+  for (var i = 1; i < lines.length; i++) {
+    var cols = lines[i].split(',');
+    if (cols.length < 2) continue;
+    var lat = parseFloat(cols[latIdx]);
+    var lng = parseFloat(cols[lngIdx]);
+    var rsrp = rsrpIdx >= 0 ? parseFloat(cols[rsrpIdx]) : -90;
+    if (isNaN(lat) || isNaN(lng)) continue;
+
+    var color, quality;
+    if (rsrp > -75) { color = '#00e676'; quality = 'strong'; }
+    else if (rsrp > -90) { color = '#66bb6a'; quality = 'good'; }
+    else if (rsrp > -105) { color = '#ffca28'; quality = 'moderate'; }
+    else if (rsrp > -115) { color = '#ff9800'; quality = 'weak'; }
+    else { color = '#ff5252'; quality = 'very_weak'; }
+    var extrude = Math.max(0, (rsrp + 130) / 70 * 400);
+
+    features.push({
+      type: 'Feature',
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[
+          [lng-half, lat-half], [lng+half, lat-half],
+          [lng+half, lat+half], [lng-half, lat+half],
+          [lng-half, lat-half]
+        ]]
+      },
+      properties: {
+        rsrp_dbm: rsrp, quality: quality, band: 'imported',
+        fill: color, extrude_height: extrude
+      }
+    });
+  }
+  return { type: 'FeatureCollection', features: features };
+}
+
+function loadImportedGeoJSON(geojson, filename) {
+  var status = document.getElementById('importStatus');
+  if (importedDS) { viewer.dataSources.remove(importedDS, true); importedDS = null; }
+
+  var blob = new Blob([JSON.stringify(geojson)], {type: 'application/json'});
+  var url = URL.createObjectURL(blob);
+
+  Cesium.GeoJsonDataSource.load(url, {
+    stroke: Cesium.Color.TRANSPARENT,
+    fill: Cesium.Color.WHITE.withAlpha(0.2),
+    clampToGround: false
+  }).then(function(ds) {
+    importedDS = ds;
+    viewer.dataSources.add(ds);
+    var alpha = opacityAlphas[currentOpacityLevel];
+    ds.entities.values.forEach(function(e) {
+      var props = e.properties;
+      var fillColor = props.fill ? props.fill.getValue() : '#00e676';
+      var color = Cesium.Color.fromCssColorString(fillColor);
+      var extHeight = props.extrude_height ? props.extrude_height.getValue() : 50;
+      e.polygon.material = color.withAlpha(alpha);
+      e.polygon.outline = false;
+      e.polygon.height = 0;
+      e.polygon.extrudedHeight = extHeight;
+      e.polygon.heightReference = Cesium.HeightReference.RELATIVE_TO_GROUND;
+      e.polygon.extrudedHeightReference = Cesium.HeightReference.RELATIVE_TO_GROUND;
+    });
+    status.textContent = filename + ': ' + geojson.features.length + ' cells loaded';
+    status.style.color = '#00e676';
+    URL.revokeObjectURL(url);
+  }).catch(function(err) {
+    status.textContent = 'Error: ' + err.message;
+    status.style.color = '#ff5252';
+  });
+}
+
+// --- UE Mobility Traces (from Sionna notebook) ---
+var ueTracesDS = null;
+var ueTracesVisible = false;
+
+function toggleUeTraces() {
+  ueTracesVisible = !ueTracesVisible;
+  var btn = document.getElementById('btnUeTraces');
+  if (ueTracesVisible) {
+    btn.textContent = 'UE Traces: ON';
+    btn.style.background = 'rgba(0,180,216,0.35)';
+    btn.classList.add('active');
+    loadUeTraces();
+  } else {
+    btn.textContent = 'UE Traces: OFF';
+    btn.style.background = 'rgba(0,180,216,0.2)';
+    btn.classList.remove('active');
+    if (ueTracesDS) { viewer.dataSources.remove(ueTracesDS, true); ueTracesDS = null; }
+  }
+}
+
+function loadUeTraces() {
+  if (ueTracesDS) { viewer.dataSources.remove(ueTracesDS, true); ueTracesDS = null; }
+  Cesium.GeoJsonDataSource.load('tokyo_mdt_traces.geojson', {
+    clampToGround: false
+  }).then(function(ds) {
+    ueTracesDS = ds;
+    viewer.dataSources.add(ds);
+    ds.entities.values.forEach(function(e) {
+      var props = e.properties;
+      if (e.polyline) {
+        var strokeColor = props.stroke ? props.stroke.getValue() : '#00b4d8';
+        var sw = props['stroke-width'] ? props['stroke-width'].getValue() : 2;
+        e.polyline.material = Cesium.Color.fromCssColorString(strokeColor).withAlpha(0.6);
+        e.polyline.width = sw;
+        e.polyline.clampToGround = true;
+      }
+      if (e.billboard) {
+        var evType = props.event ? props.event.getValue() : '';
+        var markerColor = props['marker-color'] ? props['marker-color'].getValue() : '#ff1744';
+        e.billboard = undefined;
+        e.point = new Cesium.PointGraphics({
+          pixelSize: evType === 'HO_FAILURE' ? 10 : 7,
+          color: Cesium.Color.fromCssColorString(markerColor),
+          outlineColor: Cesium.Color.WHITE,
+          outlineWidth: 1,
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        });
+        if (evType === 'HO_FAILURE') {
+          e.label = new Cesium.LabelGraphics({
+            text: 'HO FAIL',
+            font: 'bold 9px Segoe UI',
+            fillColor: Cesium.Color.fromCssColorString('#ff1744'),
+            outlineColor: Cesium.Color.BLACK,
+            outlineWidth: 2,
+            style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+            pixelOffset: new Cesium.Cartesian2(0, -12),
+            disableDepthTestDistance: Number.POSITIVE_INFINITY,
+            distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 5000),
+          });
+        }
+      }
+    });
+  }).catch(function(err) {
+    console.warn('MDT traces load failed:', err);
+  });
+}
+
+// Initial camera
+viewer.camera.setView({
+  destination: Cesium.Cartesian3.fromDegrees(139.730, 35.670, 8000),
+  orientation: { heading: Cesium.Math.toRadians(15), pitch: Cesium.Math.toRadians(-45), roll: 0 },
+});
+
+// --- Draggable Info Panel ---
+(function() {
+  var panel = document.getElementById('infoPanel');
+  var handle = document.getElementById('infoDragHandle');
+  var dragging = false, offX = 0, offY = 0;
+  handle.addEventListener('mousedown', function(e) {
+    if (e.target.classList.contains('close')) return;
+    dragging = true; offX = e.clientX - panel.offsetLeft; offY = e.clientY - panel.offsetTop;
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (!dragging) return;
+    panel.style.left = Math.max(0, e.clientX - offX) + 'px';
+    panel.style.top = Math.max(0, e.clientY - offY) + 'px';
+    panel.style.right = 'auto';
+  });
+  document.addEventListener('mouseup', function() { dragging = false; });
+})();
+</script>
+</body>
+</html>
