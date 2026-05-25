@@ -1,0 +1,14 @@
+gymnasium
+stable-baselines3
+pydantic
+pytest
+hypothesis
+mlflow
+optuna
+ruff
+mypy
+pandas
+numpy
+pyarrow
+streamlit
+torch
