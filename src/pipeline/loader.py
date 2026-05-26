@@ -63,4 +63,4 @@ def load_pm_data_df(path: Path | None = None) -> pd.DataFrame:
     p = path or DATA_DIR / "pm_data_april2026.csv"
     if not p.exists():
         raise FileNotFoundError(f"CSV not found: {p}")
-    return pd.read_csv(p, parse_dates=["timestamp"])
+    return pd.read_csv(p, parse_dates=["timestamp_utc"])
