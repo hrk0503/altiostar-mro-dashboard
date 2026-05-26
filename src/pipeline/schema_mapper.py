@@ -42,27 +42,3 @@ def run_schema_mapper(csv_path: str, schema_fields: Dict[str, str]) -> Dict[str,
     inferred = infer_column_types(df)
     mapped = map_to_schema(inferred, schema_fields)
     return mapped
-
-from src.pipeline.models import SiteRecord, NeighborRelation, PMRecord, ClusterKPISummary
-from pydantic import ValidationError
-
-MODEL_MAP = {
-    "site_database": SiteRecord,
-    "neighbor_relations": NeighborRelation,
-    "pm_data": PMRecord,
-    "cluster_kpi_summary": ClusterKPISummary,
-}
-
-def validate_csv(csv_path: str, model_key: str):
-    df = pd.read_csv(csv_path)
-    model = MODEL_MAP[model_key]
-    
-    valid, errors = [], []
-    for i, row in df.iterrows():
-        try:
-            valid.append(model.model_validate(row.to_dict()))
-        except ValidationError as e:
-            errors.append({"row": i, "errors": e.errors()})
-    
-    print(f"✅ Valid: {len(valid)} | ❌ Errors: {len(errors)}")
-    return valid, errors
