@@ -3,3 +3,6 @@ node_modules/
 *.log
 __pycache__/
 .ipynb_checkpoints/
+venv/
+.pytest_cache/
+data/pm_data_april2026.csv
