@@ -1,0 +1,95 @@
+"""Tests for schema mapper — type inference and column mapping."""
+import pytest
+import pandas as pd
+from src.pipeline.schema_mapper import infer_column_types, map_to_schema, run_schema_mapper
+
+
+class TestInferColumnTypes:
+    def test_returns_dict(self):
+        df = pd.DataFrame({"cell_id": ["CELL_000_0"], "band": [1], "latitude": [35.6]})
+        result = infer_column_types(df)
+        assert isinstance(result, dict)
+
+    def test_int_column(self):
+        df = pd.DataFrame({"band": [1, 3, 41]})
+        result = infer_column_types(df)
+        assert result["band"] == "int"
+
+    def test_float_column(self):
+        df = pd.DataFrame({"latitude": [35.6, 35.7]})
+        result = infer_column_types(df)
+        assert result["latitude"] == "float"
+
+    def test_str_column(self):
+        df = pd.DataFrame({"cell_id": ["CELL_000_0", "CELL_001_0"]})
+        result = infer_column_types(df)
+        assert result["cell_id"] == "str"
+
+    def test_bool_column(self):
+        df = pd.DataFrame({"problem_flag": [True, False]})
+        result = infer_column_types(df)
+        assert result["problem_flag"] == "bool"
+
+    def test_all_site_columns(self):
+        df = pd.DataFrame({
+            "cell_id": ["CELL_000_0"],
+            "site_id": ["SITE_000"],
+            "band": [1],
+            "latitude": [35.6],
+            "longitude": [139.7],
+            "antenna_height_m": [30.0],
+            "mechanical_tilt": [4.0],
+            "tx_power_dbm": [43.0],
+        })
+        result = infer_column_types(df)
+        assert result["band"] == "int"
+        assert result["latitude"] == "float"
+        assert result["cell_id"] == "str"
+
+
+class TestMapToSchema:
+    def test_all_fields_present(self):
+        inferred = {"cell_id": "str", "band": "int", "latitude": "float"}
+        schema = {"cell_id": "str", "band": "int", "latitude": "float"}
+        result = map_to_schema(inferred, schema)
+        assert "MISSING" not in result.values()
+
+    def test_missing_field_flagged(self):
+        inferred = {"cell_id": "str", "band": "int"}
+        schema = {"cell_id": "str", "band": "int", "latitude": "float"}
+        result = map_to_schema(inferred, schema)
+        assert result["latitude"] == "MISSING"
+
+    def test_returns_all_schema_keys(self):
+        inferred = {"cell_id": "str", "band": "int"}
+        schema = {"cell_id": "str", "band": "int", "latitude": "float"}
+        result = map_to_schema(inferred, schema)
+        assert set(result.keys()) == set(schema.keys())
+
+    def test_extra_csv_columns_ignored(self):
+        inferred = {"cell_id": "str", "band": "int", "extra_col": "str"}
+        schema = {"cell_id": "str", "band": "int"}
+        result = map_to_schema(inferred, schema)
+        assert "extra_col" not in result
+
+
+class TestRunSchemaMapper:
+    def test_runs_on_site_csv(self, data_dir):
+        schema = {
+            "cell_id": "str", "enodeb_id": "str", "frequency_band": "int",
+            "latitude": "float", "longitude": "float"
+        }
+        result = run_schema_mapper(str(data_dir / "site_database.csv"), schema)
+        assert "MISSING" not in result.values()
+
+    def test_runs_on_neighbor_csv(self, data_dir):
+        schema = {
+            "serving_cell": "str", "neighbor_cell": "str",
+            "cell_individual_offset_dB": "float", "distance_m": "float"
+        }
+        result = run_schema_mapper(str(data_dir / "neighbor_relations.csv"), schema)
+        assert "MISSING" not in result.values()
+
+    def test_missing_file_raises(self):
+        with pytest.raises(FileNotFoundError):
+            run_schema_mapper("data/nonexistent.csv", {"cell_id": "str"})
