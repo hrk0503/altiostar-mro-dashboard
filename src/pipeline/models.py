@@ -14,14 +14,14 @@ class SiteRecord(BaseModel):
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
     antenna_height_m: float = Field(ge=5, le=100)
-    sector: int = Field(ge=0, le=2)
+    sector: int = Field(ge=1, le=3)
     azimuth_deg: int = Field(ge=-10, le=370)
     electrical_tilt_deg: float = Field(ge=0, le=15)
     mechanical_tilt_deg: float = Field(ge=0, le=15)
     total_tilt_deg: float = Field(ge=0, le=30)
     clutter_type: str
     elevation_m: float
-    frequency_band: int
+    frequency_band: str
     pci: int = Field(ge=0)
     tac: int = Field(ge=0)
     vendor: str
@@ -30,9 +30,10 @@ class SiteRecord(BaseModel):
 
     @field_validator("frequency_band")
     @classmethod
-    def validate_band(cls, v: int) -> int:
-        if v not in (1, 3, 41):
-            raise ValueError(f"Invalid band {v}, expected 1, 3, or 41")
+    def validate_band(cls, v: str) -> str:
+        valid = {"Band 1 (2100MHz)", "Band 3 (1800MHz)", "Band 41 (2500MHz)"}
+        if v not in valid:
+            raise ValueError(f"Invalid frequency_band '{v}', expected one of {valid}")
         return v
 
 
