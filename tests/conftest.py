@@ -3,16 +3,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 import pandas as pd
+import pytest
 
+from src.pipeline.loader import DATA_DIR
 from src.pipeline.models import (
-    SiteRecord,
+    ClusterKPISummary,
     NeighborRelation,
     PMRecord,
-    ClusterKPISummary,
+    SiteRecord,
 )
-from src.pipeline.loader import DATA_DIR
 
 
 @pytest.fixture

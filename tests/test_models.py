@@ -3,10 +3,10 @@ import pytest
 from pydantic import ValidationError
 
 from src.pipeline.models import (
-    SiteRecord,
+    ClusterKPISummary,
     NeighborRelation,
     PMRecord,
-    ClusterKPISummary,
+    SiteRecord,
 )
 
 

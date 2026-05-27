@@ -1,8 +1,9 @@
 """Tests for schema mapper — type inference and column mapping."""
-from hypothesis import given, settings
-from hypothesis import strategies as st
-import pytest
 import pandas as pd
+import pytest
+from hypothesis import given
+from hypothesis import strategies as st
+
 from src.pipeline.schema_mapper import infer_column_types, map_to_schema, run_schema_mapper
 
 
@@ -74,13 +75,6 @@ class TestMapToSchema:
         result = map_to_schema(inferred, schema)
         assert "extra_col" not in result
 
-from src.pipeline.loader import DATA_DIR
-import pytest
-
-pytestmark = pytest.mark.skipif(
-    not (DATA_DIR / "site_database.csv").exists(),
-    reason="Real CSVs not available in CI"
-)
 
 class TestRunSchemaMapper:
     def test_runs_on_site_csv(self, data_dir):
@@ -148,7 +142,7 @@ class TestSchemaMapperHypothesis:
         )
     )
     def test_map_always_returns_all_schema_keys(self, schema):
-        inferred = {k: "str" for k in schema.keys()}
+        inferred = {k: "str" for k in schema}
         result = map_to_schema(inferred, schema)
         assert set(result.keys()) == set(schema.keys())
 

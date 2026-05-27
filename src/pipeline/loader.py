@@ -6,7 +6,7 @@ downstream consumption (e.g. Gymnasium RL environment).
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TypeVar, Type
+from typing import TypeVar
 
 import pandas as pd
 import pyarrow as pa
@@ -14,10 +14,10 @@ import pyarrow.parquet as pq
 from pydantic import BaseModel
 
 from src.pipeline.models import (
-    SiteRecord,
+    ClusterKPISummary,
     NeighborRelation,
     PMRecord,
-    ClusterKPISummary,
+    SiteRecord,
 )
 
 T = TypeVar("T", bound=BaseModel)
@@ -25,7 +25,7 @@ DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 PROCESSED_DIR = DATA_DIR / "processed"
 
 
-def _load_csv(path: Path, model: Type[T], *, chunk_size: int | None = None) -> list[T]:
+def _load_csv(path: Path, model: type[T], *, chunk_size: int | None = None) -> list[T]:
     """Load a CSV into a list of Pydantic models."""
     if not path.exists():
         raise FileNotFoundError(f"CSV not found: {path}")

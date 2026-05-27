@@ -1,7 +1,7 @@
 """Data quality tests -- validate the official CSVs."""
 import pandas as pd
 
-from src.pipeline.validator import validate_csv, validate_all
+from src.pipeline.validator import validate_all, validate_csv
 
 
 class TestSiteDatabaseQuality:

@@ -1,6 +1,9 @@
 from __future__ import annotations
+
 from pathlib import Path
+
 import pandas as pd
+
 
 def infer_column_types(df: pd.DataFrame) -> dict[str, str]:
     # Note: nullable int columns are upcast to float64 by pandas.

@@ -1,13 +1,13 @@
 """Tests for Parquet export functionality."""
-import pytest
 import pyarrow.parquet as pq
+import pytest
 
 from src.pipeline.loader import (
-    export_sites_parquet,
+    export_all_parquet,
+    export_cluster_kpi_parquet,
     export_neighbors_parquet,
     export_pm_data_parquet,
-    export_cluster_kpi_parquet,
-    export_all_parquet,
+    export_sites_parquet,
 )
 
 
