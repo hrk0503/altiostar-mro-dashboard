@@ -1,0 +1,41 @@
+# Use Case: Beam Pattern Prediction
+# Same pipeline, different YAML = different use case.
+# Soumyadeep (May 19): "do not restrict the model to only MRO & MLB"
+
+use_case: beam_pattern_prediction
+description: "Predict optimal beam patterns based on UE distribution and RF environment"
+
+environment:
+  n_cells: 75
+  n_obs_features: 12  # RSRP, RSRQ, SINR, PRB, UE count, azimuth, tilt, beamwidth, beam_id, interference, throughput, load
+  n_actions: 3         # beam_select, beamwidth_adjust, power_adjust
+
+observation:
+  features:
+    - rsrp_mean
+    - rsrq_mean
+    - sinr_mean
+    - prb_utilization
+    - connected_ues
+    - azimuth
+    - mechanical_tilt
+    - electrical_tilt
+    - beamwidth
+    - beam_id
+    - interference_level
+    - throughput_dl_mbps
+
+action:
+  beam_select_range: [0, 63]      # codebook index
+  beamwidth_range: [15, 120]      # degrees
+  power_range: [-3.0, 3.0]        # dBm
+
+reward:
+  version: v0
+  throughput_improvement: 1.0
+  interference_reduction: 0.5
+  coverage_hole_penalty: -3.0
+
+ship_gate:
+  throughput_improvement_min: 0.05  # 5% improvement over baseline
+  coverage_degradation_max: 0.01   # <1% coverage loss

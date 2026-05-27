@@ -1,0 +1,9 @@
+# Scenario: Rush Hour — high UE density, congestion
+# Phase 2 deliverable
+
+scenario:
+  name: rush_hour
+  description: "Peak traffic 08:00-09:00, high PRB utilization, increased HO attempts"
+  ue_multiplier: 3.0
+  prb_floor: 0.7
+  ho_attempt_multiplier: 2.0
