@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from src.models.cell_data import CellSite, NeighborRelation, PMRecord, ClusterKPISummary
+from src.models.cell_data import CellSite, NeighborRelation, PMRecord, RelationPMRecord, ClusterKPISummary
 
 
 class TestCellSite:
@@ -68,6 +68,28 @@ class TestPMRecord:
                 rsrp_mean=0, rsrq_mean=0, sinr_mean=0,
                 prb_utilization=0, connected_ues=0,
                 throughput_dl_mbps=0, throughput_ul_mbps=0,
+            )
+
+
+class TestRelationPMRecord:
+    def test_valid_relation_record(self):
+        rec = RelationPMRecord(
+            source_cell_id="CELL_001_1", target_cell_id="CELL_002_3",
+            timestamp="2026-04-01T00:00:00",
+            ho_attempts=50, ho_successes=48, ho_failures=1,
+            too_early_ho=0, too_late_ho=1, wrong_cell=0,
+            correct_cell=48, ping_pong=1,
+        )
+        assert rec.ho_attempts == 50
+
+    def test_negative_counter_rejected(self):
+        with pytest.raises(ValidationError):
+            RelationPMRecord(
+                source_cell_id="A", target_cell_id="B",
+                timestamp="X",
+                ho_attempts=-1, ho_successes=0, ho_failures=0,
+                too_early_ho=0, too_late_ho=0, wrong_cell=0,
+                correct_cell=0, ping_pong=0,
             )
 
 

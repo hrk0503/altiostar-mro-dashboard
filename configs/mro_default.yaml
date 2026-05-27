@@ -30,6 +30,14 @@ reward:
   ho_success: 1.0
   ho_failure: -5.0
   ping_pong: -2.0
+  too_early_ho: -3.0
+  too_late_ho: -4.0
+  wrong_cell: -5.0
+
+ship_gate:
+  ho_success_rate_min: 0.99       # client target: 99-99.5% at relation + cell level
+  ping_pong_rate_max: 0.005
+  granularity: relation            # relation-level AND cell-level both checked
 
 training:
   algorithm: PPO

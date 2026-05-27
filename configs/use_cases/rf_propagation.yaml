@@ -1,0 +1,42 @@
+# Use Case: RF Propagation Optimization
+# Same pipeline, different YAML = different use case.
+
+use_case: rf_propagation_optimization
+description: "Optimize coverage and reduce interference using propagation-aware parameter tuning"
+
+environment:
+  n_cells: 75
+  n_obs_features: 14
+  n_actions: 4         # tilt, power, azimuth_adjust, antenna_height_delta
+
+observation:
+  features:
+    - rsrp_mean
+    - rsrq_mean
+    - sinr_mean
+    - prb_utilization
+    - connected_ues
+    - path_loss
+    - shadow_fading
+    - building_penetration_loss
+    - clutter_class
+    - elevation
+    - distance_to_site
+    - interference_from_neighbors
+    - throughput_dl_mbps
+    - throughput_ul_mbps
+
+action:
+  tilt_range: [-2.0, 2.0]
+  power_range: [-3.0, 3.0]
+  azimuth_range: [-5.0, 5.0]
+
+reward:
+  version: v0
+  coverage_improvement: 1.0
+  interference_reduction: 0.8
+  overshooting_penalty: -2.0
+
+ship_gate:
+  coverage_improvement_min: 0.03   # 3% more area above RSRP threshold
+  interference_reduction_min: 0.05  # 5% SINR improvement

@@ -42,6 +42,26 @@ class PMRecord(BaseModel):
     throughput_ul_mbps: float = Field(ge=0)
 
 
+class RelationPMRecord(BaseModel):
+    """Relation-level PM record — one per source-target cell pair per ROP.
+
+    Soumyadeep confirmed (May 27): PM counters are at relation level.
+    Counters: TooEarlyHO, TooLateHO, WrongCell/WrongTarget,
+    CorrectCell/CorrectTarget, ping-pong, attempts, success/failure.
+    """
+    source_cell_id: str
+    target_cell_id: str
+    timestamp: str
+    ho_attempts: int = Field(ge=0)
+    ho_successes: int = Field(ge=0)
+    ho_failures: int = Field(ge=0)
+    too_early_ho: int = Field(ge=0)
+    too_late_ho: int = Field(ge=0)
+    wrong_cell: int = Field(ge=0)
+    correct_cell: int = Field(ge=0)
+    ping_pong: int = Field(ge=0)
+
+
 class ClusterKPISummary(BaseModel):
     cell_id: str
     ho_success_rate: float = Field(ge=0, le=1)
