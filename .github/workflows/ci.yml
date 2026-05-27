@@ -2,18 +2,19 @@ name: CI
 
 on:
   push:
+    branches: [staging]
     paths:
       - 'src/**'
       - 'tests/**'
-      - 'configs/**'
-      - 'pyproject.toml'
-      - '.github/workflows/ci.yml'
+      - 'requirements.txt'
+      - '.github/workflows/*.yml'
   pull_request:
+    branches: [staging]
     paths:
       - 'src/**'
       - 'tests/**'
-      - 'configs/**'
-      - 'pyproject.toml'
+      - 'requirements.txt'
+      - '.github/workflows/*.yml'
 
 concurrency:
   group: ci-${{ github.ref }}
