@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from gymnasium import spaces
 
+
 class MROEnv(gym.Env):
     """
     MRO (Mobility Robustness Optimization) Gymnasium Environment.
@@ -80,10 +81,7 @@ class MROEnv(gym.Env):
         terminated = self.current_step >= self.n_steps
         truncated = False
 
-        if terminated:
-            obs = np.zeros(8, dtype=np.float32)
-        else:
-            obs = self._get_obs()
+        obs = np.zeros(8, dtype=np.float32) if terminated else self._get_obs()
 
         info = {
             "cell_id": self.cell_id,
