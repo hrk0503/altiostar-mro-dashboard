@@ -28,14 +28,55 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
     def __init__(self, pm_data_path: str, kpi_path: str, cell_id: str | None = None):
         super().__init__()
 
-        self.pm_data = pd.read_csv(pm_data_path, parse_dates=["timestamp_utc"])
+        self.pm_data = pd.read_csv(pm_data_path)
         self.kpi_data = pd.read_csv(kpi_path)
+
+        # Normalize PM data synthetic CSV schema to expected internal schema
+        rename_pm_cols = {
+            "timestamp": "timestamp_utc",
+            "rsrp_dbm": "avg_rsrp_dBm",
+            "rsrq_db": "avg_rsrq_dB",
+            "sinr_db": "avg_sinr_dB",
+            "ho_ping_pong": "ho_pingpong_count",
+            "ho_success": "ho_success_intra",
+            "ho_failure": "ho_failure_intra",
+        }
+        self.pm_data = self.pm_data.rename(
+            columns={k: v for k, v in rename_pm_cols.items() if k in self.pm_data.columns}
+        )
+
+        if "timestamp_utc" in self.pm_data.columns:
+            self.pm_data["timestamp_utc"] = pd.to_datetime(self.pm_data["timestamp_utc"])
+
+        # Handle PRB utilization mapping
+        if "prb_utilization_dl_pct" not in self.pm_data.columns and "prb_utilization_pct" in self.pm_data.columns:
+            self.pm_data["prb_utilization_dl_pct"] = self.pm_data["prb_utilization_pct"]
+            self.pm_data["prb_utilization_ul_pct"] = self.pm_data["prb_utilization_pct"]
+
+        # Compute ho_success_rate_pct and ho_failure_rate_pct if not present
+        if "ho_success_rate_pct" not in self.pm_data.columns:
+            attempts = self.pm_data.get("ho_attempt", 1.0)
+            # Avoid division by zero
+            attempts_safe = attempts.replace(0, 1.0)
+            success = self.pm_data.get("ho_success_intra", 0.0)
+            failure = self.pm_data.get("ho_failure_intra", 0.0)
+            self.pm_data["ho_success_rate_pct"] = (success / attempts_safe) * 100.0
+            self.pm_data["ho_failure_rate_pct"] = (failure / attempts_safe) * 100.0
 
         if cell_id:
             self.cell_id = cell_id
         else:
-            problem_cells = self.kpi_data[self.kpi_data["problem_cell"] == "Yes"]
-            self.cell_id = problem_cells.iloc[0]["cell_id"]
+            if "problem_cell" in self.kpi_data.columns:
+                problem_cells = self.kpi_data[self.kpi_data["problem_cell"] == "Yes"]
+            elif "problem_flag" in self.kpi_data.columns:
+                problem_cells = self.kpi_data[self.kpi_data["problem_flag"] == True]
+            else:
+                problem_cells = self.kpi_data
+
+            if len(problem_cells) > 0:
+                self.cell_id = problem_cells.iloc[0]["cell_id"]
+            else:
+                self.cell_id = self.kpi_data.iloc[0]["cell_id"]
 
         self.cell_pm = (
             self.pm_data[self.pm_data["cell_id"] == self.cell_id]
