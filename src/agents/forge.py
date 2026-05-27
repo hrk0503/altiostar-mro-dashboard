@@ -5,6 +5,7 @@ Outputs: Gymnasium env, training scripts, model checkpoints.
 """
 
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -29,6 +30,6 @@ class ForgeAgent:
         """Train PPO agent with MLflow tracking."""
         raise NotImplementedError
 
-    def evaluate(self, model_path: Path, env: object, n_episodes: int = 100) -> dict:
+    def evaluate(self, model_path: Path, env: object, n_episodes: int = 100) -> dict[str, Any]:
         """Evaluate trained model and return KPI metrics."""
         raise NotImplementedError

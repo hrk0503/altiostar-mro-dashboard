@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 
 class SiteRecord(BaseModel):
@@ -41,7 +41,7 @@ class NeighborRelation(BaseModel):
 
     @field_validator("target_cell")
     @classmethod
-    def source_and_target_differ(cls, v: str, info) -> str:
+    def source_and_target_differ(cls, v: str, info: ValidationInfo) -> str:
         if info.data.get("source_cell") == v:
             raise ValueError("source_cell and target_cell must differ")
         return v
@@ -72,7 +72,7 @@ class PMRecord(BaseModel):
 
     @field_validator("ho_success")
     @classmethod
-    def success_le_attempts(cls, v: int, info) -> int:
+    def success_le_attempts(cls, v: int, info: ValidationInfo) -> int:
         attempts = info.data.get("ho_attempt")
         if attempts is not None and v > attempts:
             raise ValueError(f"ho_success ({v}) > ho_attempt ({attempts})")
@@ -97,7 +97,7 @@ class ClusterKPISummary(BaseModel):
 
     @field_validator("monthly_ho_failure_rate")
     @classmethod
-    def failure_rate_consistent(cls, v: float, info) -> float:
+    def failure_rate_consistent(cls, v: float, info: ValidationInfo) -> float:
         success = info.data.get("monthly_ho_success_rate")
         if success is not None and abs(v - (1 - success)) > 0.01:
             raise ValueError(

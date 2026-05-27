@@ -5,6 +5,8 @@ conform to telecom domain constraints.
 Outputs: domain validation reports, reward calibration, CIO constraints.
 """
 
+from typing import Any
+
 from pydantic import BaseModel
 
 
@@ -27,6 +29,6 @@ class SpectrumAgent:
         """3GPP limits neighbor list size."""
         return len(neighbors) <= max_neighbors
 
-    def validate_actions(self, actions: dict) -> DomainValidationReport:
+    def validate_actions(self, actions: dict[str, Any]) -> DomainValidationReport:
         """Validate RL agent outputs against 3GPP constraints."""
         raise NotImplementedError

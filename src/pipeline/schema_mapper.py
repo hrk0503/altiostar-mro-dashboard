@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 from pydantic import BaseModel
@@ -30,7 +31,7 @@ class ColumnProfile:
     inferred_type: InferredType
     null_pct: float
     unique_count: int
-    sample_values: list
+    sample_values: list[Any]
 
 
 @dataclass
@@ -110,7 +111,7 @@ def infer_schema(path: Path, *, sample_rows: int = 1000) -> SchemaInferenceResul
 
     csv_cols = {c.lower().replace(" ", "_") for c in df.columns}
     best_match = None
-    best_score = 0
+    best_score = 0.0
 
     for model_name, signature in _SIGNATURES.items():
         overlap = len(signature & csv_cols)

@@ -1,4 +1,5 @@
 import logging
+import typing
 
 import gymnasium as gym
 import numpy as np
@@ -8,7 +9,7 @@ from gymnasium import spaces
 logger = logging.getLogger(__name__)
 
 
-class MROEnv(gym.Env):
+class MROEnv(gym.Env[typing.Any, typing.Any]):
     """
     MRO (Mobility Robustness Optimization) Gymnasium Environment.
 
@@ -78,19 +79,26 @@ class MROEnv(gym.Env):
         reward += row["ho_success_intra"] * 1.0
         reward += row["ho_failure_intra"] * -5.0
         reward += row["ho_pingpong_count"] * -2.0
-        return reward
+        return float(reward)
 
-    def reset(self, seed=None, options=None):
+    def reset(
+        self,
+        *,
+        seed: int | None = None,
+        options: dict[str, typing.Any] | None = None,
+    ) -> tuple[np.ndarray, dict[str, typing.Any]]:
         super().reset(seed=seed)
         if options and options.get("random_start"):
-            self.current_step = self.np_random.integers(0, self.n_steps - 1)
+            self.current_step = int(self.np_random.integers(0, self.n_steps - 1))
         else:
             self.current_step = 0
         obs = self._get_obs()
         info = {"cell_id": self.cell_id, "step": self.current_step}
         return obs, info
 
-    def step(self, action):
+    def step(
+        self, action: typing.Any
+    ) -> tuple[np.ndarray, float, bool, bool, dict[str, typing.Any]]:
         """
         v0: Historical replay mode — actions are recorded but do not
         affect state transitions. Environment replays real PM data row
@@ -118,5 +126,5 @@ class MROEnv(gym.Env):
 
         return obs, reward, terminated, truncated, info
 
-    def render(self):
+    def render(self) -> None:
         pass
