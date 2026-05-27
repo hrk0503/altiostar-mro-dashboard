@@ -49,7 +49,10 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
             self.pm_data["timestamp_utc"] = pd.to_datetime(self.pm_data["timestamp_utc"])
 
         # Handle PRB utilization mapping
-        if "prb_utilization_dl_pct" not in self.pm_data.columns and "prb_utilization_pct" in self.pm_data.columns:
+        if (
+            "prb_utilization_dl_pct" not in self.pm_data.columns
+            and "prb_utilization_pct" in self.pm_data.columns
+        ):
             self.pm_data["prb_utilization_dl_pct"] = self.pm_data["prb_utilization_pct"]
             self.pm_data["prb_utilization_ul_pct"] = self.pm_data["prb_utilization_pct"]
 
@@ -69,7 +72,7 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
             if "problem_cell" in self.kpi_data.columns:
                 problem_cells = self.kpi_data[self.kpi_data["problem_cell"] == "Yes"]
             elif "problem_flag" in self.kpi_data.columns:
-                problem_cells = self.kpi_data[self.kpi_data["problem_flag"] == True]
+                problem_cells = self.kpi_data[self.kpi_data["problem_flag"]]
             else:
                 problem_cells = self.kpi_data
 
