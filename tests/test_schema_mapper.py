@@ -1,4 +1,6 @@
 """Tests for schema mapper — type inference and column mapping."""
+from hypothesis import given, settings
+from hypothesis import strategies as st
 import pytest
 import pandas as pd
 from src.pipeline.schema_mapper import infer_column_types, map_to_schema, run_schema_mapper
@@ -72,6 +74,13 @@ class TestMapToSchema:
         result = map_to_schema(inferred, schema)
         assert "extra_col" not in result
 
+from src.pipeline.loader import DATA_DIR
+import pytest
+
+pytestmark = pytest.mark.skipif(
+    not (DATA_DIR / "site_database.csv").exists(),
+    reason="Real CSVs not available in CI"
+)
 
 class TestRunSchemaMapper:
     def test_runs_on_site_csv(self, data_dir):
@@ -90,6 +99,69 @@ class TestRunSchemaMapper:
         result = run_schema_mapper(str(data_dir / "neighbor_relations.csv"), schema)
         assert "MISSING" not in result.values()
 
-    def test_missing_file_raises(self):
+    def test_missing_file_raises(self, tmp_path):
         with pytest.raises(FileNotFoundError):
-            run_schema_mapper("data/nonexistent.csv", {"cell_id": "str"})
+            run_schema_mapper(tmp_path / "nonexistent.csv", {"cell_id": "str"})
+
+class TestSchemaMapperHypothesis:
+
+    @given(st.dictionaries(
+        keys=st.text(min_size=1, max_size=20),
+        values=st.one_of(
+            st.integers(),
+            st.floats(allow_nan=False, allow_infinity=False),
+            st.text(min_size=0, max_size=50),
+            st.booleans()
+        ),
+        min_size=1,
+        max_size=10
+    ))
+    def test_infer_always_returns_dict(self, data):
+        df = pd.DataFrame([data])
+        result = infer_column_types(df)
+        assert isinstance(result, dict)
+
+    @given(st.dictionaries(
+        keys=st.text(min_size=1, max_size=20),
+        values=st.one_of(
+            st.integers(),
+            st.floats(allow_nan=False, allow_infinity=False),
+            st.text(min_size=0, max_size=50),
+            st.booleans()
+        ),
+        min_size=1,
+        max_size=10
+    ))
+    def test_infer_never_returns_unknown_type(self, data):
+        df = pd.DataFrame([data])
+        result = infer_column_types(df)
+        valid_types = {"int", "float", "str", "bool"}
+        for col, dtype in result.items():
+            assert dtype in valid_types, f"Unknown type {dtype} for column {col}"
+
+    @given(
+        st.dictionaries(
+            keys=st.text(min_size=1, max_size=20),
+            values=st.just("str"),
+            min_size=1,
+            max_size=10
+        )
+    )
+    def test_map_always_returns_all_schema_keys(self, schema):
+        inferred = {k: "str" for k in schema.keys()}
+        result = map_to_schema(inferred, schema)
+        assert set(result.keys()) == set(schema.keys())
+
+    @given(
+        st.dictionaries(
+            keys=st.text(min_size=1, max_size=20),
+            values=st.just("str"),
+            min_size=1,
+            max_size=5
+        )
+    )
+    def test_missing_columns_always_flagged(self, schema):
+        result = map_to_schema({}, schema)
+        for v in result.values():
+            assert v == "MISSING"
+
