@@ -1,0 +1,9 @@
+# Scenario: Tower Failure — one site goes down, neighbors absorb load
+# Phase 2 deliverable
+
+scenario:
+  name: tower_failure
+  description: "Random site failure, all UEs handed over to neighbors, sudden load spike"
+  failed_sites: 1
+  neighbor_load_multiplier: 2.5
+  ho_attempt_spike: 5.0

@@ -1,0 +1,9 @@
+# Scenario: Rain Fade — signal degradation from precipitation
+# Phase 2 deliverable
+
+scenario:
+  name: rain_fade
+  description: "Heavy rain attenuates signal, RSRP drops 3-8 dB, more HO failures"
+  rsrp_offset_db: -5.0
+  sinr_offset_db: -3.0
+  ho_failure_multiplier: 1.5
