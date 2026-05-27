@@ -1,6 +1,5 @@
 """Tests for Spectrum Agent — 3GPP domain validation."""
 
-import pytest
 
 from src.agents.spectrum import SpectrumAgent
 

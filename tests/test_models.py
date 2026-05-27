@@ -3,7 +3,13 @@
 import pytest
 from pydantic import ValidationError
 
-from src.models.cell_data import CellSite, NeighborRelation, PMRecord, RelationPMRecord, ClusterKPISummary
+from src.models.cell_data import (
+    CellSite,
+    ClusterKPISummary,
+    NeighborRelation,
+    PMRecord,
+    RelationPMRecord,
+)
 
 
 class TestCellSite:

@@ -1,6 +1,5 @@
 """Tests for MRO Gymnasium environment."""
 
-import numpy as np
 
 from src.env.mro_env import MROEnv
 

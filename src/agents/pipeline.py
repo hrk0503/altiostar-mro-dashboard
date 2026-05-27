@@ -9,8 +9,6 @@ from pathlib import Path
 import pandas as pd
 from pydantic import BaseModel
 
-from src.models.cell_data import CellSite, NeighborRelation, PMRecord
-
 
 class SchemaMapping(BaseModel):
     source_column: str
