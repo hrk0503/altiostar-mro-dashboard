@@ -1,4 +1,5 @@
 import logging
+
 import gymnasium as gym
 import numpy as np
 import pandas as pd
@@ -69,7 +70,8 @@ class MROEnv(gym.Env):
 
     def _get_reward(self) -> float:
         # TODO Phase 1: Reward normalization or scaling. Currently reward depends on raw counts,
-        # which varies by traffic volume. Consider normalizing by ho_attempts_intra or using rates, e.g.:
+        # which varies by traffic volume. Consider normalizing by ho_attempts_intra or
+        # using rates, e.g.:
         # reward = row["ho_success_rate_pct"] * 0.01 - row["ho_failure_rate_pct"] * 0.05 - ...
         row = self.cell_pm.iloc[self.current_step]
         reward = 0.0
@@ -94,8 +96,9 @@ class MROEnv(gym.Env):
         affect state transitions. Environment replays real PM data row
         by row. Action effect will be modelled in v1.
         """
-        # TODO v1: Implement a simulation model where actions (tilt/power/CIO deltas, neighbor toggle)
-        # affect the KPIs (RSRP, RSRQ, SINR, handover success/failure, ping-pong).
+        # TODO v1: Implement a simulation model where actions (tilt/power/CIO deltas,
+        # neighbor toggle) affect the KPIs (RSRP, RSRQ, SINR, handover success/failure,
+        # ping-pong).
         logger.warning(
             "v0: historical replay only — actions are recorded but do not affect state transitions"
         )
@@ -104,10 +107,7 @@ class MROEnv(gym.Env):
         terminated = self.current_step >= self.n_steps
         truncated = False
 
-        if terminated:
-            obs = np.zeros(8, dtype=np.float32)
-        else:
-            obs = self._get_obs()
+        obs = np.zeros(8, dtype=np.float32) if terminated else self._get_obs()
 
         info = {
             "cell_id": self.cell_id,
