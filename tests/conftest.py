@@ -6,7 +6,12 @@ from pathlib import Path
 import pytest
 import pandas as pd
 
-from src.pipeline.models import SiteRecord, NeighborRelation, PMRecord, ClusterKPISummary
+from src.pipeline.models import (
+    SiteRecord,
+    NeighborRelation,
+    PMRecord,
+    ClusterKPISummary,
+)
 from src.pipeline.loader import DATA_DIR
 
 

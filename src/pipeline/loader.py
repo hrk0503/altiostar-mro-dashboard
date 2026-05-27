@@ -1,4 +1,4 @@
-"""Load CSV files into typed Pydantic models with performance handling for large files."""
+"""Load CSVs into typed Pydantic models with chunked reading."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -19,7 +19,7 @@ DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
 
 def _load_csv(path: Path, model: Type[T], *, chunk_size: int | None = None) -> list[T]:
-    """Load a CSV into a list of Pydantic models. Uses chunked reading for large files."""
+    """Load a CSV into a list of Pydantic models."""
     if not path.exists():
         raise FileNotFoundError(f"CSV not found: {path}")
 

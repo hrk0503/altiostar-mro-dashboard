@@ -63,7 +63,7 @@ RANGE_RULES: dict[str, dict[str, tuple[float | None, float | None]]] = {
 
 
 def validate_csv(csv_name: str, path: Path | None = None) -> ValidationResult:
-    """Run null checks, range checks, type mismatch detection, and duplicate detection."""
+    """Run null, range, type mismatch, and duplicate checks."""
     p = path or DATA_DIR / csv_name
     df = pd.read_csv(p)
     result = ValidationResult(csv_name=csv_name, total_rows=len(df))
@@ -97,7 +97,7 @@ def validate_csv(csv_name: str, path: Path | None = None) -> ValidationResult:
                 result.add_issue(f"{col}: {violations} values above maximum {hi}")
 
     # Type mismatches: check numeric columns are actually numeric
-    for col, (lo, hi) in rules.items():
+    for col, (_lo, _hi) in rules.items():
         if col in df.columns:
             coerced = pd.to_numeric(df[col], errors="coerce")
             mismatches = int(coerced.isnull().sum() - df[col].isnull().sum())
@@ -118,7 +118,8 @@ def validate_all(data_dir: Path | None = None) -> dict[str, ValidationResult]:
     ]
     results = {}
     for csv_name in csvs:
-        results[csv_name] = validate_csv(csv_name, (data_dir or DATA_DIR) / csv_name if data_dir else None)
+        p = (data_dir / csv_name) if data_dir else None
+        results[csv_name] = validate_csv(csv_name, p)
     return results
 
 

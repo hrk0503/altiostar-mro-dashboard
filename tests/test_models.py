@@ -2,7 +2,12 @@
 import pytest
 from pydantic import ValidationError
 
-from src.pipeline.models import SiteRecord, NeighborRelation, PMRecord, ClusterKPISummary
+from src.pipeline.models import (
+    SiteRecord,
+    NeighborRelation,
+    PMRecord,
+    ClusterKPISummary,
+)
 
 
 class TestSiteRecord:
@@ -75,7 +80,10 @@ class TestPMRecord:
         data = sample_pm_record.model_dump()
         data["ho_success_intra"] = 25
         data["ho_attempts_intra"] = 20
-        with pytest.raises(ValidationError, match="ho_success_intra.*ho_attempts_intra"):
+        with pytest.raises(
+            ValidationError,
+            match="ho_success_intra.*ho_attempts_intra",
+        ):
             PMRecord.model_validate(data)
 
     def test_rsrp_too_high_rejected(self, sample_pm_record):
