@@ -47,6 +47,14 @@ class NeighborRelation(BaseModel):
     relation_type: str
     last_updated: str
 
+    @field_validator("handover_allowed", mode="before")
+    @classmethod
+    def coerce_handover_allowed(cls, v):
+        """Map 'Yes'/'No' strings to bool."""
+        if isinstance(v, str):
+            return v.strip().lower() == "yes"
+        return v
+
     @field_validator("neighbor_cell")
     @classmethod
     def source_and_target_differ(cls, v: str, info) -> str:
@@ -105,3 +113,11 @@ class ClusterKPISummary(BaseModel):
     pingpong_rate_pct: float = Field(ge=0, le=100)
     avg_rsrp_dBm: float
     problem_cell: bool
+
+    @field_validator("problem_cell", mode="before")
+    @classmethod
+    def coerce_problem_cell(cls, v):
+        """Map 'Yes'/'No' strings to bool."""
+        if isinstance(v, str):
+            return v.strip().lower() == "yes"
+        return v
