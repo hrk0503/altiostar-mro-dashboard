@@ -21,7 +21,7 @@ from src.pipeline.models import (
 )
 
 T = TypeVar("T", bound=BaseModel)
-DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "synthetic"
 PROCESSED_DIR = DATA_DIR / "processed"
 
 
@@ -105,7 +105,7 @@ def _csv_to_parquet(
         )
 
     table = pa.Table.from_pandas(df, preserve_index=False)
-    pq.write_table(table, dest, compression="snappy")
+    pq.write_table(table, dest, compression="snappy")  # type: ignore[no-untyped-call]
     return dest
 
 
