@@ -105,7 +105,7 @@ def _csv_to_parquet(
         )
 
     table = pa.Table.from_pandas(df, preserve_index=False)
-    pq.write_table(table, dest, compression="snappy")  # type: ignore[no-untyped-call]
+    pq.write_table(table, dest, compression="snappy")
     return dest
 
 
