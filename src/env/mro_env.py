@@ -1,22 +1,29 @@
+import logging
 import gymnasium as gym
 import numpy as np
 import pandas as pd
 from gymnasium import spaces
 
+logger = logging.getLogger(__name__)
+
 
 class MROEnv(gym.Env):
     """
     MRO (Mobility Robustness Optimization) Gymnasium Environment.
-    
+
     Observation space: RSRP, RSRQ, SINR, PRB utilization, HO success rate,
                        HO failure rate, ping-pong count (per cell, per step)
     Action space: tilt delta, power delta, CIO delta, neighbor list toggle
     Reward: +1 HO success, -5 HO failure, -2 ping-pong
+
+    Memory Footprint Note:
+    This environment currently loads the entire PM DataFrame into memory (via pd.read_csv)
+    and filters it. For 216K rows, this footprint is negligible (~15-20MB). However, when
+    scaling to millions of cells or longer time horizons, consider using chunked loading,
+    database queries, or memory-mapped formats (e.g. Parquet) to avoid high memory overhead.
     """
 
-    metadata = {"render_modes": []}
-
-    def __init__(self, pm_data_path: str, kpi_path: str, cell_id: str = None):
+    def __init__(self, pm_data_path: str, kpi_path: str, cell_id: str | None = None):
         super().__init__()
 
         self.pm_data = pd.read_csv(pm_data_path, parse_dates=["timestamp_utc"])
@@ -61,6 +68,9 @@ class MROEnv(gym.Env):
         ], dtype=np.float32)
 
     def _get_reward(self) -> float:
+        # TODO Phase 1: Reward normalization or scaling. Currently reward depends on raw counts,
+        # which varies by traffic volume. Consider normalizing by ho_attempts_intra or using rates, e.g.:
+        # reward = row["ho_success_rate_pct"] * 0.01 - row["ho_failure_rate_pct"] * 0.05 - ...
         row = self.cell_pm.iloc[self.current_step]
         reward = 0.0
         reward += row["ho_success_intra"] * 1.0
@@ -70,23 +80,40 @@ class MROEnv(gym.Env):
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
-        self.current_step = 0
+        if options and options.get("random_start"):
+            self.current_step = self.np_random.integers(0, self.n_steps - 1)
+        else:
+            self.current_step = 0
         obs = self._get_obs()
         info = {"cell_id": self.cell_id, "step": self.current_step}
         return obs, info
 
     def step(self, action):
+        """
+        v0: Historical replay mode — actions are recorded but do not
+        affect state transitions. Environment replays real PM data row
+        by row. Action effect will be modelled in v1.
+        """
+        # TODO v1: Implement a simulation model where actions (tilt/power/CIO deltas, neighbor toggle)
+        # affect the KPIs (RSRP, RSRQ, SINR, handover success/failure, ping-pong).
+        logger.warning(
+            "v0: historical replay only — actions are recorded but do not affect state transitions"
+        )
         reward = self._get_reward()
         self.current_step += 1
         terminated = self.current_step >= self.n_steps
         truncated = False
 
-        obs = np.zeros(8, dtype=np.float32) if terminated else self._get_obs()
+        if terminated:
+            obs = np.zeros(8, dtype=np.float32)
+        else:
+            obs = self._get_obs()
 
         info = {
             "cell_id": self.cell_id,
             "step": self.current_step,
             "action": action,
+            "action_effect": "none (replay mode)",
         }
 
         return obs, reward, terminated, truncated, info

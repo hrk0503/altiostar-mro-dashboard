@@ -94,7 +94,7 @@ def validate_csv(csv_name: str, path: Path | None = None) -> ValidationResult:
                 result.add_issue(f"{col}: {violations} values above maximum {hi}")
 
     # Type mismatches: check numeric columns are actually numeric
-    for col, (lo, hi) in rules.items():
+    for col in rules:
         if col in df.columns:
             coerced = pd.to_numeric(df[col], errors="coerce")
             mismatches = int(coerced.isnull().sum() - df[col].isnull().sum())
@@ -115,7 +115,8 @@ def validate_all(data_dir: Path | None = None) -> dict[str, ValidationResult]:
     ]
     results = {}
     for csv_name in csvs:
-        results[csv_name] = validate_csv(csv_name, (data_dir or DATA_DIR) / csv_name if data_dir else None)
+        csv_path = (data_dir or DATA_DIR) / csv_name if data_dir else None
+        results[csv_name] = validate_csv(csv_name, csv_path)
     return results
 
 

@@ -85,7 +85,10 @@ class TestClusterKPIQuality:
         assert problem_count == 6, f"Expected 6 problem cells, got {problem_count}"
 
     def test_rates_sum_to_one(self, cluster_kpi_df):
-        total = cluster_kpi_df["monthly_ho_success_rate"] + cluster_kpi_df["monthly_ho_failure_rate"]
+        total = (
+            cluster_kpi_df["monthly_ho_success_rate"]
+            + cluster_kpi_df["monthly_ho_failure_rate"]
+        )
         assert ((total - 1.0).abs() < 0.01).all(), "success_rate + failure_rate should ≈ 1.0"
 
     def test_problem_cells_have_high_failure(self, cluster_kpi_df):

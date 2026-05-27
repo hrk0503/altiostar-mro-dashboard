@@ -61,9 +61,8 @@ _SIGNATURES: dict[str, set[str]] = {
 
 def infer_column_type(series: pd.Series) -> InferredType:
     """Infer the semantic type of a pandas Series."""
-    if series.dtype == bool or set(series.dropna().unique()) <= {True, False, "True", "False", "true", "false"}:
-        if series.dtype == bool:
-            return InferredType.BOOLEAN
+    if series.dtype == bool:
+        return InferredType.BOOLEAN
 
     if pd.api.types.is_integer_dtype(series):
         return InferredType.INTEGER
@@ -93,7 +92,8 @@ def infer_column_type(series: pd.Series) -> InferredType:
 def infer_schema(path: Path, *, sample_rows: int = 1000) -> SchemaInferenceResult:
     """Infer column types from a CSV and attempt to match to a known Pydantic model."""
     df = pd.read_csv(path, nrows=sample_rows)
-    total_rows = sum(1 for _ in open(path)) - 1  # exclude header
+    with open(path) as f:
+        total_rows = sum(1 for _ in f) - 1  # exclude header
 
     columns = []
     for col in df.columns:
