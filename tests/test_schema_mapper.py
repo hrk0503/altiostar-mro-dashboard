@@ -1,62 +1,170 @@
-"""Tests for the schema mapper — type inference and auto-mapping to Pydantic models."""
-import csv
+"""Tests for schema mapper — type inference and column mapping."""
+from __future__ import annotations
 
+import pandas as pd
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
-from src.pipeline.schema_mapper import InferredType, auto_map_and_load, infer_schema
-
-
-class TestTypeInference:
-    def test_infer_site_database(self, data_dir):
-        result = infer_schema(data_dir / "site_database.csv")
-        assert result.row_count == 75
-        assert result.matched_model == "SiteRecord"
-        col_names = [c.name for c in result.columns]
-        assert "cell_id" in col_names
-        assert "latitude" in col_names
-
-    def test_infer_neighbor_relations(self, data_dir):
-        result = infer_schema(data_dir / "neighbor_relations.csv")
-        assert result.matched_model == "NeighborRelation"
-
-    def test_infer_pm_data(self, data_dir):
-        result = infer_schema(data_dir / "pm_data_april2026.csv")
-        assert result.matched_model == "PMRecord"
-        assert result.row_count == 216000
-
-    def test_infer_cluster_kpi(self, data_dir):
-        result = infer_schema(data_dir / "cluster_kpi_summary.csv")
-        assert result.matched_model == "ClusterKPISummary"
-
-    def test_column_types_detected(self, data_dir):
-        result = infer_schema(data_dir / "site_database.csv")
-        type_map = {c.name: c.inferred_type for c in result.columns}
-        assert type_map["cell_id"] == InferredType.STRING
-        assert type_map["sector"] == InferredType.INTEGER
-        assert type_map["latitude"] == InferredType.FLOAT
+from src.pipeline.loader import DATA_DIR
+from src.pipeline.schema_mapper import infer_column_types, map_to_schema, run_schema_mapper
 
 
-class TestAutoMapAndLoad:
-    def test_load_site_database(self, data_dir):
-        model_name, records = auto_map_and_load(data_dir / "site_database.csv")
-        assert model_name == "SiteRecord"
-        assert len(records) == 75
+class TestInferColumnTypes:
+    def test_returns_dict(self):
+        df = pd.DataFrame({"cell_id": ["CELL_000_0"], "band": [1], "latitude": [35.6]})
+        result = infer_column_types(df)
+        assert isinstance(result, dict)
 
-    def test_load_neighbor_relations(self, data_dir):
-        model_name, records = auto_map_and_load(data_dir / "neighbor_relations.csv")
-        assert model_name == "NeighborRelation"
-        assert len(records) > 700
+    def test_int_column(self):
+        df = pd.DataFrame({"band": [1, 3, 41]})
+        result = infer_column_types(df)
+        assert result["band"] == "int"
 
-    def test_load_cluster_kpi(self, data_dir):
-        model_name, records = auto_map_and_load(data_dir / "cluster_kpi_summary.csv")
-        assert model_name == "ClusterKPISummary"
-        assert len(records) == 75
+    def test_float_column(self):
+        df = pd.DataFrame({"latitude": [35.6, 35.7]})
+        result = infer_column_types(df)
+        assert result["latitude"] == "float"
 
-    def test_unknown_csv_raises(self, tmp_path):
-        csv_path = tmp_path / "random.csv"
-        with open(csv_path, "w", newline="") as f:
-            w = csv.writer(f)
-            w.writerow(["foo", "bar", "baz"])
-            w.writerow([1, 2, 3])
-        with pytest.raises(ValueError, match="Could not match"):
-            auto_map_and_load(csv_path)
+    def test_str_column(self):
+        df = pd.DataFrame({"cell_id": ["CELL_000_0", "CELL_001_0"]})
+        result = infer_column_types(df)
+        assert result["cell_id"] == "str"
+
+    def test_bool_column(self):
+        df = pd.DataFrame({"problem_flag": [True, False]})
+        result = infer_column_types(df)
+        assert result["problem_flag"] == "bool"
+
+    def test_all_site_columns(self):
+        df = pd.DataFrame({
+            "cell_id": ["CELL_000_0"],
+            "site_id": ["SITE_000"],
+            "band": [1],
+            "latitude": [35.6],
+            "longitude": [139.7],
+            "antenna_height_m": [30.0],
+            "mechanical_tilt": [4.0],
+            "tx_power_dbm": [43.0],
+        })
+        result = infer_column_types(df)
+        assert result["band"] == "int"
+        assert result["latitude"] == "float"
+        assert result["cell_id"] == "str"
+
+
+class TestMapToSchema:
+    def test_all_fields_present(self):
+        inferred = {"cell_id": "str", "band": "int", "latitude": "float"}
+        schema = {"cell_id": "str", "band": "int", "latitude": "float"}
+        result = map_to_schema(inferred, schema)
+        assert "MISSING" not in result.values()
+
+    def test_missing_field_flagged(self):
+        inferred = {"cell_id": "str", "band": "int"}
+        schema = {"cell_id": "str", "band": "int", "latitude": "float"}
+        result = map_to_schema(inferred, schema)
+        assert result["latitude"] == "MISSING"
+
+    def test_returns_all_schema_keys(self):
+        inferred = {"cell_id": "str", "band": "int"}
+        schema = {"cell_id": "str", "band": "int", "latitude": "float"}
+        result = map_to_schema(inferred, schema)
+        assert set(result.keys()) == set(schema.keys())
+
+    def test_extra_csv_columns_ignored(self):
+        inferred = {"cell_id": "str", "band": "int", "extra_col": "str"}
+        schema = {"cell_id": "str", "band": "int"}
+        result = map_to_schema(inferred, schema)
+        assert "extra_col" not in result
+
+
+pytestmark = pytest.mark.skipif(
+    not (DATA_DIR / "site_database.csv").exists(),
+    reason="Real CSVs not available in CI",
+)
+
+
+class TestRunSchemaMapper:
+    def test_runs_on_site_csv(self, data_dir):
+        schema = {
+            "cell_id": "str", "enodeb_id": "str", "frequency_band": "int",
+            "latitude": "float", "longitude": "float"
+        }
+        result = run_schema_mapper(str(data_dir / "site_database.csv"), schema)
+        assert "MISSING" not in result.values()
+
+    def test_runs_on_neighbor_csv(self, data_dir):
+        schema = {
+            "serving_cell": "str", "neighbor_cell": "str",
+            "cell_individual_offset_dB": "float", "distance_m": "float"
+        }
+        result = run_schema_mapper(str(data_dir / "neighbor_relations.csv"), schema)
+        assert "MISSING" not in result.values()
+
+    def test_missing_file_raises(self, tmp_path):
+        with pytest.raises(FileNotFoundError):
+            run_schema_mapper(tmp_path / "nonexistent.csv", {"cell_id": "str"})
+
+class TestSchemaMapperHypothesis:
+
+    @given(st.dictionaries(
+        keys=st.text(min_size=1, max_size=20),
+        values=st.one_of(
+            st.integers(),
+            st.floats(allow_nan=False, allow_infinity=False),
+            st.text(min_size=0, max_size=50),
+            st.booleans()
+        ),
+        min_size=1,
+        max_size=10
+    ))
+    def test_infer_always_returns_dict(self, data):
+        df = pd.DataFrame([data])
+        result = infer_column_types(df)
+        assert isinstance(result, dict)
+
+    @given(st.dictionaries(
+        keys=st.text(min_size=1, max_size=20),
+        values=st.one_of(
+            st.integers(),
+            st.floats(allow_nan=False, allow_infinity=False),
+            st.text(min_size=0, max_size=50),
+            st.booleans()
+        ),
+        min_size=1,
+        max_size=10
+    ))
+    def test_infer_never_returns_unknown_type(self, data):
+        df = pd.DataFrame([data])
+        result = infer_column_types(df)
+        valid_types = {"int", "float", "str", "bool"}
+        for col, dtype in result.items():
+            assert dtype in valid_types, f"Unknown type {dtype} for column {col}"
+
+    @given(
+        st.dictionaries(
+            keys=st.text(min_size=1, max_size=20),
+            values=st.just("str"),
+            min_size=1,
+            max_size=10
+        )
+    )
+    def test_map_always_returns_all_schema_keys(self, schema):
+        inferred = {k: "str" for k in schema}
+        result = map_to_schema(inferred, schema)
+        assert set(result.keys()) == set(schema.keys())
+
+    @given(
+        st.dictionaries(
+            keys=st.text(min_size=1, max_size=20),
+            values=st.just("str"),
+            min_size=1,
+            max_size=5
+        )
+    )
+    def test_missing_columns_always_flagged(self, schema):
+        result = map_to_schema({}, schema)
+        for v in result.values():
+            assert v == "MISSING"
+

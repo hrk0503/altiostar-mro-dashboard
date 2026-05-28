@@ -1,160 +1,47 @@
-"""Schema mapper: infer CSV column types and auto-map to known Pydantic schemas."""
 from __future__ import annotations
 
-from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
-from typing import Any
 
 import pandas as pd
-from pydantic import BaseModel
-
-from src.pipeline.models import (
-    ClusterKPISummary,
-    NeighborRelation,
-    PMRecord,
-    SiteRecord,
-)
 
 
-class InferredType(str, Enum):
-    INTEGER = "integer"
-    FLOAT = "float"
-    STRING = "string"
-    BOOLEAN = "boolean"
-    DATETIME = "datetime"
-
-
-@dataclass
-class ColumnProfile:
-    name: str
-    inferred_type: InferredType
-    null_pct: float
-    unique_count: int
-    sample_values: list[Any]
-
-
-@dataclass
-class SchemaInferenceResult:
-    columns: list[ColumnProfile]
-    row_count: int
-    matched_model: str | None = None
-    field_mapping: dict[str, str] | None = None
-    unmapped_csv_cols: list[str] | None = None
-    unmapped_model_fields: list[str] | None = None
-
-
-KNOWN_SCHEMAS: dict[str, type[BaseModel]] = {
-    "SiteRecord": SiteRecord,
-    "NeighborRelation": NeighborRelation,
-    "PMRecord": PMRecord,
-    "ClusterKPISummary": ClusterKPISummary,
-}
-
-# Signature columns that identify each schema
-_SIGNATURES: dict[str, set[str]] = {
-    "SiteRecord": {"cell_id", "site_id", "sector", "azimuth", "tx_power_dbm"},
-    "NeighborRelation": {"source_cell", "target_cell", "cio_db"},
-    "PMRecord": {"cell_id", "timestamp", "ho_attempt", "ho_success", "rsrp_dbm"},
-    "ClusterKPISummary": {"cell_id", "monthly_ho_success_rate", "problem_flag"},
-}
-
-
-def infer_column_type(series: pd.Series) -> InferredType:
-    """Infer the semantic type of a pandas Series."""
-    if series.dtype == bool:
-        return InferredType.BOOLEAN
-
-    if pd.api.types.is_integer_dtype(series):
-        return InferredType.INTEGER
-
-    if pd.api.types.is_float_dtype(series):
-        return InferredType.FLOAT
-
-    str_series = series.dropna().astype(str)
-    if len(str_series) > 0:
-        try:
-            pd.to_datetime(str_series.head(20))
-            return InferredType.DATETIME
-        except (ValueError, TypeError):
-            pass
-
-        try:
-            pd.to_numeric(str_series)
-            if str_series.str.contains(r"\.").any():
-                return InferredType.FLOAT
-            return InferredType.INTEGER
-        except (ValueError, TypeError):
-            pass
-
-    return InferredType.STRING
-
-
-def infer_schema(path: Path, *, sample_rows: int = 1000) -> SchemaInferenceResult:
-    """Infer column types from a CSV and attempt to match to a known Pydantic model."""
-    df = pd.read_csv(path, nrows=sample_rows)
-    with open(path) as f:
-        total_rows = sum(1 for _ in f) - 1  # exclude header
-
-    columns = []
+def infer_column_types(df: pd.DataFrame) -> dict[str, str]:
+    # Note: nullable int columns are upcast to float64 by pandas.
+    # This means int columns with NaN values will be inferred as "float".
+    """
+    Auto-infer column types from a CSV dataframe.
+    Returns a dict of column_name -> inferred_type
+    """
+    type_map = {}
     for col in df.columns:
-        profile = ColumnProfile(
-            name=col,
-            inferred_type=infer_column_type(df[col]),
-            null_pct=round(float(df[col].isnull().mean()) * 100, 2),
-            unique_count=int(df[col].nunique()),
-            sample_values=df[col].dropna().head(3).tolist(),
-        )
-        columns.append(profile)
-
-    result = SchemaInferenceResult(columns=columns, row_count=total_rows)
-
-    csv_cols = {c.lower().replace(" ", "_") for c in df.columns}
-    best_match = None
-    best_score = 0.0
-
-    for model_name, signature in _SIGNATURES.items():
-        overlap = len(signature & csv_cols)
-        score = overlap / len(signature)
-        if score > best_score:
-            best_score = score
-            best_match = model_name
-
-    if best_match and best_score >= 0.6:
-        result.matched_model = best_match
-        model_cls = KNOWN_SCHEMAS[best_match]
-        model_fields = set(model_cls.model_fields.keys())
-
-        mapping = {}
-        for csv_col in df.columns:
-            normalized = csv_col.lower().replace(" ", "_")
-            if normalized in model_fields:
-                mapping[csv_col] = normalized
-
-        result.field_mapping = mapping
-        result.unmapped_csv_cols = [c for c in df.columns if c not in mapping]
-        result.unmapped_model_fields = [f for f in model_fields if f not in mapping.values()]
-
-    return result
+        dtype = df[col].dtype
+        if dtype == "int64":
+            type_map[col] = "int"
+        elif dtype == "float64":
+            type_map[col] = "float"
+        elif dtype == "bool":
+            type_map[col] = "bool"
+        else:
+            type_map[col] = "str"
+    return type_map
 
 
-def auto_map_and_load(path: Path) -> tuple[str, list[BaseModel]]:
-    """Infer schema, map columns, and load data into the matched Pydantic model."""
-    inference = infer_schema(path)
+def map_to_schema(inferred: dict[str, str], schema_fields: dict[str, str]) -> dict[str, str]:
+    matched = {}
+    for field, expected_type in schema_fields.items():
+        if field not in inferred:
+            matched[field] = "MISSING"
+        elif inferred[field] != expected_type:
+            got = inferred[field]
+            matched[field] = f"TYPE_MISMATCH (expected {expected_type}, got {got})"
+        else:
+            matched[field] = inferred[field]
+    return matched
 
-    if not inference.matched_model:
-        raise ValueError(
-            f"Could not match {path.name} to any known schema. "
-            f"Columns: {[c.name for c in inference.columns]}"
-        )
 
-    model_cls = KNOWN_SCHEMAS[inference.matched_model]
-    df = pd.read_csv(path)
+def run_schema_mapper(csv_path: Path, schema_fields: dict[str, str]) -> dict[str, str]:
+    df = pd.read_csv(csv_path)
+    inferred = infer_column_types(df)
+    mapped = map_to_schema(inferred, schema_fields)
+    return mapped
 
-    if inference.field_mapping:
-        rename_map = {k: v for k, v in inference.field_mapping.items() if k != v}
-        if rename_map:
-            df = df.rename(columns=rename_map)
-
-    records = [model_cls.model_validate(row) for row in df.to_dict(orient="records")]
-    return inference.matched_model, records

@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 *.pyo
+.ipynb_checkpoints/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -19,3 +20,8 @@ mlartifacts/
 !data/synthetic/*.csv
 .coverage
 htmlcov/
+data/pm_data_april2026.csv
+data/cluster_kpi_summary.csv
+data/neighbor_relations.csv
+data/site_database.csv
+data/processed/

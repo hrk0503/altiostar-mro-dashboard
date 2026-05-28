@@ -26,41 +26,44 @@ class ValidationResult:
 
 RANGE_RULES: dict[str, dict[str, tuple[float | None, float | None]]] = {
     "site_database.csv": {
-        "sector": (0, 2),
+        "sector": (1, 3),
         "latitude": (34, 37),
         "longitude": (138, 141),
-        "mechanical_tilt": (0, 15),
-        "electrical_tilt": (0, 15),
-        "tx_power_dbm": (20, 60),
+        "electrical_tilt_deg": (0, 15),
+        "mechanical_tilt_deg": (0, 15),
         "antenna_height_m": (5, 100),
+        "azimuth_deg": (0, 360),
+        "elevation_m": (0, 200),
+        "pci": (0, 503),
     },
     "neighbor_relations.csv": {
-        "cio_db": (-15, 15),
-        "distance_km": (0, 50),
-        "handover_success_rate": (0, 1),
-        "ping_pong_rate": (0, 1),
+        "cell_individual_offset_dB": (-15, 15),
+        "distance_m": (0, None),
+        "neighbor_rank": (1, None),
     },
     "pm_data_april2026.csv": {
-        "rsrp_dbm": (-140, -40),
-        "rsrq_db": (-30, 0),
-        "sinr_db": (-10, 40),
-        "prb_utilization_pct": (0, 100),
-        "ho_attempt": (0, None),
-        "ho_success": (0, None),
-        "ho_failure": (0, None),
-        "call_drop_rate_pct": (0, 100),
+        "avg_rsrp_dBm": (-140, -40),
+        "avg_rsrq_dB": (-20, 0),
+        "avg_sinr_dB": (-10, 40),
+        "prb_utilization_dl_pct": (0, 100),
+        "prb_utilization_ul_pct": (0, 100),
+        "ho_attempts_intra": (0, None),
+        "ho_success_intra": (0, None),
+        "ho_failure_intra": (0, None),
+        "ho_success_rate_pct": (0, 100),
+        "ho_failure_rate_pct": (0, 100),
     },
     "cluster_kpi_summary.csv": {
-        "monthly_ho_success_rate": (0, 1),
-        "monthly_ho_failure_rate": (0, 1),
-        "monthly_ping_pong_rate": (0, 1),
-        "avg_prb_utilization_pct": (0, 100),
+        "total_ho_attempts": (0, None),
+        "total_ho_failures": (0, None),
+        "ho_failure_rate_pct": (0, 100),
+        "pingpong_rate_pct": (0, 100),
     },
 }
 
 
 def validate_csv(csv_name: str, path: Path | None = None) -> ValidationResult:
-    """Run null checks, range checks, type mismatch detection, and duplicate detection."""
+    """Run null, range, type mismatch, and duplicate checks."""
     p = path or DATA_DIR / csv_name
     df = pd.read_csv(p)
     result = ValidationResult(csv_name=csv_name, total_rows=len(df))
@@ -94,7 +97,7 @@ def validate_csv(csv_name: str, path: Path | None = None) -> ValidationResult:
                 result.add_issue(f"{col}: {violations} values above maximum {hi}")
 
     # Type mismatches: check numeric columns are actually numeric
-    for col in rules:
+    for col, (_lo, _hi) in rules.items():
         if col in df.columns:
             coerced = pd.to_numeric(df[col], errors="coerce")
             mismatches = int(coerced.isnull().sum() - df[col].isnull().sum())
@@ -115,8 +118,8 @@ def validate_all(data_dir: Path | None = None) -> dict[str, ValidationResult]:
     ]
     results = {}
     for csv_name in csvs:
-        csv_path = (data_dir or DATA_DIR) / csv_name if data_dir else None
-        results[csv_name] = validate_csv(csv_name, csv_path)
+        p = (data_dir / csv_name) if data_dir else None
+        results[csv_name] = validate_csv(csv_name, p)
     return results
 
 
