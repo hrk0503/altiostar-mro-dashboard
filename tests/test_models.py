@@ -2,7 +2,12 @@
 import pytest
 from pydantic import ValidationError
 
-from src.pipeline.models import SiteRecord, NeighborRelation, PMRecord, ClusterKPISummary
+from src.pipeline.models import (
+    ClusterKPISummary,
+    NeighborRelation,
+    PMRecord,
+    SiteRecord,
+)
 
 
 class TestSiteRecord:
@@ -75,7 +80,10 @@ class TestPMRecord:
         data = sample_pm_record.model_dump()
         data["ho_success_intra"] = 25
         data["ho_attempts_intra"] = 20
-        with pytest.raises(ValidationError, match="ho_success_intra.*ho_attempts_intra"):
+        with pytest.raises(
+            ValidationError,
+            match="ho_success_intra.*ho_attempts_intra",
+        ):
             PMRecord.model_validate(data)
 
     def test_rsrp_too_high_rejected(self, sample_pm_record):
@@ -113,3 +121,40 @@ class TestClusterKPISummary:
         data["ho_failure_rate_pct"] = 150.0
         with pytest.raises(ValidationError):
             ClusterKPISummary.model_validate(data)
+
+    def test_problem_cell_yes_coerces_to_true(
+        self, sample_cluster_kpi,
+    ):
+        data = sample_cluster_kpi.model_dump()
+        data["problem_cell"] = "Yes"
+        record = ClusterKPISummary.model_validate(data)
+        assert record.problem_cell is True
+
+    def test_problem_cell_no_coerces_to_false(
+        self, sample_cluster_kpi,
+    ):
+        data = sample_cluster_kpi.model_dump()
+        data["problem_cell"] = "No"
+        record = ClusterKPISummary.model_validate(data)
+        assert record.problem_cell is False
+
+
+class TestBoolCoercion:
+    """Verify Yes/No string → bool for CSV fields."""
+
+    def test_handover_allowed_yes(self, sample_neighbor):
+        assert sample_neighbor.handover_allowed is True
+
+    def test_handover_allowed_no(self, sample_neighbor):
+        data = sample_neighbor.model_dump()
+        data["handover_allowed"] = "No"
+        record = NeighborRelation.model_validate(data)
+        assert record.handover_allowed is False
+
+    def test_handover_allowed_bool_passthrough(
+        self, sample_neighbor,
+    ):
+        data = sample_neighbor.model_dump()
+        data["handover_allowed"] = True
+        record = NeighborRelation.model_validate(data)
+        assert record.handover_allowed is True

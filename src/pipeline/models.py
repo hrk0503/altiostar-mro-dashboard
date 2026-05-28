@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 
 class SiteRecord(BaseModel):
@@ -48,9 +47,17 @@ class NeighborRelation(BaseModel):
     relation_type: str
     last_updated: str
 
+    @field_validator("handover_allowed", mode="before")
+    @classmethod
+    def coerce_handover_allowed(cls, v: object) -> bool:
+        """Map 'Yes'/'No' strings to bool."""
+        if isinstance(v, str):
+            return v.strip().lower() == "yes"
+        return bool(v)
+
     @field_validator("neighbor_cell")
     @classmethod
-    def source_and_target_differ(cls, v: str, info) -> str:
+    def source_and_target_differ(cls, v: str, info: ValidationInfo) -> str:
         if info.data.get("serving_cell") == v:
             raise ValueError("serving_cell and neighbor_cell must differ")
         return v
@@ -83,7 +90,7 @@ class PMRecord(BaseModel):
 
     @field_validator("ho_success_intra")
     @classmethod
-    def success_le_attempts(cls, v: int, info) -> int:
+    def success_le_attempts(cls, v: int, info: ValidationInfo) -> int:
         attempts = info.data.get("ho_attempts_intra")
         if attempts is not None and v > attempts:
             raise ValueError(f"ho_success_intra ({v}) > ho_attempts_intra ({attempts})")
@@ -106,3 +113,11 @@ class ClusterKPISummary(BaseModel):
     pingpong_rate_pct: float = Field(ge=0, le=100)
     avg_rsrp_dBm: float
     problem_cell: bool
+
+    @field_validator("problem_cell", mode="before")
+    @classmethod
+    def coerce_problem_cell(cls, v: object) -> bool:
+        """Map 'Yes'/'No' strings to bool."""
+        if isinstance(v, str):
+            return v.strip().lower() == "yes"
+        return bool(v)
