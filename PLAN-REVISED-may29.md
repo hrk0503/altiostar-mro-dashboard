@@ -26,31 +26,29 @@ These are **three incompatible naming conventions** for the same data. The schem
 
 ---
 
-## What SD Actually Needs (for June 5 and beyond)
+## What the Product Must Do (external-grade, reusable)
 
-From his emails, transcript, and May 27 technical answers:
+This is internal work but built to external standards. If SD walked in unannounced, it should stand up. If a different operator handed us their CSVs tomorrow, same pipeline should work.
 
-1. **Data ingestion that handles their PM format** — .per (ASN.1) -> CSV at relation level (serving -> neighbor per 15-min ROP)
-2. **A trained model that improves HO success rate** — from ~97-98% baseline to >99.5% at relation level
-3. **Before/after KPI comparison** — the chart that goes to his VP
-4. **Model artifact for CU-CP deployment** — Docker on K8s (Robin/RCP)
-5. **Reusable for other operators** — same pipeline, different data
+1. **Ingest any operator's PM CSV** — auto-detect schema, validate, normalize. Relation-level (serving -> neighbor per 15-min ROP) or cell-level.
+2. **Train an RL model that improves HO success rate** — from ~97-98% baseline to >99.5% at relation level. Reproducible (seeded, logged).
+3. **Produce a before/after KPI chart** — the one artifact that sells the platform to any decision-maker.
+4. **Ship in a Docker container** — `docker run` on any machine, no setup beyond CSV input.
+5. **Work on fresh data with zero code changes** — same pipeline, different CSV = different results. YAML config, not hardcoded.
 
-He does NOT need: agent orchestration, EPIC metrics, leadership rotation schedules, adversarial testing, 3 reward variants, or scenario engines.
+NOT needed: agent orchestration, EPIC metrics, scenario engines, ONNX export, Helm charts. Those are post-revenue polish.
 
 ---
 
-## What to Show June 5 (7 days)
+## June 5 Session (Nicolas presents the platform)
 
-Frame as **"data alignment + architecture review"**, NOT a demo. Show:
+Nicolas owns this. Interns are NOT presenting, NOT asking SD to verify anything. The session is about WINNIIO's intelligence layer — the intern pipeline is internal capability proof.
 
-1. Relation-level synthetic data (2.2M rows) — "we matched your PM counter granularity"
-2. Data validation pipeline (Pydantic models, typed telecom fields)
-3. Gymnasium env skeleton with YAML-config approach
-4. **Reward function DESIGN** (3 candidates on a slide) — ask SD which aligns with their KPIs
-5. Ask SD to validate synthetic schema against their real .per -> CSV export
-
-Do NOT show: "7 agents", anything claiming to be trained, any dashboard that doesn't have real data behind it.
+What Nicolas needs from the pipeline BY June 4 EOD:
+1. Schema mapper that loads all 5 CSVs without errors (proves data ingestion works)
+2. Env that boots from relation-level CSV (proves we understand the granularity)
+3. Architecture diagram showing CSV -> validate -> env -> train -> evaluate -> dashboard flow
+4. One slide: "here's how the pipeline handles YOUR data format" with actual column mappings
 
 ---
 
@@ -72,7 +70,7 @@ Do NOT show: "7 agents", anything claiming to be trained, any dashboard that doe
 |------|-----|-----------|
 | Data-driven transition model: given (current CIO, relation KPIs) + action (CIO delta), predict next-step HO outcomes using historical CSV averages | Harshit + Ananyaa | `step()` returns realistic obs based on action, not random noise |
 | Reward function v0: +1 per successful HO, -10 per failure, -3 per ping-pong, weighted by relation traffic volume | Shourya | Reward correlates with HO success rate improvement |
-| June 5 session prep: validate data schema with SD, get feedback on reward design | All (Nicolas leads) | SD confirms data format match, suggests reward priorities |
+| Pipeline demo-ready for Nicolas: all 5 CSVs load, env boots from relation data, arch diagram | All | Nicolas can screen-share the running pipeline without embarrassment |
 | Wire relation-level CSV as env data source via YAML config path | Devika | `config.yaml` points to CSV, env loads it |
 
 ### Week 3 (Jun 9 - Jun 13): Train + measure
@@ -89,9 +87,9 @@ Do NOT show: "7 agents", anything claiming to be trained, any dashboard that doe
 | Task | Who | Done when |
 |------|-----|-----------|
 | Docker container: `docker build && docker run` reproduces training | Shourya | README instructions work on a clean machine |
-| Before/after chart: cell-level and relation-level KPI improvement | Ananyaa | The one chart that goes to SD's VP |
+| Before/after chart: cell-level and relation-level KPI improvement | Ananyaa | The one chart that sells the platform to any operator VP |
 | End-to-end test: fresh CSV -> train -> evaluate -> dashboard | Harshit | Script runs unattended, produces results |
-| 5-slide deck for SD: problem -> approach -> results -> next steps | Devika | Ready for demo day Jun 27 |
+| 5-slide deck: problem -> approach -> results -> next steps (reusable for any operator pitch) | Devika | Ready for demo day Jun 27 |
 | Stretch: second reward variant for comparison | Anyone with time | Shows methodology rigor |
 
 ---
@@ -119,7 +117,7 @@ Do NOT show: "7 agents", anything claiming to be trained, any dashboard that doe
 | Before/after chart exists | Yes, for 1 reward variant | 2 variants |
 | Docker container runs | Yes | Helm chart |
 | Streamlit dashboard | Training curves + KPIs | Live inference |
-| SD can validate data format | Confirmed June 5 | - |
+| Fresh CSV produces results with 0 code changes | Yes (test with shuffled column order) | Different city topology |
 
 ---
 
