@@ -87,6 +87,7 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
             .reset_index(drop=True)
         )
 
+        self.pm_records = self.cell_pm.to_dict("records")
         self.n_steps = len(self.cell_pm)
         self.current_step = 0
 
@@ -101,7 +102,7 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
         self.action_space = spaces.MultiDiscrete([5, 7, 5, 3])
 
     def _update_state_from_replay(self, action: typing.Any = None) -> None:
-        row = self.cell_pm.iloc[self.current_step]
+        row = self.pm_records[self.current_step]
 
         base_rsrp = float(row["avg_rsrp_dBm"])
         base_rsrq = float(row["avg_rsrq_dB"])
@@ -154,7 +155,7 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
 
     def _get_reward(self) -> float:
         # v1: calculate reward based on simulated success, failure, and ping-pongs
-        row = self.cell_pm.iloc[self.current_step]
+        row = self.pm_records[self.current_step]
         attempts = float(row.get("ho_attempts_intra", 10.0))
 
         ho_success_intra = int(round(attempts * (self.ho_success_rate_pct / 100.0)))

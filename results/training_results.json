@@ -1,0 +1,59 @@
+{
+  "episode_rewards": [
+    28000.0,
+    58573.5,
+    89147.0,
+    119720.5,
+    150294.0
+  ],
+  "runs": [
+    {
+      "run_index": 1,
+      "mlflow_run_id": "0db4027a71674f6e891dd22892bff501",
+      "mean_reward": 150294.0,
+      "ho_success_rate": 95.27004166666666,
+      "ping_pong_rate": 0.026029266737725005,
+      "checkpoint_path": "checkpoints\\ppo_mro_run_1.zip"
+    },
+    {
+      "run_index": 2,
+      "mlflow_run_id": "1763aca5a0fb48f7966dddb2bdf436a8",
+      "mean_reward": 144560.0,
+      "ho_success_rate": 95.27004166666666,
+      "ping_pong_rate": 0.026029266737725005,
+      "checkpoint_path": "checkpoints\\ppo_mro_run_2.zip"
+    },
+    {
+      "run_index": 3,
+      "mlflow_run_id": "587dee767ef24972913d023cf7da5f64",
+      "mean_reward": 144516.0,
+      "ho_success_rate": 95.27004166666666,
+      "ping_pong_rate": 0.026029266737725005,
+      "checkpoint_path": "checkpoints\\ppo_mro_run_3.zip"
+    },
+    {
+      "run_index": 4,
+      "mlflow_run_id": "90396279f194474f9e0f1fa8306df8e6",
+      "mean_reward": 146480.0,
+      "ho_success_rate": 95.27004166666666,
+      "ping_pong_rate": 0.026029266737725005,
+      "checkpoint_path": "checkpoints\\ppo_mro_run_4.zip"
+    },
+    {
+      "run_index": 5,
+      "mlflow_run_id": "68a9ca13f1f44c7f8804e2aad1c2671b",
+      "mean_reward": 148204.0,
+      "ho_success_rate": 95.27004166666666,
+      "ping_pong_rate": 0.026029266737725005,
+      "checkpoint_path": "checkpoints\\ppo_mro_run_5.zip"
+    }
+  ],
+  "best_run": {
+    "run_index": 1,
+    "mlflow_run_id": "0db4027a71674f6e891dd22892bff501",
+    "mean_reward": 150294.0,
+    "ho_success_rate": 95.27004166666666,
+    "ping_pong_rate": 0.026029266737725005,
+    "checkpoint_path": "checkpoints\\ppo_mro_run_1.zip"
+  }
+}

@@ -65,6 +65,7 @@ class ForgeAgent:
                 env,
                 verbose=0,
                 seed=42,
+                device="cpu",
             )
 
             # 3. Train the model
@@ -96,7 +97,7 @@ class ForgeAgent:
         if not model_path.exists():
             raise FileNotFoundError(f"Model checkpoint not found: {model_path}")
 
-        model = PPO.load(str(model_path))
+        model = PPO.load(str(model_path), device="cpu")
 
         total_rewards = []
         success_rates = []

@@ -174,6 +174,7 @@ def run_episode(
             raise ValueError(msg)
 
         obs, _info = env.reset(seed=seed)
+        env.action_space.seed(seed)
 
         step_rewards: list[float] = []
         terminated = False
