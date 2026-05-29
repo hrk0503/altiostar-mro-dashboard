@@ -19,3 +19,4 @@ mlartifacts/
 !data/synthetic/*.csv
 .coverage
 htmlcov/
+checkpoints/
