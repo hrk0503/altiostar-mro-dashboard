@@ -78,7 +78,6 @@ class TestMapToSchema:
         result = map_to_schema(inferred, schema)
         assert "extra_col" not in result
 
-
 pytestmark = pytest.mark.skipif(
     not (DATA_DIR / "site_database.csv").exists(),
     reason="Real CSVs not available in CI",
