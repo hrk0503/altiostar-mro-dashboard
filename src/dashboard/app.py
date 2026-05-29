@@ -47,13 +47,13 @@ col1.metric(
     "Cluster HO Success",
     f"{kpis['ho_success_rate_pct'].mean():.2f}%",
     delta=f"{kpis['ho_success_rate_pct'].mean() - 99:.2f}% vs 99% target",
-    delta_color="inverse",
+    delta_color="normal",
 )
 col2.metric(
     "Problem Cells",
     len(problem_cells),
     delta=f"{len(problem_cells)} of 75 cells",
-    delta_color="inverse",
+    delta_color="normal",
 )
 col3.metric(
     "Avg Ping-Pong Rate",
@@ -63,7 +63,7 @@ col4.metric(
     "Gap to Target",
     "2.77%",
     delta="PPO agent needs to close this",
-    delta_color="inverse",
+    delta_color="normal",
 )
 
 st.divider()
@@ -88,26 +88,31 @@ st.dataframe(
 
 st.divider()
 
-# ── Row 4 — Baseline placeholder (Shourya's PPO will fill this) ───────────────
-st.header("Training Curves (Live: Phase 1)")
-st.info(
-    "⏳ PPO training in progress (Track A). "
-    "Training curves will appear here once Shourya's first run is logged to MLflow.",
-    icon="📈",
-)
+# ── Row 4 — Training Curves ────────────────────────────────────────────────────
+st.header("Training Curves (Live — Phase 1)")
+
+training_results_path = Path("results/training_results.json")
+
+if training_results_path.exists():
+    with open(training_results_path) as f:
+        training = json.load(f)
+    rewards = training.get("episode_rewards", [])
+    if rewards:
+        chart_df = pd.DataFrame({"Episode": range(len(rewards)), "Reward": rewards})
+        st.line_chart(chart_df.set_index("Episode"))
+else:
+    st.info("⏳ Waiting for Shourya's PPO training run. File expected at results/training_results.json", icon="📈")
 
 col_a, col_b = st.columns(2)
+
 with col_a:
     st.subheader("Random Policy Baseline")
     if baseline:
-        with col_a:
-            st.subheader("Random Policy Baseline")
-            if baseline:
-                st.metric("Cluster HO Success", f"{baseline['cluster_ho_success_rate_pct']:.2f}%", delta=f"{baseline['cluster_ho_success_rate_pct'] - 99:.2f}% vs 99% target", delta_color="normal")
-                st.metric("Problem Cells HO Success", f"{baseline['problem_cells_ho_success_rate_pct']:.2f}%")
-                st.metric("Normal Cells HO Success", f"{baseline['normal_cells_ho_success_rate_pct']:.2f}%")
-                st.metric("Ping-Pong Rate", f"{baseline['cluster_pingpong_rate_pct']:.2f}%")
-                st.metric("Mean Reward per Step", f"{baseline['cluster_mean_reward_per_step']:.2f}")
+        st.metric("Cluster HO Success", f"{baseline['cluster_ho_success_rate_pct']:.2f}%", delta=f"{baseline['cluster_ho_success_rate_pct'] - 99:.2f}% vs 99% target", delta_color="normal")
+        st.metric("Problem Cells HO Success", f"{baseline['problem_cells_ho_success_rate_pct']:.2f}%")
+        st.metric("Normal Cells HO Success", f"{baseline['normal_cells_ho_success_rate_pct']:.2f}%")
+        st.metric("Ping-Pong Rate", f"{baseline['cluster_pingpong_rate_pct']:.2f}%")
+        st.metric("Mean Reward per Step", f"{baseline['cluster_mean_reward_per_step']:.2f}")
     else:
         st.warning("results/random_baseline.json not found")
 
