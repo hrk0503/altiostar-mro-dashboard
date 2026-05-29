@@ -7,7 +7,12 @@ import pandas as pd
 import pytest
 
 from src.pipeline.loader import DATA_DIR
-from src.pipeline.models import ClusterKPISummary, NeighborRelation, PMRecord, SiteRecord
+from src.pipeline.models import (
+    ClusterKPISummary,
+    NeighborRelation,
+    PMRecord,
+    SiteRecord,
+)
 
 
 @pytest.fixture
@@ -18,76 +23,87 @@ def data_dir() -> Path:
 @pytest.fixture
 def sample_site() -> SiteRecord:
     return SiteRecord(
-        cell_id="CELL_000_0",
-        site_id="SITE_000",
-        sector=0,
-        band=1,
-        latitude=35.6580,
-        longitude=139.7016,
-        azimuth=0,
-        mechanical_tilt=4.0,
-        electrical_tilt=2.0,
-        tx_power_dbm=43.0,
-        antenna_height_m=30.0,
-        frequency_mhz=2100,
+        cell_id="RKSB-001-1",
+        enodeb_id="RKSB-001",
+        site_name="Shibuya-Site-001",
+        latitude=35.662183,
+        longitude=139.68735,
+        antenna_height_m=45,
+        sector=1,
+        azimuth_deg=357,
+        electrical_tilt_deg=4,
+        mechanical_tilt_deg=0,
+        total_tilt_deg=4,
+        clutter_type="Dense Urban",
+        elevation_m=60.6,
+        frequency_band="Band 41 (2500MHz)",
+        pci=4,
+        tac=12001,
+        vendor="Altiostar",
+        technology="LTE",
+        status="Active",
     )
 
 
 @pytest.fixture
 def sample_neighbor() -> NeighborRelation:
     return NeighborRelation(
-        source_cell="CELL_000_0",
-        target_cell="CELL_001_0",
-        cio_db=2.0,
-        distance_km=0.5,
-        handover_count_monthly=1500,
-        handover_success_rate=0.96,
-        ping_pong_rate=0.02,
+        serving_cell="RKSB-001-1",
+        neighbor_cell="RKSB-001-2",
+        neighbor_rank=1,
+        distance_m=0.0,
+        cell_individual_offset_dB=0,
+        handover_allowed="Yes",
+        relation_type="Inter-Frequency",
+        last_updated="2026-04-01",
     )
 
 
 @pytest.fixture
 def sample_pm_record() -> PMRecord:
     return PMRecord(
-        cell_id="CELL_000_0",
-        timestamp="2026-04-01T00:00:00",
-        rsrp_dbm=-85.0,
-        rsrq_db=-10.0,
-        sinr_db=12.0,
-        prb_utilization_pct=45.0,
-        active_ue_count=30,
-        rrc_connected_ue=50,
-        ho_attempt=20,
-        ho_success=19,
-        ho_failure=1,
-        ho_ping_pong=0,
-        late_ho=0,
-        early_ho=0,
-        wrong_cell_ho=0,
-        dl_throughput_mbps=80.0,
-        ul_throughput_mbps=20.0,
-        cqi_avg=10.0,
-        rlf_count=2,
-        call_drop_rate_pct=0.5,
+        timestamp_utc="2026-04-01 00:00:00",
+        rop_duration_min=15,
+        cell_id="RKSB-001-1",
+        enodeb_id="RKSB-001",
+        ho_attempts_intra=18,
+        ho_success_intra=18,
+        ho_failure_intra=0,
+        ho_failure_too_early=0,
+        ho_failure_too_late=0,
+        ho_failure_wrong_cell=0,
+        ho_pingpong_count=0,
+        ho_success_rate_pct=100.0,
+        ho_failure_rate_pct=0.0,
+        avg_rsrp_dBm=-94.2,
+        avg_rsrq_dB=-13.8,
+        avg_sinr_dB=13.4,
+        rrc_conn_attempts=79,
+        rrc_conn_success=77,
+        prb_utilization_dl_pct=3.8,
+        prb_utilization_ul_pct=8.2,
+        active_ue_avg=3,
+        max_ue_connected=10,
     )
 
 
 @pytest.fixture
 def sample_cluster_kpi() -> ClusterKPISummary:
     return ClusterKPISummary(
-        cell_id="CELL_000_0",
-        site_id="SITE_000",
-        band=1,
-        monthly_ho_attempts=60000,
-        monthly_ho_success_rate=0.97,
-        monthly_ho_failure_rate=0.03,
-        monthly_ping_pong_rate=0.01,
-        avg_rsrp_dbm=-85.0,
-        avg_sinr_db=12.0,
-        avg_prb_utilization_pct=40.0,
-        avg_dl_throughput_mbps=80.0,
-        total_rlf_count=30,
-        problem_flag=False,
+        cell_id="RKSB-001-1",
+        enodeb_id="RKSB-001",
+        clutter_type="Dense Urban",
+        total_ho_attempts=202227,
+        total_ho_success=198073,
+        total_ho_failures=4154,
+        ho_failure_rate_pct=2.05,
+        failure_too_early=447,
+        failure_too_late=718,
+        failure_wrong_cell=2989,
+        total_pingpong=2200,
+        pingpong_rate_pct=1.11,
+        avg_rsrp_dBm=-85.0,
+        problem_cell="No",
     )
 
 

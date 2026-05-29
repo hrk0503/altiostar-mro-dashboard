@@ -1,4 +1,3 @@
-"""Typed Pydantic models for all 4 Altiostar MRO synthetic CSVs."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -7,100 +6,118 @@ from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 
 class SiteRecord(BaseModel):
-    """Single cell/sector from site_database.csv (75 rows: 25 sites x 3 sectors)."""
+    """Single cell/sector from site_database.csv"""
     cell_id: str
-    site_id: str
-    sector: int = Field(ge=0, le=2)
-    band: int
+    enodeb_id: str
+    site_name: str
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
-    azimuth: int = Field(ge=-10, le=370)
-    mechanical_tilt: float = Field(ge=0, le=15)
-    electrical_tilt: float = Field(ge=0, le=15)
-    tx_power_dbm: float = Field(ge=20, le=60)
     antenna_height_m: float = Field(ge=5, le=100)
-    frequency_mhz: int = Field(gt=0)
+    sector: int = Field(ge=1, le=3)
+    azimuth_deg: int = Field(ge=-10, le=370)
+    electrical_tilt_deg: float = Field(ge=0, le=15)
+    mechanical_tilt_deg: float = Field(ge=0, le=15)
+    total_tilt_deg: float = Field(ge=0, le=30)
+    clutter_type: str
+    elevation_m: float
+    frequency_band: str
+    pci: int = Field(ge=0)
+    tac: int = Field(ge=0)
+    vendor: str
+    technology: str
+    status: str
 
-    @field_validator("band")
+    @field_validator("frequency_band")
     @classmethod
-    def validate_band(cls, v: int) -> int:
-        if v not in (1, 3, 41):
-            raise ValueError(f"Invalid band {v}, expected 1, 3, or 41")
+    def validate_band(cls, v: str) -> str:
+        valid = {"Band 1 (2100MHz)", "Band 3 (1800MHz)", "Band 41 (2500MHz)"}
+        if v not in valid:
+            raise ValueError(f"Invalid frequency_band '{v}', expected one of {valid}")
         return v
 
 
 class NeighborRelation(BaseModel):
-    """Single neighbor pair from neighbor_relations.csv."""
-    source_cell: str
-    target_cell: str
-    cio_db: float = Field(ge=-15, le=15)
-    distance_km: float = Field(ge=0)
-    handover_count_monthly: int = Field(ge=0)
-    handover_success_rate: float = Field(ge=0, le=1)
-    ping_pong_rate: float = Field(ge=0, le=1)
+    """Single neighbor pair from neighbor_relations.csv"""
+    serving_cell: str
+    neighbor_cell: str
+    neighbor_rank: int = Field(ge=0)
+    distance_m: float = Field(ge=0)
+    cell_individual_offset_dB: float = Field(ge=-15, le=15)
+    handover_allowed: bool
+    relation_type: str
+    last_updated: str
 
-    @field_validator("target_cell")
+    @field_validator("handover_allowed", mode="before")
+    @classmethod
+    def coerce_handover_allowed(cls, v: object) -> bool:
+        """Map 'Yes'/'No' strings to bool."""
+        if isinstance(v, str):
+            return v.strip().lower() == "yes"
+        return bool(v)
+
+    @field_validator("neighbor_cell")
     @classmethod
     def source_and_target_differ(cls, v: str, info: ValidationInfo) -> str:
-        if info.data.get("source_cell") == v:
-            raise ValueError("source_cell and target_cell must differ")
+        if info.data.get("serving_cell") == v:
+            raise ValueError("serving_cell and neighbor_cell must differ")
         return v
 
 
 class PMRecord(BaseModel):
-    """Single 15-min ROP from pm_data_april2026.csv (216K rows)."""
+    """Single 15-min ROP from pm_data_april2026.csv (216K rows)"""
+    timestamp_utc: datetime
+    rop_duration_min: int = Field(ge=0)
     cell_id: str
-    timestamp: datetime
-    rsrp_dbm: float = Field(ge=-140, le=-40)
-    rsrq_db: float = Field(ge=-30, le=0)
-    sinr_db: float = Field(ge=-10, le=40)
-    prb_utilization_pct: float = Field(ge=0, le=100)
-    active_ue_count: int = Field(ge=0)
-    rrc_connected_ue: int = Field(ge=0)
-    ho_attempt: int = Field(ge=0)
-    ho_success: int = Field(ge=0)
-    ho_failure: int = Field(ge=0)
-    ho_ping_pong: int = Field(ge=0)
-    late_ho: int = Field(ge=0)
-    early_ho: int = Field(ge=0)
-    wrong_cell_ho: int = Field(ge=0)
-    dl_throughput_mbps: float = Field(ge=0)
-    ul_throughput_mbps: float = Field(ge=0)
-    cqi_avg: float = Field(ge=1, le=15)
-    rlf_count: int = Field(ge=0)
-    call_drop_rate_pct: float = Field(ge=0, le=100)
+    enodeb_id: str
+    ho_attempts_intra: int = Field(ge=0)
+    ho_success_intra: int = Field(ge=0)
+    ho_failure_intra: int = Field(ge=0)
+    ho_failure_too_early: int = Field(ge=0)
+    ho_failure_too_late: int = Field(ge=0)
+    ho_failure_wrong_cell: int = Field(ge=0)
+    ho_pingpong_count: int = Field(ge=0)
+    ho_success_rate_pct: float = Field(ge=0, le=100)
+    ho_failure_rate_pct: float = Field(ge=0, le=100)
+    avg_rsrp_dBm: float = Field(ge=-140, le=-40)
+    avg_rsrq_dB: float = Field(ge=-30, le=0)
+    avg_sinr_dB: float = Field(ge=-10, le=40)
+    rrc_conn_attempts: int = Field(ge=0)
+    rrc_conn_success: int = Field(ge=0)
+    prb_utilization_dl_pct: float = Field(ge=0, le=100)
+    prb_utilization_ul_pct: float = Field(ge=0, le=100)
+    active_ue_avg: float = Field(ge=0)
+    max_ue_connected: int = Field(ge=0)
 
-    @field_validator("ho_success")
+    @field_validator("ho_success_intra")
     @classmethod
     def success_le_attempts(cls, v: int, info: ValidationInfo) -> int:
-        attempts = info.data.get("ho_attempt")
+        attempts = info.data.get("ho_attempts_intra")
         if attempts is not None and v > attempts:
-            raise ValueError(f"ho_success ({v}) > ho_attempt ({attempts})")
+            raise ValueError(f"ho_success_intra ({v}) > ho_attempts_intra ({attempts})")
         return v
 
 
 class ClusterKPISummary(BaseModel):
-    """Monthly aggregate per cell from cluster_kpi_summary.csv (75 rows)."""
+    """Monthly aggregate per cell from cluster_kpi_summary.csv (75 rows)"""
     cell_id: str
-    site_id: str
-    band: int
-    monthly_ho_attempts: int = Field(ge=0)
-    monthly_ho_success_rate: float = Field(ge=0, le=1)
-    monthly_ho_failure_rate: float = Field(ge=0, le=1)
-    monthly_ping_pong_rate: float = Field(ge=0, le=1)
-    avg_rsrp_dbm: float
-    avg_sinr_db: float
-    avg_prb_utilization_pct: float = Field(ge=0, le=100)
-    avg_dl_throughput_mbps: float = Field(ge=0)
-    total_rlf_count: int = Field(ge=0)
-    problem_flag: bool
+    enodeb_id: str
+    clutter_type: str
+    total_ho_attempts: int = Field(ge=0)
+    total_ho_success: int = Field(ge=0)
+    total_ho_failures: int = Field(ge=0)
+    ho_failure_rate_pct: float = Field(ge=0, le=100)
+    failure_too_early: int = Field(ge=0)
+    failure_too_late: int = Field(ge=0)
+    failure_wrong_cell: int = Field(ge=0)
+    total_pingpong: int = Field(ge=0)
+    pingpong_rate_pct: float = Field(ge=0, le=100)
+    avg_rsrp_dBm: float
+    problem_cell: bool
 
-    @field_validator("monthly_ho_failure_rate")
+    @field_validator("problem_cell", mode="before")
     @classmethod
-    def failure_rate_consistent(cls, v: float, info: ValidationInfo) -> float:
-        success = info.data.get("monthly_ho_success_rate")
-        if success is not None and abs(v - (1 - success)) > 0.01:
-            raise ValueError(
-                f"failure_rate ({v}) inconsistent with success_rate ({success})"
-            )
-        return v
+    def coerce_problem_cell(cls, v: object) -> bool:
+        """Map 'Yes'/'No' strings to bool."""
+        if isinstance(v, str):
+            return v.strip().lower() == "yes"
+        return bool(v)

@@ -1,109 +1,160 @@
-"""Tests for Pydantic data models — validates schema constraints."""
-
+"""Tests for Pydantic models -- field validation, edge cases, rejection of bad data."""
 import pytest
 from pydantic import ValidationError
 
-from src.models.cell_data import (
-    CellSite,
+from src.pipeline.models import (
     ClusterKPISummary,
     NeighborRelation,
     PMRecord,
-    RelationPMRecord,
+    SiteRecord,
 )
 
 
-class TestCellSite:
-    def test_valid_cell(self):
-        cell = CellSite(
-            cell_id="CELL_001_1",
-            site_id="SITE_001",
-            sector=1,
-            latitude=35.6762,
-            longitude=139.6503,
-            azimuth=0.0,
-            band="n77",
-            tx_power_dbm=43.0,
-            antenna_height_m=30.0,
-            mechanical_tilt=2.0,
-            electrical_tilt=4.0,
-        )
-        assert cell.cell_id == "CELL_001_1"
+class TestSiteRecord:
+    def test_valid_record(self, sample_site):
+        assert sample_site.cell_id == "RKSB-001-1"
+        assert sample_site.frequency_band == "Band 41 (2500MHz)"
 
-    def test_invalid_sector(self):
+    def test_invalid_band_rejected(self, sample_site):
+        data = sample_site.model_dump()
+        data["frequency_band"] = "Band 99 (9999MHz)"
+        with pytest.raises(ValidationError, match="Invalid frequency_band"):
+            SiteRecord.model_validate(data)
+
+    def test_sector_out_of_range(self, sample_site):
+        data = sample_site.model_dump()
+        data["sector"] = 5
         with pytest.raises(ValidationError):
-            CellSite(
-                cell_id="X", site_id="X", sector=4,
-                latitude=0, longitude=0, azimuth=0, band="n77",
-                tx_power_dbm=0, antenna_height_m=0,
-                mechanical_tilt=0, electrical_tilt=0,
-            )
+            SiteRecord.model_validate(data)
+
+    def test_latitude_out_of_range(self, sample_site):
+        data = sample_site.model_dump()
+        data["latitude"] = 100.0
+        with pytest.raises(ValidationError):
+            SiteRecord.model_validate(data)
+
+    def test_pci_out_of_range(self, sample_site):
+        data = sample_site.model_dump()
+        data["pci"] = -1
+        with pytest.raises(ValidationError):
+            SiteRecord.model_validate(data)
 
 
 class TestNeighborRelation:
-    def test_valid_relation(self):
-        nr = NeighborRelation(
-            source_cell_id="A", target_cell_id="B",
-            cio_db=3.0, distance_m=500.0, is_intra_freq=True,
-        )
-        assert nr.cio_db == 3.0
+    def test_valid_record(self, sample_neighbor):
+        assert sample_neighbor.serving_cell == "RKSB-001-1"
+        assert sample_neighbor.distance_m == 0.0
 
-    def test_cio_out_of_range(self):
-        with pytest.raises(ValidationError):
+    def test_same_serving_neighbor_rejected(self):
+        with pytest.raises(ValidationError, match="must differ"):
             NeighborRelation(
-                source_cell_id="A", target_cell_id="B",
-                cio_db=25.0, distance_m=500.0, is_intra_freq=True,
+                serving_cell="RKSB-001-1",
+                neighbor_cell="RKSB-001-1",
+                neighbor_rank=1,
+                distance_m=0.0,
+                cell_individual_offset_dB=0,
+                handover_allowed="Yes",
+                relation_type="Intra-Frequency",
+                last_updated="2026-04-01",
             )
+
+    def test_cio_out_of_range(self, sample_neighbor):
+        data = sample_neighbor.model_dump()
+        data["cell_individual_offset_dB"] = 20
+        with pytest.raises(ValidationError):
+            NeighborRelation.model_validate(data)
+
+    def test_negative_distance_rejected(self, sample_neighbor):
+        data = sample_neighbor.model_dump()
+        data["distance_m"] = -1.0
+        with pytest.raises(ValidationError):
+            NeighborRelation.model_validate(data)
 
 
 class TestPMRecord:
-    def test_valid_record(self):
-        pm = PMRecord(
-            cell_id="CELL_001_1", timestamp="2026-04-01T00:00:00",
-            ho_attempts=100, ho_successes=95, ho_failures=3, ho_ping_pongs=2,
-            rsrp_mean=-85.0, rsrq_mean=-10.0, sinr_mean=15.0,
-            prb_utilization=0.65, connected_ues=42,
-            throughput_dl_mbps=150.0, throughput_ul_mbps=30.0,
-        )
-        assert pm.ho_attempts == 100
+    def test_valid_record(self, sample_pm_record):
+        assert sample_pm_record.ho_attempts_intra == 18
+        assert sample_pm_record.ho_success_intra == 18
 
-    def test_negative_ho_attempts(self):
+    def test_success_exceeds_attempts_rejected(self, sample_pm_record):
+        data = sample_pm_record.model_dump()
+        data["ho_success_intra"] = 25
+        data["ho_attempts_intra"] = 20
+        with pytest.raises(
+            ValidationError,
+            match="ho_success_intra.*ho_attempts_intra",
+        ):
+            PMRecord.model_validate(data)
+
+    def test_rsrp_too_high_rejected(self, sample_pm_record):
+        data = sample_pm_record.model_dump()
+        data["avg_rsrp_dBm"] = 0.0
         with pytest.raises(ValidationError):
-            PMRecord(
-                cell_id="X", timestamp="X",
-                ho_attempts=-1, ho_successes=0, ho_failures=0, ho_ping_pongs=0,
-                rsrp_mean=0, rsrq_mean=0, sinr_mean=0,
-                prb_utilization=0, connected_ues=0,
-                throughput_dl_mbps=0, throughput_ul_mbps=0,
-            )
+            PMRecord.model_validate(data)
 
-
-class TestRelationPMRecord:
-    def test_valid_relation_record(self):
-        rec = RelationPMRecord(
-            source_cell_id="CELL_001_1", target_cell_id="CELL_002_3",
-            timestamp="2026-04-01T00:00:00",
-            ho_attempts=50, ho_successes=48, ho_failures=1,
-            too_early_ho=0, too_late_ho=1, wrong_cell=0,
-            correct_cell=48, ping_pong=1,
-        )
-        assert rec.ho_attempts == 50
-
-    def test_negative_counter_rejected(self):
+    def test_prb_above_100_rejected(self, sample_pm_record):
+        data = sample_pm_record.model_dump()
+        data["prb_utilization_dl_pct"] = 150.0
         with pytest.raises(ValidationError):
-            RelationPMRecord(
-                source_cell_id="A", target_cell_id="B",
-                timestamp="X",
-                ho_attempts=-1, ho_successes=0, ho_failures=0,
-                too_early_ho=0, too_late_ho=0, wrong_cell=0,
-                correct_cell=0, ping_pong=0,
-            )
+            PMRecord.model_validate(data)
+
+    def test_negative_ho_attempts_rejected(self, sample_pm_record):
+        data = sample_pm_record.model_dump()
+        data["ho_attempts_intra"] = -1
+        with pytest.raises(ValidationError):
+            PMRecord.model_validate(data)
 
 
 class TestClusterKPISummary:
-    def test_problem_cell(self):
-        kpi = ClusterKPISummary(
-            cell_id="CELL_005_2",
-            ho_success_rate=0.92, ho_failure_rate=0.06, ping_pong_rate=0.02,
-            avg_rsrp=-95.0, avg_sinr=8.0, is_problem_cell=True,
-        )
-        assert kpi.is_problem_cell is True
+    def test_valid_record(self, sample_cluster_kpi):
+        assert sample_cluster_kpi.problem_cell is False
+        assert sample_cluster_kpi.ho_failure_rate_pct == 2.05
+
+    def test_negative_attempts_rejected(self, sample_cluster_kpi):
+        data = sample_cluster_kpi.model_dump()
+        data["total_ho_attempts"] = -5
+        with pytest.raises(ValidationError):
+            ClusterKPISummary.model_validate(data)
+
+    def test_failure_rate_above_100_rejected(self, sample_cluster_kpi):
+        data = sample_cluster_kpi.model_dump()
+        data["ho_failure_rate_pct"] = 150.0
+        with pytest.raises(ValidationError):
+            ClusterKPISummary.model_validate(data)
+
+    def test_problem_cell_yes_coerces_to_true(
+        self, sample_cluster_kpi,
+    ):
+        data = sample_cluster_kpi.model_dump()
+        data["problem_cell"] = "Yes"
+        record = ClusterKPISummary.model_validate(data)
+        assert record.problem_cell is True
+
+    def test_problem_cell_no_coerces_to_false(
+        self, sample_cluster_kpi,
+    ):
+        data = sample_cluster_kpi.model_dump()
+        data["problem_cell"] = "No"
+        record = ClusterKPISummary.model_validate(data)
+        assert record.problem_cell is False
+
+
+class TestBoolCoercion:
+    """Verify Yes/No string → bool for CSV fields."""
+
+    def test_handover_allowed_yes(self, sample_neighbor):
+        assert sample_neighbor.handover_allowed is True
+
+    def test_handover_allowed_no(self, sample_neighbor):
+        data = sample_neighbor.model_dump()
+        data["handover_allowed"] = "No"
+        record = NeighborRelation.model_validate(data)
+        assert record.handover_allowed is False
+
+    def test_handover_allowed_bool_passthrough(
+        self, sample_neighbor,
+    ):
+        data = sample_neighbor.model_dump()
+        data["handover_allowed"] = True
+        record = NeighborRelation.model_validate(data)
+        assert record.handover_allowed is True
