@@ -130,7 +130,7 @@ class RelationPMRecord(BaseModel):
     """
     source_cell_id: str
     target_cell_id: str
-    timestamp: datetime
+    timestamp_utc: datetime
     ho_attempts: int = Field(ge=0)
     ho_successes: int = Field(ge=0)
     ho_failures: int = Field(ge=0)
@@ -147,4 +147,4 @@ class RelationPMRecord(BaseModel):
         attempts = info.data.get("ho_attempts")
         if attempts is not None and v > attempts:
             raise ValueError(f"ho_successes ({v}) > ho_attempts ({attempts})")
-        return v
+        return v
