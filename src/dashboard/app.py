@@ -118,4 +118,16 @@ with col_a:
 
 with col_b:
     st.subheader("Trained PPO Agent")
-    st.info("Pending — Track A output")
+    if training_results_path.exists() and "best_run" in training:
+        best_run = training["best_run"]
+        st.metric(
+            "Cluster HO Success",
+            f"{best_run['ho_success_rate']:.2f}%",
+            delta=f"{best_run['ho_success_rate'] - 99:.2f}% vs 99% target",
+            delta_color="normal",
+        )
+        st.metric("Ping-Pong Rate", f"{best_run['ping_pong_rate'] * 100:.2f}%")
+        st.metric("Mean Reward", f"{best_run['mean_reward']:.2f}")
+        st.success(f"MLflow Run: {best_run['mlflow_run_id'][:8]}")
+    else:
+        st.info("Pending — Track A output")

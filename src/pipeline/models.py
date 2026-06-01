@@ -121,3 +121,30 @@ class ClusterKPISummary(BaseModel):
         if isinstance(v, str):
             return v.strip().lower() == "yes"
         return bool(v)
+
+
+class RelationPMRecord(BaseModel):
+    """Relation-level PM record — one per source-target cell pair per ROP.
+
+    Soumyadeep confirmed (May 27): PM counters are at relation level.
+    """
+    source_cell_id: str
+    target_cell_id: str
+    timestamp: datetime
+    ho_attempts: int = Field(ge=0)
+    ho_successes: int = Field(ge=0)
+    ho_failures: int = Field(ge=0)
+    too_early_ho: int = Field(ge=0)
+    too_late_ho: int = Field(ge=0)
+    wrong_cell: int = Field(ge=0)
+    correct_cell: int = Field(ge=0)
+    ping_pong: int = Field(ge=0)
+    cio_db: float = Field(ge=-24.0, le=24.0)
+
+    @field_validator("ho_successes")
+    @classmethod
+    def success_le_attempts(cls, v: int, info: ValidationInfo) -> int:
+        attempts = info.data.get("ho_attempts")
+        if attempts is not None and v > attempts:
+            raise ValueError(f"ho_successes ({v}) > ho_attempts ({attempts})")
+        return v

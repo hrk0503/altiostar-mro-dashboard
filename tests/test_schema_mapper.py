@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
-from hypothesis import given
+from hypothesis import given, settings, HealthCheck
 from hypothesis import strategies as st
 
 from src.pipeline.loader import DATA_DIR
@@ -107,6 +107,7 @@ class TestRunSchemaMapper:
 
 class TestSchemaMapperHypothesis:
 
+    @settings(suppress_health_check=[HealthCheck.too_slow])
     @given(st.dictionaries(
         keys=st.text(min_size=1, max_size=20),
         values=st.one_of(
@@ -123,6 +124,7 @@ class TestSchemaMapperHypothesis:
         result = infer_column_types(df)
         assert isinstance(result, dict)
 
+    @settings(suppress_health_check=[HealthCheck.too_slow])
     @given(st.dictionaries(
         keys=st.text(min_size=1, max_size=20),
         values=st.one_of(

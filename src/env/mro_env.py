@@ -87,6 +87,7 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
             .reset_index(drop=True)
         )
 
+        self.pm_records = self.cell_pm.to_dict("records")
         self.n_steps = len(self.cell_pm)
         self.current_step = 0
 
@@ -100,29 +101,70 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
         # [tilt_delta, power_delta, cio_delta, neighbor_toggle]
         self.action_space = spaces.MultiDiscrete([5, 7, 5, 3])
 
+    def _update_state_from_replay(self, action: typing.Any = None) -> None:
+        row = self.pm_records[self.current_step]
+
+        base_rsrp = float(row["avg_rsrp_dBm"])
+        base_rsrq = float(row["avg_rsrq_dB"])
+        base_sinr = float(row["avg_sinr_dB"])
+        self.prb_utilization_dl_pct = float(row["prb_utilization_dl_pct"])
+        self.prb_utilization_ul_pct = float(row["prb_utilization_ul_pct"])
+        base_success = float(row["ho_success_rate_pct"])
+        base_pingpong = float(row["ho_pingpong_count"])
+
+        if action is not None:
+            # action shape is MultiDiscrete([5, 7, 5, 3])
+            tilt_delta = float(action[0] - 2) * 1.0
+            power_delta = float(action[1] - 3) * 1.0
+            cio_delta = float(action[2] - 2) * 1.0
+
+            # Signal quality physics: Power delta boosts signals, tilt misalignment harms them
+            self.avg_rsrp_dBm = float(np.clip(base_rsrp + power_delta - 1.5 * abs(tilt_delta), -140.0, -40.0))
+            self.avg_sinr_dB = float(np.clip(base_sinr + 0.5 * power_delta - 2.0 * abs(tilt_delta), -10.0, 30.0))
+            self.avg_rsrq_dB = float(np.clip(base_rsrq + 0.2 * power_delta - 0.5 * abs(tilt_delta), -20.0, 0.0))
+
+            # Handover physics: Deviating from 0-CIO and 0-tilt harms handover success
+            success_impact = - 5.0 * abs(cio_delta) - 3.0 * abs(tilt_delta)
+            if cio_delta == 0 and tilt_delta == 0:
+                success_impact = 2.0  # boost if optimal
+
+            self.ho_success_rate_pct = float(np.clip(base_success + success_impact, 0.0, 100.0))
+            self.ho_failure_rate_pct = float(100.0 - self.ho_success_rate_pct)
+
+            # Ping-pong physics: excess power & high positive CIO trigger ping-pongs
+            self.ho_pingpong_count = float(max(0.0, base_pingpong + 3.0 * cio_delta + 1.0 * power_delta))
+        else:
+            self.avg_rsrp_dBm = base_rsrp
+            self.avg_rsrq_dB = base_rsrq
+            self.avg_sinr_dB = base_sinr
+            self.ho_success_rate_pct = base_success
+            self.ho_failure_rate_pct = float(row["ho_failure_rate_pct"])
+            self.ho_pingpong_count = base_pingpong
+
     def _get_obs(self) -> np.ndarray:
-        row = self.cell_pm.iloc[self.current_step]
         return np.array([
-            row["avg_rsrp_dBm"],
-            row["avg_rsrq_dB"],
-            row["avg_sinr_dB"],
-            row["prb_utilization_dl_pct"],
-            row["prb_utilization_ul_pct"],
-            row["ho_success_rate_pct"],
-            row["ho_failure_rate_pct"],
-            row["ho_pingpong_count"],
+            self.avg_rsrp_dBm,
+            self.avg_rsrq_dB,
+            self.avg_sinr_dB,
+            self.prb_utilization_dl_pct,
+            self.prb_utilization_ul_pct,
+            self.ho_success_rate_pct,
+            self.ho_failure_rate_pct,
+            self.ho_pingpong_count,
         ], dtype=np.float32)
 
     def _get_reward(self) -> float:
-        # TODO Phase 1: Reward normalization or scaling. Currently reward depends on raw counts,
-        # which varies by traffic volume. Consider normalizing by ho_attempts_intra or
-        # using rates, e.g.:
-        # reward = row["ho_success_rate_pct"] * 0.01 - row["ho_failure_rate_pct"] * 0.05 - ...
-        row = self.cell_pm.iloc[self.current_step]
+        # v1: calculate reward based on simulated success, failure, and ping-pongs
+        row = self.pm_records[self.current_step]
+        attempts = float(row.get("ho_attempts_intra", 10.0))
+
+        ho_success_intra = int(round(attempts * (self.ho_success_rate_pct / 100.0)))
+        ho_failure_intra = int(round(attempts * (self.ho_failure_rate_pct / 100.0)))
+
         reward = 0.0
-        reward += row["ho_success_intra"] * 1.0
-        reward += row["ho_failure_intra"] * -5.0
-        reward += row["ho_pingpong_count"] * -2.0
+        reward += ho_success_intra * 1.0
+        reward += ho_failure_intra * -5.0
+        reward += self.ho_pingpong_count * -2.0
         return float(reward)
 
     def reset(
@@ -136,6 +178,8 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
             self.current_step = int(self.np_random.integers(0, self.n_steps - 1))
         else:
             self.current_step = 0
+
+        self._update_state_from_replay(action=None)
         obs = self._get_obs()
         info = {"cell_id": self.cell_id, "step": self.current_step}
         return obs, info
@@ -143,32 +187,28 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
     def step(
         self, action: typing.Any
     ) -> tuple[np.ndarray, float, bool, bool, dict[str, typing.Any]]:
-        """
-        v0: Historical replay mode — actions are recorded but do not
-        affect state transitions. Environment replays real PM data row
-        by row. Action effect will be modelled in v1.
-        """
-        # TODO v1: Implement a simulation model where actions (tilt/power/CIO deltas,
-        # neighbor toggle) affect the KPIs (RSRP, RSRQ, SINR, handover success/failure,
-        # ping-pong).
-        logger.warning(
-            "v0: historical replay only — actions are recorded but do not affect state transitions"
-        )
+        # Compute reward of previous step before we increment the time-series row
         reward = self._get_reward()
+
         self.current_step += 1
         terminated = self.current_step >= self.n_steps
         truncated = False
 
-        obs = np.zeros(8, dtype=np.float32) if terminated else self._get_obs()
+        if not terminated:
+            self._update_state_from_replay(action)
+            obs = self._get_obs()
+        else:
+            obs = np.zeros(8, dtype=np.float32)
 
         info = {
             "cell_id": self.cell_id,
             "step": self.current_step,
-            "action": action,
-            "action_effect": "none (replay mode)",
+            "action": [int(x) for x in action] if hasattr(action, "__len__") else int(action),
+            "action_effect": "simulated transition physics v1",
         }
 
         return obs, reward, terminated, truncated, info
 
     def render(self) -> None:
         pass
+

@@ -21,7 +21,8 @@ def test_env_runs_random_policy():
 
     assert info["step"] > 0
     assert "action_effect" in info
-    assert info["action_effect"] == "none (replay mode)"
+    assert info["action_effect"] == "simulated transition physics v1"
+
 
 
 def test_env_termination_and_reset():

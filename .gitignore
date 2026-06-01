@@ -17,7 +17,22 @@ venv/
 mlruns/
 mlartifacts/
 *.parquet
+<<<<<<< HEAD
 data/synthetic/*.csv
 .coverage
 htmlcov/
 data/generate_pm_relation.py
+=======
+!data/synthetic/*.csv
+data/synthetic/pm_data_relation_level.csv
+data/pm_data_relation_level.csv
+.coverage
+htmlcov/
+checkpoints/
+data/pm_data_april2026.csv
+data/cluster_kpi_summary.csv
+data/neighbor_relations.csv
+data/site_database.csv
+data/processed/
+
+>>>>>>> origin/feature/shourya-mro-env
