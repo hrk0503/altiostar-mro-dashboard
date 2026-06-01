@@ -18,6 +18,8 @@ mlruns/
 mlartifacts/
 *.parquet
 !data/synthetic/*.csv
+data/synthetic/pm_data_relation_level.csv
+data/pm_data_relation_level.csv
 .coverage
 htmlcov/
 checkpoints/
