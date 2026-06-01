@@ -1,5 +1,6 @@
 import logging
 import typing
+from pathlib import Path
 
 import gymnasium as gym
 import numpy as np
@@ -12,96 +13,156 @@ logger = logging.getLogger(__name__)
 class MROEnv(gym.Env[typing.Any, typing.Any]):
     """
     MRO (Mobility Robustness Optimization) Gymnasium Environment.
-
-    Observation space: RSRP, RSRQ, SINR, PRB utilization, HO success rate,
-                       HO failure rate, ping-pong count (per cell, per step)
-    Action space: tilt delta, power delta, CIO delta, neighbor list toggle
-    Reward: +1 HO success, -5 HO failure, -2 ping-pong
-
-    Memory Footprint Note:
-    This environment currently loads the entire PM DataFrame into memory (via pd.read_csv)
-    and filters it. For 216K rows, this footprint is negligible (~15-20MB). However, when
-    scaling to millions of cells or longer time horizons, consider using chunked loading,
-    database queries, or memory-mapped formats (e.g. Parquet) to avoid high memory overhead.
+    Supports both cell-level (v0/v1) and relation-level (v2) PM optimization dynamically.
     """
 
-    def __init__(self, pm_data_path: str, kpi_path: str, cell_id: str | None = None):
+    def __init__(
+        self,
+        pm_data_path: str | None = None,
+        kpi_path: str | None = None,
+        cell_id: str | None = None,
+    ):
         super().__init__()
 
-        self.pm_data = pd.read_csv(pm_data_path)
+        base_dir = Path(__file__).resolve().parents[2]
+        if pm_data_path is None:
+            # Default to relation-level if it exists, otherwise fallback to cell-level
+            rel_path = base_dir / "data" / "synthetic" / "pm_data_relation_level.csv"
+            if rel_path.exists():
+                pm_data_path = str(rel_path)
+            else:
+                pm_data_path = str(base_dir / "data" / "synthetic" / "pm_data_april2026.csv")
+        if kpi_path is None:
+            kpi_path = str(base_dir / "data" / "synthetic" / "cluster_kpi_summary.csv")
+
+        self.pm_data_raw = pd.read_csv(pm_data_path)
         self.kpi_data = pd.read_csv(kpi_path)
 
-        # Normalize PM data synthetic CSV schema to expected internal schema
-        rename_pm_cols = {
-            "timestamp": "timestamp_utc",
-            "rsrp_dbm": "avg_rsrp_dBm",
-            "rsrq_db": "avg_rsrq_dB",
-            "sinr_db": "avg_sinr_dB",
-            "ho_ping_pong": "ho_pingpong_count",
-            "ho_success": "ho_success_intra",
-            "ho_failure": "ho_failure_intra",
-        }
-        self.pm_data = self.pm_data.rename(
-            columns={k: v for k, v in rename_pm_cols.items() if k in self.pm_data.columns}
-        )
+        # Detect mode based on column schema
+        if "source_cell_id" in self.pm_data_raw.columns:
+            self.mode = "relation"
+            self.cell_id = cell_id or "relation_level_network"
+            
+            # Group relations
+            all_relations = list(self.pm_data_raw.groupby(["source_cell_id", "target_cell_id"]).groups.keys())
+            if cell_id:
+                self.relations = [(src, tgt) for (src, tgt) in all_relations if src == cell_id]
+            else:
+                self.relations = all_relations
+            
+            self.n_relations = len(self.relations)
+            
+            # Pre-group for fast O(1) step access
+            self.relation_groups = {}
+            for (src, tgt), group in self.pm_data_raw.groupby(["source_cell_id", "target_cell_id"]):
+                cio_dict = {}
+                for cio, cio_group in group.groupby("cio_db"):
+                    cio_dict[cio] = cio_group.to_dict("records")
+                self.relation_groups[(src, tgt)] = {
+                    "cio_dict": cio_dict,
+                    "all_cios": np.array(list(cio_dict.keys())),
+                    "full_df": group.reset_index(drop=True),
+                }
 
-        if "timestamp_utc" in self.pm_data.columns:
-            self.pm_data["timestamp_utc"] = pd.to_datetime(self.pm_data["timestamp_utc"])
+            self.n_steps = len(self.pm_data_raw) // len(all_relations) if len(all_relations) > 0 else 0
+            self.current_step = 0
+            self.episode_history = []
 
-        # Handle PRB utilization mapping
-        if (
-            "prb_utilization_dl_pct" not in self.pm_data.columns
-            and "prb_utilization_pct" in self.pm_data.columns
-        ):
-            self.pm_data["prb_utilization_dl_pct"] = self.pm_data["prb_utilization_pct"]
-            self.pm_data["prb_utilization_ul_pct"] = self.pm_data["prb_utilization_pct"]
+            # Observation matrix shape (n_relations, 9)
+            low = np.full((self.n_relations, 9), -1000.0, dtype=np.float32)
+            high = np.full((self.n_relations, 9), 100000.0, dtype=np.float32)
+            self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
 
-        # Compute ho_success_rate_pct and ho_failure_rate_pct if not present
-        if "ho_success_rate_pct" not in self.pm_data.columns:
-            attempts = self.pm_data.get("ho_attempt", 1.0)
-            # Avoid division by zero
-            attempts_safe = attempts.replace(0, 1.0)
-            success = self.pm_data.get("ho_success_intra", 0.0)
-            failure = self.pm_data.get("ho_failure_intra", 0.0)
-            self.pm_data["ho_success_rate_pct"] = (success / attempts_safe) * 100.0
-            self.pm_data["ho_failure_rate_pct"] = (failure / attempts_safe) * 100.0
-
-        if cell_id:
-            self.cell_id = cell_id
+            # Continuous CIO deltas Box shape (n_relations,)
+            self.action_space = spaces.Box(
+                low=-2.0, high=2.0, shape=(self.n_relations,), dtype=np.float32
+            )
         else:
-            if "problem_cell" in self.kpi_data.columns:
-                problem_cells = self.kpi_data[self.kpi_data["problem_cell"] == "Yes"]
-            elif "problem_flag" in self.kpi_data.columns:
-                problem_cells = self.kpi_data[self.kpi_data["problem_flag"]]
+            self.mode = "cell"
+            
+            # Normalize PM data synthetic CSV schema to expected internal schema
+            rename_pm_cols = {
+                "timestamp": "timestamp_utc",
+                "rsrp_dbm": "avg_rsrp_dBm",
+                "rsrq_db": "avg_rsrq_dB",
+                "sinr_db": "avg_sinr_dB",
+                "ho_ping_pong": "ho_pingpong_count",
+                "ho_success": "ho_success_intra",
+                "ho_failure": "ho_failure_intra",
+            }
+            self.pm_data = self.pm_data_raw.rename(
+                columns={k: v for k, v in rename_pm_cols.items() if k in self.pm_data_raw.columns}
+            )
+
+            if "timestamp_utc" in self.pm_data.columns:
+                self.pm_data["timestamp_utc"] = pd.to_datetime(self.pm_data["timestamp_utc"])
+
+            # Handle PRB utilization mapping
+            if (
+                "prb_utilization_dl_pct" not in self.pm_data.columns
+                and "prb_utilization_pct" in self.pm_data.columns
+            ):
+                self.pm_data["prb_utilization_dl_pct"] = self.pm_data["prb_utilization_pct"]
+                self.pm_data["prb_utilization_ul_pct"] = self.pm_data["prb_utilization_pct"]
+
+            # Compute ho_success_rate_pct and ho_failure_rate_pct if not present
+            if "ho_success_rate_pct" not in self.pm_data.columns:
+                attempts = self.pm_data.get("ho_attempt", 1.0)
+                attempts_safe = attempts.replace(0, 1.0)
+                success = self.pm_data.get("ho_success_intra", 0.0)
+                failure = self.pm_data.get("ho_failure_intra", 0.0)
+                self.pm_data["ho_success_rate_pct"] = (success / attempts_safe) * 100.0
+                self.pm_data["ho_failure_rate_pct"] = (failure / attempts_safe) * 100.0
+
+            if cell_id:
+                self.cell_id = cell_id
             else:
-                problem_cells = self.kpi_data
+                if "problem_cell" in self.kpi_data.columns:
+                    problem_cells = self.kpi_data[self.kpi_data["problem_cell"] == "Yes"]
+                elif "problem_flag" in self.kpi_data.columns:
+                    problem_cells = self.kpi_data[self.kpi_data["problem_flag"]]
+                else:
+                    problem_cells = self.kpi_data
 
-            if len(problem_cells) > 0:
-                self.cell_id = problem_cells.iloc[0]["cell_id"]
-            else:
-                self.cell_id = self.kpi_data.iloc[0]["cell_id"]
+                if len(problem_cells) > 0:
+                    self.cell_id = problem_cells.iloc[0]["cell_id"]
+                else:
+                    self.cell_id = self.kpi_data.iloc[0]["cell_id"]
 
-        self.cell_pm = (
-            self.pm_data[self.pm_data["cell_id"] == self.cell_id]
-            .sort_values("timestamp_utc")
-            .reset_index(drop=True)
-        )
+            self.cell_pm_df = (
+                self.pm_data[self.pm_data["cell_id"] == self.cell_id]
+                .sort_values("timestamp_utc")
+                .reset_index(drop=True)
+            )
 
-        self.pm_records = self.cell_pm.to_dict("records")
-        self.n_steps = len(self.cell_pm)
-        self.current_step = 0
+            self.pm_records = self.cell_pm_df.to_dict("records")
+            self.n_steps = len(self.cell_pm_df)
+            self.current_step = 0
 
-        # --- Observation Space ---
-        # [rsrp, rsrq, sinr, prb_dl, prb_ul, ho_success_rate, ho_failure_rate, pingpong]
-        low = np.array([-140.0, -20.0, -10.0, 0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32)
-        high = np.array([-40.0, 0.0, 30.0, 100.0, 100.0, 100.0, 100.0, 500.0], dtype=np.float32)
-        self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
+            # Observation vector shape (8,)
+            low = np.array([-140.0, -20.0, -10.0, 0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32)
+            high = np.array([-40.0, 0.0, 30.0, 100.0, 100.0, 100.0, 100.0, 500.0], dtype=np.float32)
+            self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
 
-        # --- Action Space ---
-        # [tilt_delta, power_delta, cio_delta, neighbor_toggle]
-        self.action_space = spaces.MultiDiscrete([5, 7, 5, 3])
+            # Action multidiscrete
+            self.action_space = spaces.MultiDiscrete([5, 7, 5, 3])
+
+    @property
+    def cell_pm(self) -> pd.DataFrame:
+        """Backwards compatibility helper for forge.py & random_policy.py metric evaluation."""
+        if self.mode == "relation":
+            if not self.episode_history:
+                return pd.DataFrame([{
+                    "ho_success_rate_pct": 100.0,
+                    "ho_attempts_intra": 10.0,
+                    "ho_pingpong_count": 0.0,
+                }])
+            return pd.DataFrame(self.episode_history)
+        else:
+            return self.cell_pm_df
 
     def _update_state_from_replay(self, action: typing.Any = None) -> None:
+        """v1 Cell-level physical simulation overlay."""
         row = self.pm_records[self.current_step]
 
         base_rsrp = float(row["avg_rsrp_dBm"])
@@ -113,25 +174,20 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
         base_pingpong = float(row["ho_pingpong_count"])
 
         if action is not None:
-            # action shape is MultiDiscrete([5, 7, 5, 3])
             tilt_delta = float(action[0] - 2) * 1.0
             power_delta = float(action[1] - 3) * 1.0
             cio_delta = float(action[2] - 2) * 1.0
 
-            # Signal quality physics: Power delta boosts signals, tilt misalignment harms them
             self.avg_rsrp_dBm = float(np.clip(base_rsrp + power_delta - 1.5 * abs(tilt_delta), -140.0, -40.0))
             self.avg_sinr_dB = float(np.clip(base_sinr + 0.5 * power_delta - 2.0 * abs(tilt_delta), -10.0, 30.0))
             self.avg_rsrq_dB = float(np.clip(base_rsrq + 0.2 * power_delta - 0.5 * abs(tilt_delta), -20.0, 0.0))
 
-            # Handover physics: Deviating from 0-CIO and 0-tilt harms handover success
             success_impact = - 5.0 * abs(cio_delta) - 3.0 * abs(tilt_delta)
             if cio_delta == 0 and tilt_delta == 0:
-                success_impact = 2.0  # boost if optimal
+                success_impact = 2.0
 
             self.ho_success_rate_pct = float(np.clip(base_success + success_impact, 0.0, 100.0))
             self.ho_failure_rate_pct = float(100.0 - self.ho_success_rate_pct)
-
-            # Ping-pong physics: excess power & high positive CIO trigger ping-pongs
             self.ho_pingpong_count = float(max(0.0, base_pingpong + 3.0 * cio_delta + 1.0 * power_delta))
         else:
             self.avg_rsrp_dBm = base_rsrp
@@ -154,7 +210,6 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
         ], dtype=np.float32)
 
     def _get_reward(self) -> float:
-        # v1: calculate reward based on simulated success, failure, and ping-pongs
         row = self.pm_records[self.current_step]
         attempts = float(row.get("ho_attempts_intra", 10.0))
 
@@ -174,41 +229,142 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
         options: dict[str, typing.Any] | None = None,
     ) -> tuple[np.ndarray, dict[str, typing.Any]]:
         super().reset(seed=seed)
-        if options and options.get("random_start"):
-            self.current_step = int(self.np_random.integers(0, self.n_steps - 1))
-        else:
-            self.current_step = 0
+        self.episode_history = []
 
-        self._update_state_from_replay(action=None)
-        obs = self._get_obs()
-        info = {"cell_id": self.cell_id, "step": self.current_step}
-        return obs, info
+        if self.mode == "relation":
+            if options and options.get("random_start"):
+                self.current_step = int(self.np_random.integers(0, self.n_steps - 1))
+            else:
+                self.current_step = 0
+
+            self.current_state = np.zeros((self.n_relations, 9), dtype=np.float32)
+            for i, (src, tgt) in enumerate(self.relations):
+                rel_df = self.relation_groups[(src, tgt)]["full_df"]
+                step_idx = self.current_step % len(rel_df)
+                row = rel_df.iloc[step_idx]
+                self.current_state[i] = [
+                    float(row["ho_attempts"]),
+                    float(row["ho_successes"]),
+                    float(row["ho_failures"]),
+                    float(row["too_early_ho"]),
+                    float(row["too_late_ho"]),
+                    float(row["wrong_cell"]),
+                    float(row["correct_cell"]),
+                    float(row["ping_pong"]),
+                    float(row["cio_db"]),
+                ]
+            info = {"cell_id": self.cell_id, "step": self.current_step}
+            return self.current_state, info
+        else:
+            if options and options.get("random_start"):
+                self.current_step = int(self.np_random.integers(0, self.n_steps - 1))
+            else:
+                self.current_step = 0
+
+            self._update_state_from_replay(action=None)
+            obs = self._get_obs()
+            info = {"cell_id": self.cell_id, "step": self.current_step}
+            return obs, info
 
     def step(
         self, action: typing.Any
     ) -> tuple[np.ndarray, float, bool, bool, dict[str, typing.Any]]:
-        # Compute reward of previous step before we increment the time-series row
-        reward = self._get_reward()
+        if self.mode == "relation":
+            next_state = np.zeros((self.n_relations, 9), dtype=np.float32)
+            total_successes = 0
+            total_failures = 0
+            total_ping_pongs = 0
+            total_attempts = 0
 
-        self.current_step += 1
-        terminated = self.current_step >= self.n_steps
-        truncated = False
+            for i, (src, tgt) in enumerate(self.relations):
+                cio_delta = float(action[i])
+                current_cio = self.current_state[i][8]
+                target_cio = current_cio + cio_delta
 
-        if not terminated:
-            self._update_state_from_replay(action)
-            obs = self._get_obs()
+                rel_info = self.relation_groups[(src, tgt)]
+                all_cios = rel_info["all_cios"]
+                closest_cio = all_cios[np.argmin(np.abs(all_cios - target_cio))]
+                records = rel_info["cio_dict"][closest_cio]
+
+                sampled = self.np_random.choice(records)
+
+                att = int(sampled["ho_attempts"])
+                succ = int(sampled["ho_successes"])
+                fail = int(sampled["ho_failures"])
+                early = int(sampled["too_early_ho"])
+                late = int(sampled["too_late_ho"])
+                wrong = int(sampled["wrong_cell"])
+                correct = int(sampled["correct_cell"])
+                ping = int(sampled["ping_pong"])
+
+                next_state[i] = [
+                    float(att),
+                    float(succ),
+                    float(fail),
+                    float(early),
+                    float(late),
+                    float(wrong),
+                    float(correct),
+                    float(ping),
+                    float(closest_cio),
+                ]
+
+                total_successes += succ
+                total_failures += fail
+                total_ping_pongs += ping
+                total_attempts += att
+
+            reward = float(total_successes - 10 * total_failures - 3 * total_ping_pongs)
+            rate = (total_successes / total_attempts * 100.0) if total_attempts > 0 else 100.0
+            
+            self.episode_history.append({
+                "ho_attempts_intra": total_attempts,
+                "ho_success_intra": total_successes,
+                "ho_pingpong_count": total_ping_pongs,
+                "ho_success_rate_pct": rate,
+                "ho_failure_rate_pct": (total_failures / total_attempts * 100.0) if total_attempts > 0 else 0.0,
+                "ho_failure_too_early": sum(next_state[:, 3]),
+                "ho_failure_too_late": sum(next_state[:, 4]),
+                "ho_failure_wrong_cell": sum(next_state[:, 5]),
+                "avg_rsrp_dBm": -90.0,
+                "avg_rsrq_dB": -12.0,
+                "avg_sinr_dB": 15.0,
+            })
+
+            self.current_state = next_state
+            self.current_step += 1
+            terminated = self.current_step >= self.n_steps
+            truncated = False
+
+            info = {
+                "cell_id": self.cell_id,
+                "step": self.current_step,
+                "total_attempts": total_attempts,
+                "total_successes": total_successes,
+                "total_failures": total_failures,
+            }
+
+            obs_to_return = next_state if not terminated else np.zeros((self.n_relations, 9), dtype=np.float32)
+            return obs_to_return, reward, terminated, truncated, info
         else:
-            obs = np.zeros(8, dtype=np.float32)
+            reward = self._get_reward()
+            self.current_step += 1
+            terminated = self.current_step >= self.n_steps
+            truncated = False
 
-        info = {
-            "cell_id": self.cell_id,
-            "step": self.current_step,
-            "action": [int(x) for x in action] if hasattr(action, "__len__") else int(action),
-            "action_effect": "simulated transition physics v1",
-        }
+            if not terminated:
+                self._update_state_from_replay(action)
+                obs = self._get_obs()
+            else:
+                obs = np.zeros(8, dtype=np.float32)
 
-        return obs, reward, terminated, truncated, info
+            info = {
+                "cell_id": self.cell_id,
+                "step": self.current_step,
+                "action": [int(x) for x in action] if hasattr(action, "__len__") else int(action),
+                "action_effect": "simulated transition physics v1",
+            }
+            return obs, reward, terminated, truncated, info
 
     def render(self) -> None:
         pass
-
