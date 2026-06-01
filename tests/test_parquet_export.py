@@ -76,9 +76,9 @@ class TestClusterKPIParquet:
 
 
 class TestExportAll:
-    def test_exports_four_files(self, data_dir, out_dir):
+    def test_exports_five_files(self, data_dir, out_dir):
         results = export_all_parquet(data_dir, out_dir)
-        assert len(results) == 4
+        assert len(results) == 5
         for name, path in results.items():
             assert path.exists(), f"{name} not created"
 

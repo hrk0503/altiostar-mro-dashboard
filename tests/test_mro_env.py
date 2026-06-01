@@ -2,7 +2,7 @@ import numpy as np
 
 from src.env.mro_env import MROEnv
 
-DATA_DIR = "data"
+DATA_DIR = "data/synthetic"
 
 
 def test_env_runs_random_policy():
