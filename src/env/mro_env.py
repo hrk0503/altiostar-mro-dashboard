@@ -55,12 +55,21 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
             # Pre-group for fast O(1) step access
             self.relation_groups = {}
             for (src, tgt), group in self.pm_data_raw.groupby(["source_cell_id", "target_cell_id"]):
-                cio_dict = {}
+                cio_groups = {}
                 for cio, cio_group in group.groupby("cio_db"):
-                    cio_dict[cio] = cio_group.to_dict("records")
+                    cio_groups[cio] = {
+                        "ho_attempts": cio_group["ho_attempts"].values,
+                        "ho_successes": cio_group["ho_successes"].values,
+                        "ho_failures": cio_group["ho_failures"].values,
+                        "too_early_ho": cio_group["too_early_ho"].values,
+                        "too_late_ho": cio_group["too_late_ho"].values,
+                        "wrong_cell": cio_group["wrong_cell"].values,
+                        "correct_cell": cio_group["correct_cell"].values,
+                        "ping_pong": cio_group["ping_pong"].values,
+                    }
                 self.relation_groups[(src, tgt)] = {
-                    "cio_dict": cio_dict,
-                    "all_cios": np.array(list(cio_dict.keys())),
+                    "cio_groups": cio_groups,
+                    "all_cios": np.sort(np.array(list(cio_groups.keys()))),
                     "full_df": group.reset_index(drop=True),
                 }
 
@@ -283,19 +292,33 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
 
                 rel_info = self.relation_groups[(src, tgt)]
                 all_cios = rel_info["all_cios"]
-                closest_cio = all_cios[np.argmin(np.abs(all_cios - target_cio))]
-                records = rel_info["cio_dict"][closest_cio]
 
-                sampled = self.np_random.choice(records)
+                # Optimized binary search for closest CIO
+                idx = np.searchsorted(all_cios, target_cio)
+                if idx == 0:
+                    closest_cio = all_cios[0]
+                elif idx >= len(all_cios):
+                    closest_cio = all_cios[-1]
+                else:
+                    val_left = all_cios[idx - 1]
+                    val_right = all_cios[idx]
+                    if abs(val_left - target_cio) <= abs(val_right - target_cio):
+                        closest_cio = val_left
+                    else:
+                        closest_cio = val_right
 
-                att = int(sampled["ho_attempts"])
-                succ = int(sampled["ho_successes"])
-                fail = int(sampled["ho_failures"])
-                early = int(sampled["too_early_ho"])
-                late = int(sampled["too_late_ho"])
-                wrong = int(sampled["wrong_cell"])
-                correct = int(sampled["correct_cell"])
-                ping = int(sampled["ping_pong"])
+                cio_info = rel_info["cio_groups"][closest_cio]
+                n_records = len(cio_info["ho_attempts"])
+                idx_sampled = self.np_random.integers(0, n_records)
+
+                att = int(cio_info["ho_attempts"][idx_sampled])
+                succ = int(cio_info["ho_successes"][idx_sampled])
+                fail = int(cio_info["ho_failures"][idx_sampled])
+                early = int(cio_info["too_early_ho"][idx_sampled])
+                late = int(cio_info["too_late_ho"][idx_sampled])
+                wrong = int(cio_info["wrong_cell"][idx_sampled])
+                correct = int(cio_info["correct_cell"][idx_sampled])
+                ping = int(cio_info["ping_pong"][idx_sampled])
 
                 next_state[i] = [
                     float(att),
