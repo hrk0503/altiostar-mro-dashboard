@@ -6,7 +6,8 @@
 - **Track A (Shourya + Devika):**
   — Task 3 finalized with massive performance upgrades. Refactored relation-level `MROEnv` lookup indexing to use binary search and numpy column structures, cutting step overhead.
   — Initiated Task 4 Step 1 (PPO training setup on relation data). Evaluated test run at 65–78 FPS on CPU.
-  — Staged, committed, and pushed optimized models to `feature/shourya-mro-env`.
+  — Reviewed the Arize AI "AI PM Skill" keynote video on LLM agents/observability and authored a 1-pager summary (`docs/ai_pm_agent_one_pager.md`).
+  — Staged, committed, and pushed optimized models and log updates to `feature/shourya-mro-env`.
 - **Track B (Ananyaa + Harshit):**
   — Supported verification of Task 2 fixes.
   — Confirmed that all baseline data checks match the updated signatures.
