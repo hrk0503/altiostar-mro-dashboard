@@ -17,6 +17,7 @@ from src.pipeline.models import (
     ClusterKPISummary,
     NeighborRelation,
     PMRecord,
+    RelationPMRecord,
     SiteRecord,
 )
 
@@ -64,6 +65,13 @@ def load_cluster_kpi(path: Path | None = None) -> list[ClusterKPISummary]:
     """Load cluster_kpi_summary.csv → list[ClusterKPISummary] (75 rows)."""
     return _load_csv(path or DATA_DIR / "cluster_kpi_summary.csv", ClusterKPISummary)
 
+def load_relation_pm(
+    path: Path | None = None, *, chunk_size: int = 50_000
+    ) -> list[RelationPMRecord]:
+    """Load pm_data_relation_level.csv → list[RelationPMRecord] (2.2M rows, chunked)."""
+    return _load_csv(
+        path or DATA_DIR / "pm_data_relation_level.csv", RelationPMRecord, chunk_size=chunk_size
+    )
 
 def load_pm_data_df(path: Path | None = None) -> pd.DataFrame:
     """Load pm_data as DataFrame — preferred for performance.
@@ -148,6 +156,14 @@ def export_cluster_kpi_parquet(
         "cluster_kpi_summary.csv", data_dir, out_dir,
     )
 
+def export_relation_pm_parquet(
+    data_dir: Path | None = None,
+    out_dir: Path | None = None,
+    ) -> Path:
+    """Export pm_data_relation_level.csv → .parquet."""
+    return _csv_to_parquet(
+        "pm_data_relation_level.csv", data_dir, out_dir,
+    )
 
 def export_all_parquet(
     data_dir: Path | None = None,
@@ -159,6 +175,7 @@ def export_all_parquet(
         "neighbor_relations": export_neighbors_parquet,
         "pm_data": export_pm_data_parquet,
         "cluster_kpi": export_cluster_kpi_parquet,
+        "relation_pm": export_relation_pm_parquet
     }
     results: dict[str, Path] = {}
     for name, fn in exporters.items():

@@ -1,0 +1,37 @@
+{
+  "episode_rewards": [
+    10000.0,
+    602484.6,
+    1194969.2,
+    1787453.8,
+    2379938.4,
+    2972423.0,
+    3564907.6,
+    4157392.2,
+    4749876.8,
+    5342361.4,
+    5934846.0,
+    6527330.6,
+    7119815.2,
+    7712299.8,
+    8304784.4
+  ],
+  "runs": [
+    {
+      "run_index": 1,
+      "mlflow_run_id": "470dc66bfd074ea589a805bcf863b0d3",
+      "mean_reward": 8304784.4,
+      "ho_success_rate": 79.2712061958359,
+      "ping_pong_rate": 0.01387426347010388,
+      "checkpoint_path": "checkpoints\\ppo_relation_100k.zip"
+    }
+  ],
+  "best_run": {
+    "run_index": 1,
+    "mlflow_run_id": "470dc66bfd074ea589a805bcf863b0d3",
+    "mean_reward": 8304784.4,
+    "ho_success_rate": 79.2712061958359,
+    "ping_pong_rate": 0.01387426347010388,
+    "checkpoint_path": "checkpoints\\ppo_relation_100k.zip"
+  }
+}
