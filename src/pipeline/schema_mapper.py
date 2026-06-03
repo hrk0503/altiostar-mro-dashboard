@@ -1,8 +1,17 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
+
+from src.pipeline.models import (
+    ClusterKPISummary,
+    NeighborRelation,
+    PMRecord,
+    RelationPMRecord,
+    SiteRecord,
+)
 
 
 def infer_column_types(df: pd.DataFrame) -> dict[str, str]:
@@ -46,8 +55,6 @@ def run_schema_mapper(csv_path: Path, schema_fields: dict[str, str]) -> dict[str
     return mapped
 
 
-from dataclasses import dataclass
-from src.pipeline.models import SiteRecord, NeighborRelation, PMRecord, RelationPMRecord, ClusterKPISummary
 
 _SIGNATURES: dict[str, set[str]] = {
     "SiteRecord": {"cell_id", "enodeb_id", "sector", "azimuth_deg", "antenna_height_m"},

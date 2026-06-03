@@ -4,13 +4,12 @@ Builds Gymnasium environment from YAML config, runs PPO training.
 Outputs: Gymnasium env, training scripts, model checkpoints.
 """
 
-import os
 from pathlib import Path
 from typing import Any
 
-import yaml
 import mlflow
 import numpy as np
+import yaml
 from pydantic import BaseModel
 from stable_baselines3 import PPO
 
@@ -34,7 +33,7 @@ class ForgeAgent:
         if not config_path.exists():
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
-        with open(config_path, "r") as f:
+        with open(config_path) as f:
             config = yaml.safe_load(f)
 
         data_config = config.get("data", {})
@@ -46,6 +45,7 @@ class ForgeAgent:
 
     def train(self, env: MROEnv, total_timesteps: int = 100_000) -> TrainingResult:
         """Train PPO agent with MLflow tracking."""
+        mlflow.set_tracking_uri("sqlite:///mlflow.db")
         mlflow.set_experiment("MRO_Training")
 
         checkpoint_dir = Path("checkpoints")

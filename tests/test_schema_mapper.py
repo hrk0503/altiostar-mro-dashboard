@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
-from hypothesis import given, settings, HealthCheck
+from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from src.pipeline.loader import DATA_DIR

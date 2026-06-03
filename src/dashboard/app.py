@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import json
+import typing
+
 import pandas as pd
 import streamlit as st
 
@@ -18,21 +21,26 @@ st.set_page_config(
 )
 
 st.title("📡 Altiostar MRO: Training Pipeline Dashboard")
-st.caption("Phase 1 · Rakuten Japan · 75-cell cluster · Shibuya area")
+st.caption("Phase 1 · Rakuten Japan · 75-cell cluster · Optimization Area")
 
 # ── Load data ──────────────────────────────────────────────────────────────────
 @st.cache_data
 def load_kpis() -> pd.DataFrame:
-    df = pd.read_csv("data/synthetic/pm_data_april2026.csv")
+    df_path = "data/synthetic/pm_data_relation_level.csv"
+    if not Path(df_path).exists():
+        df_path = "data/synthetic/pm_data_april2026.csv"
+    df = pd.read_csv(df_path)
     return extract_all_kpis(df)
 
 
 @st.cache_data
-def load_baseline() -> dict:
+def load_baseline() -> dict[str, typing.Any]:
     baseline_path = Path("results/random_baseline.json")
     if baseline_path.exists():
         with open(baseline_path) as f:
-            return json.load(f)
+            data = json.load(f)
+            if isinstance(data, dict):
+                return typing.cast(dict[str, typing.Any], data)
     return {}
 
 
@@ -43,10 +51,13 @@ problem_cells = kpis[kpis["ho_success_rate_pct"] < 96]
 # ── Row 1 — Cluster summary metrics ───────────────────────────────────────────
 st.header("Cluster Summary")
 col1, col2, col3, col4 = st.columns(4)
+avg_success = kpis['ho_success_rate_pct'].mean()
+gap = max(0.0, 99.0 - avg_success)
+
 col1.metric(
     "Cluster HO Success",
-    f"{kpis['ho_success_rate_pct'].mean():.2f}%",
-    delta=f"{kpis['ho_success_rate_pct'].mean() - 99:.2f}% vs 99% target",
+    f"{avg_success:.2f}%",
+    delta=f"{avg_success - 99:.2f}% vs 99% target",
     delta_color="normal",
 )
 col2.metric(
@@ -61,8 +72,8 @@ col3.metric(
 )
 col4.metric(
     "Gap to Target",
-    "2.77%",
-    delta="PPO agent needs to close this",
+    f"{gap:.2f}%",
+    delta="PPO agent needs to close this" if gap > 0 else "Target Met! 🎉",
     delta_color="normal",
 )
 

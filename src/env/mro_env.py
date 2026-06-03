@@ -1,4 +1,3 @@
-import logging
 import typing
 from pathlib import Path
 
@@ -7,7 +6,9 @@ import numpy as np
 import pandas as pd
 from gymnasium import spaces
 
-logger = logging.getLogger(__name__)
+_RELATION_GROUPS_CACHE: dict[int, typing.Any] = {}
+_ALL_RELATIONS_CACHE: dict[int, typing.Any] = {}
+_DF_CACHE: dict[str, pd.DataFrame] = {}
 
 
 class MROEnv(gym.Env[typing.Any, typing.Any]):
@@ -18,8 +19,8 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
 
     def __init__(
         self,
-        pm_data_path: str | None = None,
-        kpi_path: str | None = None,
+        pm_data_path: str | pd.DataFrame | None = None,
+        kpi_path: str | pd.DataFrame | None = None,
         cell_id: str | None = None,
     ):
         super().__init__()
@@ -35,52 +36,78 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
         if kpi_path is None:
             kpi_path = str(base_dir / "data" / "synthetic" / "cluster_kpi_summary.csv")
 
-        self.pm_data_raw = pd.read_csv(pm_data_path)
-        self.kpi_data = pd.read_csv(kpi_path)
+        if isinstance(pm_data_path, pd.DataFrame):
+            self.pm_data_raw = pm_data_path
+        else:
+            path_str = str(pm_data_path)
+            if path_str in _DF_CACHE:
+                self.pm_data_raw = _DF_CACHE[path_str]
+            else:
+                self.pm_data_raw = pd.read_csv(pm_data_path)
+                _DF_CACHE[path_str] = self.pm_data_raw
+
+        if isinstance(kpi_path, pd.DataFrame):
+            self.kpi_data = kpi_path
+        else:
+            path_str = str(kpi_path)
+            if path_str in _DF_CACHE:
+                self.kpi_data = _DF_CACHE[path_str]
+            else:
+                self.kpi_data = pd.read_csv(kpi_path)
+                _DF_CACHE[path_str] = self.kpi_data
 
         # Detect mode based on column schema
         if "source_cell_id" in self.pm_data_raw.columns:
             self.mode = "relation"
             self.cell_id = cell_id or "relation_level_network"
             
-            # Group relations
-            all_relations = list(self.pm_data_raw.groupby(["source_cell_id", "target_cell_id"]).groups.keys())
+            # Group relations using cache to optimize performance
+            cache_key = id(self.pm_data_raw)
+            if cache_key in _ALL_RELATIONS_CACHE:
+                all_relations = _ALL_RELATIONS_CACHE[cache_key]
+                self.relation_groups = _RELATION_GROUPS_CACHE[cache_key]
+            else:
+                all_relations = list(self.pm_data_raw.groupby(["source_cell_id", "target_cell_id"]).groups.keys())
+                _ALL_RELATIONS_CACHE[cache_key] = all_relations
+                
+                # Pre-group for fast O(1) step access
+                relation_groups = {}
+                for (src, tgt), group in self.pm_data_raw.groupby(["source_cell_id", "target_cell_id"]):
+                    cio_groups = {}
+                    for cio, cio_group in group.groupby("cio_db"):
+                        cio_groups[cio] = {
+                            "ho_attempts": cio_group["ho_attempts"].values,
+                            "ho_successes": cio_group["ho_successes"].values,
+                            "ho_failures": cio_group["ho_failures"].values,
+                            "too_early_ho": cio_group["too_early_ho"].values,
+                            "too_late_ho": cio_group["too_late_ho"].values,
+                            "wrong_cell": cio_group["wrong_cell"].values,
+                            "correct_cell": cio_group["correct_cell"].values,
+                            "ping_pong": cio_group["ping_pong"].values,
+                        }
+                    relation_groups[(src, tgt)] = {
+                        "cio_groups": cio_groups,
+                        "all_cios": np.sort(np.array(list(cio_groups.keys()))),
+                        "full_df": group.reset_index(drop=True),
+                    }
+                self.relation_groups = relation_groups
+                _RELATION_GROUPS_CACHE[cache_key] = relation_groups
+
             if cell_id:
                 self.relations = [(src, tgt) for (src, tgt) in all_relations if src == cell_id]
             else:
                 self.relations = all_relations
             
             self.n_relations = len(self.relations)
-            
-            # Pre-group for fast O(1) step access
-            self.relation_groups = {}
-            for (src, tgt), group in self.pm_data_raw.groupby(["source_cell_id", "target_cell_id"]):
-                cio_groups = {}
-                for cio, cio_group in group.groupby("cio_db"):
-                    cio_groups[cio] = {
-                        "ho_attempts": cio_group["ho_attempts"].values,
-                        "ho_successes": cio_group["ho_successes"].values,
-                        "ho_failures": cio_group["ho_failures"].values,
-                        "too_early_ho": cio_group["too_early_ho"].values,
-                        "too_late_ho": cio_group["too_late_ho"].values,
-                        "wrong_cell": cio_group["wrong_cell"].values,
-                        "correct_cell": cio_group["correct_cell"].values,
-                        "ping_pong": cio_group["ping_pong"].values,
-                    }
-                self.relation_groups[(src, tgt)] = {
-                    "cio_groups": cio_groups,
-                    "all_cios": np.sort(np.array(list(cio_groups.keys()))),
-                    "full_df": group.reset_index(drop=True),
-                }
 
             self.n_steps = len(self.pm_data_raw) // len(all_relations) if len(all_relations) > 0 else 0
             self.current_step = 0
-            self.episode_history = []
+            self.episode_history: list[dict[str, typing.Any]] = []
 
             # Observation matrix shape (n_relations, 9)
-            low = np.full((self.n_relations, 9), -1000.0, dtype=np.float32)
-            high = np.full((self.n_relations, 9), 100000.0, dtype=np.float32)
-            self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
+            low_rel = np.full((self.n_relations, 9), -1000.0, dtype=np.float32)
+            high_rel = np.full((self.n_relations, 9), 100000.0, dtype=np.float32)
+            self.observation_space = spaces.Box(low=low_rel, high=high_rel, dtype=np.float32)
 
             # Continuous CIO deltas Box shape (n_relations,)
             self.action_space = spaces.Box(
@@ -149,9 +176,9 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
             self.current_step = 0
 
             # Observation vector shape (8,)
-            low = np.array([-140.0, -20.0, -10.0, 0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32)
-            high = np.array([-40.0, 0.0, 30.0, 100.0, 100.0, 100.0, 100.0, 500.0], dtype=np.float32)
-            self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
+            low_cell = np.array([-140.0, -20.0, -10.0, 0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32)
+            high_cell = np.array([-40.0, 0.0, 30.0, 100.0, 100.0, 100.0, 100.0, 500.0], dtype=np.float32)
+            self.observation_space = spaces.Box(low=low_cell, high=high_cell, dtype=np.float32)
 
             # Action multidiscrete
             self.action_space = spaces.MultiDiscrete([5, 7, 5, 3])
@@ -206,7 +233,7 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
             self.ho_failure_rate_pct = float(row["ho_failure_rate_pct"])
             self.ho_pingpong_count = base_pingpong
 
-    def _get_obs(self) -> np.ndarray:
+    def _get_obs(self) -> np.ndarray[typing.Any, typing.Any]:
         return np.array([
             self.avg_rsrp_dBm,
             self.avg_rsrq_dB,
@@ -236,7 +263,7 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
         *,
         seed: int | None = None,
         options: dict[str, typing.Any] | None = None,
-    ) -> tuple[np.ndarray, dict[str, typing.Any]]:
+    ) -> tuple[np.ndarray[typing.Any, typing.Any], dict[str, typing.Any]]:
         super().reset(seed=seed)
         self.episode_history = []
 
@@ -277,7 +304,7 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
 
     def step(
         self, action: typing.Any
-    ) -> tuple[np.ndarray, float, bool, bool, dict[str, typing.Any]]:
+    ) -> tuple[np.ndarray[typing.Any, typing.Any], float, bool, bool, dict[str, typing.Any]]:
         if self.mode == "relation":
             next_state = np.zeros((self.n_relations, 9), dtype=np.float32)
             total_successes = 0
@@ -343,6 +370,7 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
             self.episode_history.append({
                 "ho_attempts_intra": total_attempts,
                 "ho_success_intra": total_successes,
+                "ho_failure_intra": total_failures,
                 "ho_pingpong_count": total_ping_pongs,
                 "ho_success_rate_pct": rate,
                 "ho_failure_rate_pct": (total_failures / total_attempts * 100.0) if total_attempts > 0 else 0.0,

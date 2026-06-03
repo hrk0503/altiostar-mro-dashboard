@@ -76,6 +76,7 @@ def run_training() -> None:
         # ForgeAgent.train internally starts an MLflow run and logs metrics
         # We wrap PPO initialization here to attach our custom callback
         import mlflow
+        mlflow.set_tracking_uri("sqlite:///mlflow.db")
         mlflow.set_experiment("MRO_Training")
 
         checkpoint_dir = Path("checkpoints")

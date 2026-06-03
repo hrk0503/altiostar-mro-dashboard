@@ -34,7 +34,10 @@ logger = logging.getLogger(__name__)
 
 # ── Default paths (mirrors src.pipeline.loader) ──────────────
 DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "synthetic"
-PM_DATA_PATH = DATA_DIR / "pm_data_april2026.csv"
+if (DATA_DIR / "pm_data_relation_level.csv").exists():
+    PM_DATA_PATH = DATA_DIR / "pm_data_relation_level.csv"
+else:
+    PM_DATA_PATH = DATA_DIR / "pm_data_april2026.csv"
 KPI_PATH = DATA_DIR / "cluster_kpi_summary.csv"
 
 
@@ -110,9 +113,9 @@ class BenchmarkResult:
 # ── Helpers ──────────────────────────────────────────────────
 
 
-def _get_problem_cell_ids(kpi_path: str | Path) -> frozenset[str]:
+def _get_problem_cell_ids(kpi_path: str | Path | pd.DataFrame) -> frozenset[str]:
     """Read KPI summary and return the set of problem cell IDs."""
-    kpi_df = pd.read_csv(kpi_path)
+    kpi_df = kpi_path if isinstance(kpi_path, pd.DataFrame) else pd.read_csv(kpi_path)
     col = "problem_cell" if "problem_cell" in kpi_df.columns else "problem_flag"
     mask = kpi_df[col].isin(["Yes", True, "true", "TRUE"])
     return frozenset(kpi_df.loc[mask, "cell_id"])
@@ -129,8 +132,8 @@ def _safe_rate(numerator: int, denominator: int) -> float:
 
 
 def run_episode(
-    pm_data_path: str | Path,
-    kpi_path: str | Path,
+    pm_data_path: str | Path | pd.DataFrame,
+    kpi_path: str | Path | pd.DataFrame,
     cell_id: str,
     *,
     seed: int = 42,
@@ -140,8 +143,8 @@ def run_episode(
 
     Parameters
     ----------
-    pm_data_path : path to pm_data CSV
-    kpi_path : path to cluster_kpi_summary CSV
+    pm_data_path : path to pm_data CSV or preloaded DataFrame
+    kpi_path : path to cluster_kpi_summary CSV or preloaded DataFrame
     cell_id : target cell identifier (e.g. ``"RKSB-001-1"``)
     seed : random seed for action sampling reproducibility
     problem_cell_ids : pre-computed set of problem cell IDs.
@@ -164,8 +167,8 @@ def run_episode(
 
     try:
         env = MROEnv(
-            pm_data_path=str(pm_data_path),
-            kpi_path=str(kpi_path),
+            pm_data_path=pm_data_path,
+            kpi_path=kpi_path,
             cell_id=cell_id,
         )
 
@@ -229,8 +232,8 @@ def run_episode(
 
 
 def run_benchmark(
-    pm_data_path: str | Path | None = None,
-    kpi_path: str | Path | None = None,
+    pm_data_path: str | Path | pd.DataFrame | None = None,
+    kpi_path: str | Path | pd.DataFrame | None = None,
     cell_ids: list[str] | None = None,
     *,
     seed: int = 42,
@@ -239,8 +242,8 @@ def run_benchmark(
 
     Parameters
     ----------
-    pm_data_path : path to PM data CSV (default: synthetic data)
-    kpi_path : path to cluster KPI summary CSV (default: synthetic data)
+    pm_data_path : path to PM data CSV or preloaded DataFrame (default: synthetic data)
+    kpi_path : path to cluster KPI summary CSV or preloaded DataFrame (default: synthetic data)
     cell_ids : specific cells to benchmark (default: all 75 cells)
     seed : base seed; each cell gets ``seed + cell_index``
 
@@ -249,15 +252,16 @@ def run_benchmark(
     BenchmarkResult
         Cluster-level aggregates, per-cell episodes, distribution stats.
     """
-    pm_path = str(pm_data_path or PM_DATA_PATH)
-    kpi_p = str(kpi_path or KPI_PATH)
+    pm_path = pm_data_path if pm_data_path is not None else PM_DATA_PATH
+    kpi_p = kpi_path if kpi_path is not None else KPI_PATH
 
-    # Read KPI summary once for cell list + problem flags
-    kpi_df = pd.read_csv(kpi_p)
+    pm_df = pm_path if isinstance(pm_path, pd.DataFrame) else pd.read_csv(pm_path)
+    kpi_df = kpi_p if isinstance(kpi_p, pd.DataFrame) else pd.read_csv(kpi_p)
+
     if cell_ids is None:
         cell_ids = list(kpi_df["cell_id"])
 
-    problem_ids = _get_problem_cell_ids(kpi_p)
+    problem_ids = _get_problem_cell_ids(kpi_df)
 
     logger.info("Starting random-policy benchmark: %d cells, seed=%d", len(cell_ids), seed)
 
@@ -265,8 +269,8 @@ def run_benchmark(
     for i, cid in enumerate(cell_ids):
         logger.info("  [%d/%d] %s", i + 1, len(cell_ids), cid)
         ep = run_episode(
-            pm_path,
-            kpi_p,
+            pm_df,
+            kpi_df,
             cid,
             seed=seed + i,
             problem_cell_ids=problem_ids,

@@ -1,59 +1,37 @@
 {
   "episode_rewards": [
-    4327.0,
-    14589.0,
-    29742.0,
-    40435.0,
-    50445.0
+    10000.0,
+    602484.6,
+    1194969.2,
+    1787453.8,
+    2379938.4,
+    2972423.0,
+    3564907.6,
+    4157392.2,
+    4749876.8,
+    5342361.4,
+    5934846.0,
+    6527330.6,
+    7119815.2,
+    7712299.8,
+    8304784.4
   ],
   "runs": [
     {
       "run_index": 1,
-      "mlflow_run_id": "6471c14720044ef8974c5115075befc8",
-      "mean_reward": 151266.0,
-      "ho_success_rate": 95.27004166666666,
-      "ping_pong_rate": 0.026029266737725005,
-      "checkpoint_path": "checkpoints\\ppo_mro_run_1.zip"
-    },
-    {
-      "run_index": 2,
-      "mlflow_run_id": "841a0603426349b298c8c274ce0b5a29",
-      "mean_reward": 152610.0,
-      "ho_success_rate": 95.27004166666666,
-      "ping_pong_rate": 0.026029266737725005,
-      "checkpoint_path": "checkpoints\\ppo_mro_run_2.zip"
-    },
-    {
-      "run_index": 3,
-      "mlflow_run_id": "51622a3400204700acec58c6af950b57",
-      "mean_reward": 150058.0,
-      "ho_success_rate": 95.27004166666666,
-      "ping_pong_rate": 0.026029266737725005,
-      "checkpoint_path": "checkpoints\\ppo_mro_run_3.zip"
-    },
-    {
-      "run_index": 4,
-      "mlflow_run_id": "d9ab6e75fb794e01bd5d68cf11f12632",
-      "mean_reward": 149670.0,
-      "ho_success_rate": 95.27004166666666,
-      "ping_pong_rate": 0.026029266737725005,
-      "checkpoint_path": "checkpoints\\ppo_mro_run_4.zip"
-    },
-    {
-      "run_index": 5,
-      "mlflow_run_id": "ed795dfa76aa4e10a277cbdeeafccf61",
-      "mean_reward": 149044.0,
-      "ho_success_rate": 95.27004166666666,
-      "ping_pong_rate": 0.026029266737725005,
-      "checkpoint_path": "checkpoints\\ppo_mro_run_5.zip"
+      "mlflow_run_id": "470dc66bfd074ea589a805bcf863b0d3",
+      "mean_reward": 8304784.4,
+      "ho_success_rate": 79.2712061958359,
+      "ping_pong_rate": 0.01387426347010388,
+      "checkpoint_path": "checkpoints\\ppo_relation_100k.zip"
     }
   ],
   "best_run": {
-    "run_index": 2,
-    "mlflow_run_id": "841a0603426349b298c8c274ce0b5a29",
-    "mean_reward": 152610.0,
-    "ho_success_rate": 95.27004166666666,
-    "ping_pong_rate": 0.026029266737725005,
-    "checkpoint_path": "checkpoints\\ppo_mro_run_2.zip"
+    "run_index": 1,
+    "mlflow_run_id": "470dc66bfd074ea589a805bcf863b0d3",
+    "mean_reward": 8304784.4,
+    "ho_success_rate": 79.2712061958359,
+    "ping_pong_rate": 0.01387426347010388,
+    "checkpoint_path": "checkpoints\\ppo_relation_100k.zip"
   }
 }
