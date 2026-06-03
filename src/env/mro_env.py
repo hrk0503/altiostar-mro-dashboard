@@ -469,18 +469,24 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
             # ── Reward variants ──
             w = self.reward_weights
             if self.reward_version == "v1":
-                # Traffic-weighted: normalize by attempts so busy cells don't dominate
-                reward = float(
-                    (total_successes / safe_attempts) * 100.0
-                    + (total_failures / safe_attempts) * w["ho_failure"] * 100.0
-                    + (total_ping_pongs / safe_attempts) * w["ping_pong"] * 100.0
-                )
-            elif self.reward_version == "v2":
-                # Rate-based: use percentages directly for bounded, comparable rewards
+                # Traffic-weighted: aggregate counts ÷ aggregate attempts.
+                # High-traffic relations contribute more to the reward.
                 reward = float(
                     success_rate * w["ho_success"]
                     + failure_rate * w["ho_failure"]
                     + pingpong_rate * w["ping_pong"]
+                )
+            elif self.reward_version == "v2":
+                # Rate-based: simple average of per-relation rates.
+                # Every relation counts equally regardless of traffic volume.
+                per_att = np.maximum(next_state[:, 0], 1.0)
+                avg_success = float(np.mean(next_state[:, 1] / per_att)) * 100.0
+                avg_failure = float(np.mean(next_state[:, 2] / per_att)) * 100.0
+                avg_pingpong = float(np.mean(next_state[:, 7] / per_att)) * 100.0
+                reward = float(
+                    avg_success * w["ho_success"]
+                    + avg_failure * w["ho_failure"]
+                    + avg_pingpong * w["ping_pong"]
                 )
             elif self.reward_version == "v3":
                 # Multi-objective: separate failure-mode weights from YAML
