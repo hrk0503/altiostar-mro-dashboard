@@ -3,8 +3,10 @@
 Auto-detects CSV schema, maps to internal format, normalizes to Parquet.
 Outputs: normalized Parquet, data quality report, schema mapping.
 """
+from __future__ import annotations
 
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
 from pydantic import BaseModel
@@ -14,7 +16,7 @@ class SchemaMapping(BaseModel):
     source_column: str
     target_field: str
     dtype: str
-    transform: str | None = None
+    transform: Optional[str] = None
 
 
 class DataQualityReport(BaseModel):

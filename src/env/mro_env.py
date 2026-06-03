@@ -1,29 +1,88 @@
+from __future__ import annotations
+
 import typing
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import gymnasium as gym
 import numpy as np
 import pandas as pd
+import yaml
 from gymnasium import spaces
 
-_RELATION_GROUPS_CACHE: dict[int, typing.Any] = {}
-_ALL_RELATIONS_CACHE: dict[int, typing.Any] = {}
-_DF_CACHE: dict[str, pd.DataFrame] = {}
+_RELATION_GROUPS_CACHE: Dict[int, Any] = {}
+_ALL_RELATIONS_CACHE: Dict[int, Any] = {}
+_DF_CACHE: Dict[str, pd.DataFrame] = {}
+
+# Default reward weights — used when no YAML config is provided
+_DEFAULT_REWARD_WEIGHTS: Dict[str, float] = {
+    "ho_success": 1.0,
+    "ho_failure": -5.0,
+    "ping_pong": -2.0,
+    "too_early_ho": -3.0,
+    "too_late_ho": -4.0,
+    "wrong_cell": -5.0,
+}
+
+
+def load_reward_config(config_path: Optional[str] = None) -> Dict[str, Any]:
+    """Load reward configuration from YAML file.
+
+    Returns a dict with keys: version, weights.
+    Falls back to defaults if no config is provided.
+    """
+    if config_path is None:
+        default_yaml = Path(__file__).resolve().parents[2] / "configs" / "mro_default.yaml"
+        if default_yaml.exists():
+            config_path = str(default_yaml)
+        else:
+            return {"version": "v0", "weights": dict(_DEFAULT_REWARD_WEIGHTS)}
+
+    try:
+        with open(config_path) as f:
+            full_config = yaml.safe_load(f)
+    except (FileNotFoundError, OSError):
+        return {"version": "v0", "weights": dict(_DEFAULT_REWARD_WEIGHTS)}
+
+    reward_section = full_config.get("reward", {})
+    version = reward_section.get("version", "v0")
+    weights = {
+        "ho_success": reward_section.get("ho_success", 1.0),
+        "ho_failure": reward_section.get("ho_failure", -5.0),
+        "ping_pong": reward_section.get("ping_pong", -2.0),
+        "too_early_ho": reward_section.get("too_early_ho", -3.0),
+        "too_late_ho": reward_section.get("too_late_ho", -4.0),
+        "wrong_cell": reward_section.get("wrong_cell", -5.0),
+    }
+    return {"version": version, "weights": weights}
 
 
 class MROEnv(gym.Env[typing.Any, typing.Any]):
     """
     MRO (Mobility Robustness Optimization) Gymnasium Environment.
     Supports both cell-level (v0/v1) and relation-level (v2) PM optimization dynamically.
+
+    Reward variants (configurable via ``reward_version`` or ``mro_default.yaml``):
+        v0 — Simple count-based: success*1 - failure*10 - pingpong*3 (original)
+        v1 — Traffic-weighted: normalizes by ho_attempts so busy cells don't dominate
+        v2 — Rate-based: uses percentage metrics for bounded, comparable rewards
+        v3 — Multi-objective: separate weights for too_early/too_late/wrong_cell from YAML
     """
 
     def __init__(
         self,
-        pm_data_path: str | pd.DataFrame | None = None,
-        kpi_path: str | pd.DataFrame | None = None,
-        cell_id: str | None = None,
+        pm_data_path: Optional[Union[str, pd.DataFrame]] = None,
+        kpi_path: Optional[Union[str, pd.DataFrame]] = None,
+        cell_id: Optional[str] = None,
+        reward_version: Optional[str] = None,
+        reward_config_path: Optional[str] = None,
     ):
         super().__init__()
+
+        # ── Reward configuration ──
+        reward_cfg = load_reward_config(reward_config_path)
+        self.reward_version: str = reward_version or reward_cfg["version"]
+        self.reward_weights: Dict[str, float] = reward_cfg["weights"]
 
         base_dir = Path(__file__).resolve().parents[2]
         if pm_data_path is None:
@@ -102,7 +161,7 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
 
             self.n_steps = len(self.pm_data_raw) // len(all_relations) if len(all_relations) > 0 else 0
             self.current_step = 0
-            self.episode_history: list[dict[str, typing.Any]] = []
+            self.episode_history: List[Dict[str, Any]] = []
 
             # Observation matrix shape (n_relations, 9)
             low_rel = np.full((self.n_relations, 9), -1000.0, dtype=np.float32)
@@ -197,7 +256,7 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
         else:
             return self.cell_pm_df
 
-    def _update_state_from_replay(self, action: typing.Any = None) -> None:
+    def _update_state_from_replay(self, action: Any = None) -> None:
         """v1 Cell-level physical simulation overlay."""
         row = self.pm_records[self.current_step]
 
@@ -233,7 +292,7 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
             self.ho_failure_rate_pct = float(row["ho_failure_rate_pct"])
             self.ho_pingpong_count = base_pingpong
 
-    def _get_obs(self) -> np.ndarray[typing.Any, typing.Any]:
+    def _get_obs(self) -> np.ndarray:
         return np.array([
             self.avg_rsrp_dBm,
             self.avg_rsrq_dB,
@@ -247,23 +306,53 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
 
     def _get_reward(self) -> float:
         row = self.pm_records[self.current_step]
-        attempts = float(row.get("ho_attempts_intra", 10.0))
+        attempts = float(row.get("ho_attempts_intra", row.get("ho_attempt", 10.0)))
+        safe_attempts = max(attempts, 1.0)
 
         ho_success_intra = int(round(attempts * (self.ho_success_rate_pct / 100.0)))
         ho_failure_intra = int(round(attempts * (self.ho_failure_rate_pct / 100.0)))
 
-        reward = 0.0
-        reward += ho_success_intra * 1.0
-        reward += ho_failure_intra * -5.0
-        reward += self.ho_pingpong_count * -2.0
+        w = self.reward_weights
+        if self.reward_version == "v1":
+            reward = (
+                (ho_success_intra / safe_attempts) * 100.0
+                + (ho_failure_intra / safe_attempts) * w["ho_failure"] * 100.0
+                + (self.ho_pingpong_count / safe_attempts) * w["ping_pong"] * 100.0
+            )
+        elif self.reward_version == "v2":
+            reward = (
+                self.ho_success_rate_pct * w["ho_success"]
+                + self.ho_failure_rate_pct * w["ho_failure"]
+                + (self.ho_pingpong_count / safe_attempts * 100.0) * w["ping_pong"]
+            )
+        elif self.reward_version == "v3":
+            # Cell mode doesn't have too_early/too_late/wrong_cell breakdown,
+            # so we approximate: split failure evenly across modes
+            failure_pct = self.ho_failure_rate_pct
+            third = failure_pct / 3.0
+            pingpong_pct = self.ho_pingpong_count / safe_attempts * 100.0
+            reward = (
+                self.ho_success_rate_pct * w["ho_success"]
+                + third * w["too_early_ho"]
+                + third * w["too_late_ho"]
+                + third * w["wrong_cell"]
+                + pingpong_pct * w["ping_pong"]
+            )
+        else:
+            # v0 — Original
+            reward = (
+                ho_success_intra * w["ho_success"]
+                + ho_failure_intra * w["ho_failure"]
+                + self.ho_pingpong_count * w["ping_pong"]
+            )
         return float(reward)
 
     def reset(
         self,
         *,
-        seed: int | None = None,
-        options: dict[str, typing.Any] | None = None,
-    ) -> tuple[np.ndarray[typing.Any, typing.Any], dict[str, typing.Any]]:
+        seed: Optional[int] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> Tuple[np.ndarray, Dict[str, Any]]:
         super().reset(seed=seed)
         self.episode_history = []
 
@@ -303,8 +392,8 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
             return obs, info
 
     def step(
-        self, action: typing.Any
-    ) -> tuple[np.ndarray[typing.Any, typing.Any], float, bool, bool, dict[str, typing.Any]]:
+        self, action: Any
+    ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
         if self.mode == "relation":
             next_state = np.zeros((self.n_relations, 9), dtype=np.float32)
             total_successes = 0
@@ -364,19 +453,74 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
                 total_ping_pongs += ping
                 total_attempts += att
 
-            reward = float(total_successes - 10 * total_failures - 3 * total_ping_pongs)
-            rate = (total_successes / total_attempts * 100.0) if total_attempts > 0 else 100.0
-            
+            # ── Aggregate failure-mode totals ──
+            total_too_early = int(np.sum(next_state[:, 3]))
+            total_too_late = int(np.sum(next_state[:, 4]))
+            total_wrong_cell = int(np.sum(next_state[:, 5]))
+
+            safe_attempts = max(total_attempts, 1)
+            success_rate = total_successes / safe_attempts * 100.0
+            failure_rate = total_failures / safe_attempts * 100.0
+            pingpong_rate = total_ping_pongs / safe_attempts * 100.0
+            too_early_rate = total_too_early / safe_attempts * 100.0
+            too_late_rate = total_too_late / safe_attempts * 100.0
+            wrong_cell_rate = total_wrong_cell / safe_attempts * 100.0
+
+            # ── Reward variants ──
+            w = self.reward_weights
+            if self.reward_version == "v1":
+                # Traffic-weighted: aggregate counts ÷ aggregate attempts.
+                # High-traffic relations contribute more to the reward.
+                reward = float(
+                    success_rate * w["ho_success"]
+                    + failure_rate * w["ho_failure"]
+                    + pingpong_rate * w["ping_pong"]
+                )
+            elif self.reward_version == "v2":
+                # Rate-based: simple average of per-relation rates.
+                # Every relation counts equally regardless of traffic volume.
+                per_att = np.maximum(next_state[:, 0], 1.0)
+                avg_success = float(np.mean(next_state[:, 1] / per_att)) * 100.0
+                avg_failure = float(np.mean(next_state[:, 2] / per_att)) * 100.0
+                avg_pingpong = float(np.mean(next_state[:, 7] / per_att)) * 100.0
+                reward = float(
+                    avg_success * w["ho_success"]
+                    + avg_failure * w["ho_failure"]
+                    + avg_pingpong * w["ping_pong"]
+                )
+            elif self.reward_version == "v3":
+                # Multi-objective: separate failure-mode weights from YAML
+                reward = float(
+                    success_rate * w["ho_success"]
+                    + too_early_rate * w["too_early_ho"]
+                    + too_late_rate * w["too_late_ho"]
+                    + wrong_cell_rate * w["wrong_cell"]
+                    + pingpong_rate * w["ping_pong"]
+                )
+            else:
+                # v0 — Original count-based (backward compatible)
+                reward = float(
+                    total_successes * w["ho_success"]
+                    + total_failures * w["ho_failure"]
+                    + total_ping_pongs * w["ping_pong"]
+                )
+
             self.episode_history.append({
                 "ho_attempts_intra": total_attempts,
                 "ho_success_intra": total_successes,
                 "ho_failure_intra": total_failures,
                 "ho_pingpong_count": total_ping_pongs,
-                "ho_success_rate_pct": rate,
-                "ho_failure_rate_pct": (total_failures / total_attempts * 100.0) if total_attempts > 0 else 0.0,
-                "ho_failure_too_early": sum(next_state[:, 3]),
-                "ho_failure_too_late": sum(next_state[:, 4]),
-                "ho_failure_wrong_cell": sum(next_state[:, 5]),
+                "ho_success_rate_pct": success_rate,
+                "ho_failure_rate_pct": failure_rate,
+                "ho_failure_too_early": total_too_early,
+                "ho_failure_too_late": total_too_late,
+                "ho_failure_wrong_cell": total_wrong_cell,
+                "too_early_rate_pct": too_early_rate,
+                "too_late_rate_pct": too_late_rate,
+                "wrong_cell_rate_pct": wrong_cell_rate,
+                "pingpong_rate_pct": pingpong_rate,
+                "reward_version": self.reward_version,
+                "reward": reward,
                 "avg_rsrp_dBm": -90.0,
                 "avg_rsrq_dB": -12.0,
                 "avg_sinr_dB": 15.0,
