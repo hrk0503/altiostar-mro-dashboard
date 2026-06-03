@@ -5,7 +5,7 @@ Outputs: Gymnasium env, training scripts, model checkpoints.
 """
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict
 
 import mlflow
 import numpy as np
@@ -92,7 +92,7 @@ class ForgeAgent:
                 mlflow_run_id=run.info.run_id,
             )
 
-    def evaluate(self, model_path: Path, env: MROEnv, n_episodes: int = 100) -> dict[str, Any]:
+    def evaluate(self, model_path: Path, env: MROEnv, n_episodes: int = 100) -> Dict[str, Any]:
         """Evaluate trained model and return KPI metrics."""
         if not model_path.exists():
             raise FileNotFoundError(f"Model checkpoint not found: {model_path}")

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
 
@@ -74,8 +75,8 @@ KNOWN_SCHEMAS = {
 
 @dataclass
 class SchemaMatch:
-    matched_model: str | None
-    model_class: type | None
+    matched_model: Optional[str]
+    model_class: Optional[type]
 
 def infer_schema(csv_path: Path) -> SchemaMatch:
     df = pd.read_csv(csv_path, nrows=1)
