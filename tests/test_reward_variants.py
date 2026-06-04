@@ -115,10 +115,12 @@ def run_reward_comparison(num_episodes: int = 3, steps_per_episode: int = 10, sc
     print(df.to_string(index=False))
     print(f"{'-' * 85}\n")
     
-    # Identify best variant by reward
+    # V0 excluded: count-based scale (~3000+) not comparable to rate-based v1-v3 (~70-75)
     if all(r["Avg Reward"] != "N/A" for r in results):
-        best_variant = max(results, key=lambda x: float(x["Avg Reward"]))
-        print(f"  Best Performer: {best_variant['Variant']} (avg reward: {best_variant['Avg Reward']})\n")
+        normalized = [r for r in results if r["Variant"] != "V0"]
+        best_variant = max(normalized, key=lambda x: float(x["Avg Reward"]))
+        print(f"  Note: V0 excluded from ranking (count-based, ~40x scale vs v1-v3)")
+        print(f"  Best Performer (v1-v3): {best_variant['Variant']} (avg reward: {best_variant['Avg Reward']})")
     
     return df
 
