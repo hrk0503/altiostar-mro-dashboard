@@ -2,29 +2,29 @@
   "experiment": "v2_rain_fade",
   "reward_version": "v2",
   "scenario": "rain_fade",
-  "timestamp": "2026-06-04T01:32:18.577559+00:00",
+  "timestamp": "2026-06-04T13:46:29.081860+00:00",
   "config": {
-    "total_timesteps": 1000,
-    "eval_episodes": 2,
+    "total_timesteps": 2000,
+    "eval_episodes": 5,
     "seed": 42,
     "algorithm": "PPO",
     "policy": "MlpPolicy"
   },
   "training": {
-    "time_s": 6.85,
+    "time_s": 21.16,
     "episode_rewards": [],
-    "checkpoint_path": "checkpoints/ppo_v2_rain_fade.zip"
+    "checkpoint_path": "checkpoints\\ppo_v2_rain_fade.zip"
   },
   "evaluation": {
-    "mean_reward": 202977.9703,
-    "std_reward": 16.9443,
-    "ho_success_rate": 79.2905,
-    "ho_failure_rate": 2.0122,
-    "pingpong_rate": 1.3827,
+    "mean_reward": 202940.2321,
+    "std_reward": 67.7469,
+    "ho_success_rate": 79.2676,
+    "ho_failure_rate": 2.0163,
+    "pingpong_rate": 1.3839,
     "too_early_rate": 0.1295,
-    "too_late_rate": 0.2005,
-    "wrong_cell_rate": 0.7017,
-    "n_episodes": 2,
+    "too_late_rate": 0.2007,
+    "wrong_cell_rate": 0.7032,
+    "n_episodes": 5,
     "per_episode": [
       {
         "episode": 0,
@@ -45,8 +45,38 @@
         "too_early_rate": 0.1292,
         "too_late_rate": 0.1991,
         "wrong_cell_rate": 0.7009
+      },
+      {
+        "episode": 2,
+        "reward": 202928.638,
+        "ho_success_rate": 79.2187,
+        "ho_failure_rate": 2.0198,
+        "pingpong_rate": 1.3823,
+        "too_early_rate": 0.1291,
+        "too_late_rate": 0.2005,
+        "wrong_cell_rate": 0.7053
+      },
+      {
+        "episode": 3,
+        "reward": 202815.1491,
+        "ho_success_rate": 79.2499,
+        "ho_failure_rate": 2.0214,
+        "pingpong_rate": 1.3859,
+        "too_early_rate": 0.1303,
+        "too_late_rate": 0.2022,
+        "wrong_cell_rate": 0.7047
+      },
+      {
+        "episode": 4,
+        "reward": 203001.4327,
+        "ho_success_rate": 79.2885,
+        "ho_failure_rate": 2.0159,
+        "pingpong_rate": 1.386,
+        "too_early_rate": 0.1288,
+        "too_late_rate": 0.1997,
+        "wrong_cell_rate": 0.7028
       }
     ]
   },
-  "mlflow_run_id": "1985c90904d04b23af37411690cc7944"
+  "mlflow_run_id": "cac4ee26e1784d64ab8f655f1568d883"
 }
