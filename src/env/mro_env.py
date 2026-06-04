@@ -67,6 +67,12 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
         v1 — Traffic-weighted: normalizes by ho_attempts so busy cells don't dominate
         v2 — Rate-based: uses percentage metrics for bounded, comparable rewards
         v3 — Multi-objective: separate weights for too_early/too_late/wrong_cell from YAML
+
+    Scenario support (configurable via ``scenario`` parameter):
+        baseline      — No modifications (default, backward compatible)
+        rush_hour     — High UE density, congestion, PRB floor
+        rain_fade     — Signal degradation, RSRP/SINR drops, more failures
+        tower_failure — Site removed, neighbor load spike, cascade failures
     """
 
     def __init__(
@@ -76,6 +82,8 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
         cell_id: Optional[str] = None,
         reward_version: Optional[str] = None,
         reward_config_path: Optional[str] = None,
+        scenario: Optional[str] = None,
+        scenario_seed: Optional[int] = None,
     ):
         super().__init__()
 
@@ -83,6 +91,10 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
         reward_cfg = load_reward_config(reward_config_path)
         self.reward_version: str = reward_version or reward_cfg["version"]
         self.reward_weights: Dict[str, float] = reward_cfg["weights"]
+
+        # ── Scenario configuration ──
+        self.scenario_name: str = scenario or "baseline"
+        self._scenario_seed: Optional[int] = scenario_seed
 
         base_dir = Path(__file__).resolve().parents[2]
         if pm_data_path is None:
@@ -104,6 +116,18 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
             else:
                 self.pm_data_raw = pd.read_csv(pm_data_path)
                 _DF_CACHE[path_str] = self.pm_data_raw
+
+        # ── Apply scenario modifiers to PM data ──
+        if self.scenario_name != "baseline":
+            from src.env.scenario_loader import ScenarioLoader
+            loader = ScenarioLoader()
+            self._scenario_config = loader.load(self.scenario_name)
+            rng = np.random.default_rng(self._scenario_seed)
+            self.pm_data_raw = loader.apply(
+                self.pm_data_raw, self.scenario_name, rng=rng,
+            )
+        else:
+            self._scenario_config = {"name": "baseline", "description": "No modifications"}
 
         if isinstance(kpi_path, pd.DataFrame):
             self.kpi_data = kpi_path
@@ -378,7 +402,11 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
                     float(row["ping_pong"]),
                     float(row["cio_db"]),
                 ]
-            info = {"cell_id": self.cell_id, "step": self.current_step}
+            info = {
+                "cell_id": self.cell_id,
+                "step": self.current_step,
+                "scenario": self.scenario_name,
+            }
             return self.current_state, info
         else:
             if options and options.get("random_start"):
@@ -388,7 +416,11 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
 
             self._update_state_from_replay(action=None)
             obs = self._get_obs()
-            info = {"cell_id": self.cell_id, "step": self.current_step}
+            info = {
+                "cell_id": self.cell_id,
+                "step": self.current_step,
+                "scenario": self.scenario_name,
+            }
             return obs, info
 
     def step(
@@ -520,6 +552,7 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
                 "wrong_cell_rate_pct": wrong_cell_rate,
                 "pingpong_rate_pct": pingpong_rate,
                 "reward_version": self.reward_version,
+                "scenario": self.scenario_name,
                 "reward": reward,
                 "avg_rsrp_dBm": -90.0,
                 "avg_rsrq_dB": -12.0,
@@ -534,6 +567,7 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
             info = {
                 "cell_id": self.cell_id,
                 "step": self.current_step,
+                "scenario": self.scenario_name,
                 "total_attempts": total_attempts,
                 "total_successes": total_successes,
                 "total_failures": total_failures,
@@ -556,6 +590,7 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
             info = {
                 "cell_id": self.cell_id,
                 "step": self.current_step,
+                "scenario": self.scenario_name,
                 "action": [int(x) for x in action] if hasattr(action, "__len__") else int(action),
                 "action_effect": "simulated transition physics v1",
             }

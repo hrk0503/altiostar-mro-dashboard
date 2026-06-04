@@ -1,0 +1,52 @@
+{
+  "experiment": "v1_baseline",
+  "reward_version": "v1",
+  "scenario": "baseline",
+  "timestamp": "2026-06-04T01:29:54.882004+00:00",
+  "config": {
+    "total_timesteps": 1000,
+    "eval_episodes": 2,
+    "seed": 42,
+    "algorithm": "PPO",
+    "policy": "MlpPolicy"
+  },
+  "training": {
+    "time_s": 6.23,
+    "episode_rewards": [],
+    "checkpoint_path": "checkpoints/ppo_v1_baseline.zip"
+  },
+  "evaluation": {
+    "mean_reward": 205582.2752,
+    "std_reward": 14.2001,
+    "ho_success_rate": 79.2905,
+    "ho_failure_rate": 1.0285,
+    "pingpong_rate": 1.3827,
+    "too_early_rate": 0.1295,
+    "too_late_rate": 0.2005,
+    "wrong_cell_rate": 0.7017,
+    "n_episodes": 2,
+    "per_episode": [
+      {
+        "episode": 0,
+        "reward": 205568.075,
+        "ho_success_rate": 79.2915,
+        "ho_failure_rate": 1.0292,
+        "pingpong_rate": 1.384,
+        "too_early_rate": 0.1299,
+        "too_late_rate": 0.2019,
+        "wrong_cell_rate": 0.7025
+      },
+      {
+        "episode": 1,
+        "reward": 205596.4753,
+        "ho_success_rate": 79.2895,
+        "ho_failure_rate": 1.0278,
+        "pingpong_rate": 1.3815,
+        "too_early_rate": 0.1292,
+        "too_late_rate": 0.1991,
+        "wrong_cell_rate": 0.7009
+      }
+    ]
+  },
+  "mlflow_run_id": "2f659a7512fd4b799d0815de064c8c82"
+}

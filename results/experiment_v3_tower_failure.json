@@ -1,0 +1,52 @@
+{
+  "experiment": "v3_tower_failure",
+  "reward_version": "v3",
+  "scenario": "tower_failure",
+  "timestamp": "2026-06-04T01:34:26.244451+00:00",
+  "config": {
+    "total_timesteps": 1000,
+    "eval_episodes": 2,
+    "seed": 42,
+    "algorithm": "PPO",
+    "policy": "MlpPolicy"
+  },
+  "training": {
+    "time_s": 6.81,
+    "episode_rewards": [],
+    "checkpoint_path": "checkpoints/ppo_v3_tower_failure.zip"
+  },
+  "evaluation": {
+    "mean_reward": 16544.077,
+    "std_reward": 5.9278,
+    "ho_success_rate": 6.3583,
+    "ho_failure_rate": 0.0849,
+    "pingpong_rate": 0.1112,
+    "too_early_rate": 0.0109,
+    "too_late_rate": 0.0168,
+    "wrong_cell_rate": 0.0582,
+    "n_episodes": 2,
+    "per_episode": [
+      {
+        "episode": 0,
+        "reward": 16538.1492,
+        "ho_success_rate": 6.357,
+        "ho_failure_rate": 0.085,
+        "pingpong_rate": 0.1113,
+        "too_early_rate": 0.011,
+        "too_late_rate": 0.0169,
+        "wrong_cell_rate": 0.0583
+      },
+      {
+        "episode": 1,
+        "reward": 16550.0048,
+        "ho_success_rate": 6.3597,
+        "ho_failure_rate": 0.0849,
+        "pingpong_rate": 0.1111,
+        "too_early_rate": 0.0108,
+        "too_late_rate": 0.0168,
+        "wrong_cell_rate": 0.0582
+      }
+    ]
+  },
+  "mlflow_run_id": "e09027ce81e64742847bfdec19dc3290"
+}

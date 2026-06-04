@@ -1,0 +1,9 @@
+# Experiment: Rate-based reward (v2) under rush hour congestion
+# Usage: python run_experiment.py --config configs/experiments/v2_rush_hour.yaml
+
+experiment:
+  reward_version: v2
+  scenario: rush_hour
+  total_timesteps: 10000
+  eval_episodes: 10
+  seed: 42
