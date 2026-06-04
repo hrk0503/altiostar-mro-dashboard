@@ -1,4 +1,5 @@
 import sys
+import json
 from pathlib import Path
 
 # Add repo root to path so imports work from any location
@@ -122,6 +123,22 @@ def run_reward_comparison(num_episodes: int = 3, steps_per_episode: int = 10, sc
         print(f"  Note: V0 excluded from ranking (count-based, ~40x scale vs v1-v3)")
         print(f"  Best Performer (v1-v3): {best_variant['Variant']} (avg reward: {best_variant['Avg Reward']})")
     
+
+    # Save results to JSON for dashboard
+    results_dir = Path("results")
+    results_dir.mkdir(exist_ok=True)
+    output = {
+        "generated": "reward_variant_comparison",
+        "scenario": scenario,
+        "episodes": num_episodes,
+        "steps_per_episode": steps_per_episode,
+        "note": "V0 excluded from best_performer ranking — count-based scale (~3000+) vs rate-based v1-v3 (~70-75)",
+        "best_performer": best_variant["Variant"],
+        "variants": results,
+    }
+    out_path = results_dir / "reward_variant_comparison.json"
+    out_path.write_text(json.dumps(output, indent=2))
+    print(f"  Saved to {out_path}\n")
     return df
 
 
