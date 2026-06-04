@@ -1,8 +1,7 @@
 """AltioStar MRO — Phase 2 Dashboard.
 
-Data-Dense + Real-Time Monitoring hybrid dashboard.
-Design system by UI UX Pro Max — Fira Sans/Code typography,
-bullet gauges, animated status indicators, WINNIIO brand.
+Tailwind-inspired clean UI: dark sidebar, flat KPI cards,
+colored badges, clean tables, donut charts.
 
 Usage:
     streamlit run src/dashboard/app.py
@@ -10,7 +9,8 @@ Usage:
 
 from __future__ import annotations
 
-import json, math, sys, time
+import base64, json, math, sys, time
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -21,236 +21,395 @@ import plotly.graph_objects as go
 import plotly.express as px
 import streamlit as st
 
-# ── Page config ──────────────────────────────────────────────────────
-st.set_page_config(
-    page_title="WINNIIO · AltioStar MRO",
-    page_icon="📡",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+# ── Assets — load logos as base64 for embedding ──────────────────────
+ASSETS = Path(__file__).resolve().parent / "assets"
 
-# ── Theme state ──────────────────────────────────────────────────────
-if "dark_mode" not in st.session_state:
-    st.session_state.dark_mode = False
+def img_b64(fname):
+    p = ASSETS / fname
+    if p.exists():
+        return base64.b64encode(p.read_bytes()).decode()
+    return ""
+
+LOGO_B64 = img_b64("winniio_logo.png")       # colored full logo (for login page)
+CRANE_B64 = img_b64("winniio_crane.png")      # colored crane icon (sidebar + header)
+
+# ── Page config — use WINNIIO favicon ────────────────────────────────
+_fav = ASSETS / "favicon.ico"
+if _fav.exists():
+    _fav_b64 = base64.b64encode(_fav.read_bytes()).decode()
+    st.set_page_config(
+        page_title="WINNIIO · AltioStar MRO",
+        page_icon=f"data:image/x-icon;base64,{_fav_b64}",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
+else:
+    st.set_page_config(
+        page_title="WINNIIO · AltioStar MRO",
+        page_icon="📡",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
+
+# ── Password gate (persists via URL query param) ─────────────────────
+DASHBOARD_PASSWORD = "Winniio-2019"
+_AUTH_KEY = "_a"
+_AUTH_VAL = "w2019"
+
+# Check auth: query param persists across refreshes in the URL
+_is_authed = st.query_params.get(_AUTH_KEY) == _AUTH_VAL
+
+if not _is_authed:
+    # Full-screen centered login
+    st.markdown("""
+    <style>
+      #MainMenu, footer, .stDeployButton, header { display: none; }
+      section[data-testid="stSidebar"] { display: none; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    _1, center, _2 = st.columns([1, 1.5, 1])
+    with center:
+        st.markdown("<div style='height:12vh'></div>", unsafe_allow_html=True)
+        if LOGO_B64:
+            st.markdown(
+                f'<div style="text-align:center; margin-bottom:30px;">'
+                f'<img src="data:image/png;base64,{LOGO_B64}" '
+                f'style="height:60px; object-fit:contain;" /></div>',
+                unsafe_allow_html=True)
+        st.markdown(
+            '<div style="text-align:center; margin-bottom:8px;">'
+            '<span style="font-size:1.1rem; font-weight:700; color:#0F172A;">'
+            'AltioStar MRO Dashboard</span></div>'
+            '<div style="text-align:center; margin-bottom:24px;">'
+            '<span style="font-size:.82rem; color:#64748B;">'
+            'Rakuten Japan 5G · Phase 2</span></div>',
+            unsafe_allow_html=True)
+        pwd = st.text_input("Password", type="password", placeholder="Enter dashboard password")
+        login_btn = st.button("Sign In", use_container_width=True, type="primary")
+        if login_btn:
+            if pwd == DASHBOARD_PASSWORD:
+                st.query_params[_AUTH_KEY] = _AUTH_VAL
+                st.rerun()
+            else:
+                st.error("Incorrect password.")
+        st.markdown(
+            '<div style="text-align:center; margin-top:24px; font-size:.7rem; color:#94A3B8;">'
+            'WINNIIO · Secure Access</div>',
+            unsafe_allow_html=True)
+    st.stop()
+
+# ── Session state ────────────────────────────────────────────────────
 if "sim_step" not in st.session_state:
     st.session_state.sim_step = 0
 
-dark = st.session_state.dark_mode
-
-# ── Design tokens (UI UX Pro Max — Data-Dense + Real-Time hybrid) ──
-# WINNIIO teal as primary, blue data accents, amber highlights
-P = "#0096AA"        # primary teal
-P_DARK = "#00788A"
-BLUE = "#1E40AF"
-BLUE_L = "#3B82F6"
-AMBER = "#D97706"
+# ── Design tokens — Tailwind-inspired ────────────────────────────────
+PRIMARY = "#0096AA"
+PRIMARY_DARK = "#007A8A"
+BLUE = "#3B82F6"
 GREEN = "#22C55E"
-RED = "#DC2626"
-PURPLE = "#7C3AED"
+RED = "#EF4444"
+AMBER = "#F59E0B"
+PURPLE = "#8B5CF6"
+ORANGE = "#F97316"
 
-if dark:
-    BG = "#0F172A"; BG2 = "#1E293B"; CARD = "#1E293B"; BORDER = "#334155"
-    TEXT = "#E2E8F0"; TEXT2 = "#94A3B8"; TEXT3 = "#64748B"
-    SHADOW = "0 1px 3px rgba(0,0,0,.5)"
-    PLT = "plotly_dark"; MAPSTYLE = "carto-darkmatter"
-else:
-    BG = "#F8FAFC"; BG2 = "#F1F5F9"; CARD = "#FFFFFF"; BORDER = "#E2E8F0"
-    TEXT = "#1E293B"; TEXT2 = "#64748B"; TEXT3 = "#94A3B8"
-    SHADOW = "0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04)"
-    PLT = "plotly_white"; MAPSTYLE = "carto-positron"
+SIDEBAR_BG = "#0F172A"
+SIDEBAR_TEXT = "#94A3B8"
+SIDEBAR_ACTIVE = "rgba(59,130,246,.12)"
 
-V_COLORS = {"v0": RED, "v1": P, "v2": GREEN, "v3": PURPLE}
+BG = "#F1F5F9"
+CARD = "#FFFFFF"
+BORDER = "#E2E8F0"
+TEXT = "#0F172A"
+TEXT_SEC = "#64748B"
+TEXT_MUTED = "#94A3B8"
+SHADOW = "0 1px 3px rgba(0,0,0,.08)"
+
+PLT = "plotly_white"
+MAPSTYLE = "carto-positron"
+
+V_COLORS = {"v0": RED, "v1": PRIMARY, "v2": GREEN, "v3": PURPLE}
 V_NAMES = {"v0": "Count-Based", "v1": "Traffic-Weighted", "v2": "Rate-Based", "v3": "Multi-Objective"}
 SC_META = {
-    "baseline": {"i": "🟢", "c": GREEN, "l": "Normal"},
-    "rush_hour": {"i": "🔴", "c": RED, "l": "High Congestion"},
-    "rain_fade": {"i": "🌧️", "c": BLUE_L, "l": "Signal Degradation"},
-    "tower_failure": {"i": "⚡", "c": AMBER, "l": "Site Outage"},
+    "baseline": {"c": GREEN, "l": "Normal"},
+    "rush_hour": {"c": RED, "l": "High Congestion"},
+    "rain_fade": {"c": BLUE, "l": "Signal Degradation"},
+    "tower_failure": {"c": AMBER, "l": "Site Outage"},
 }
 
-# ── CSS — Fira fonts, data-dense grid, animated indicators ──────────
+# ── CSS — Tailwind-inspired clean design ─────────────────────────────
 st.markdown(f"""
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700;800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
-  /* === GLOBAL === */
-  .stApp {{ background: {BG}; color: {TEXT}; font-family: 'Fira Sans', system-ui, sans-serif; }}
-  .main .block-container {{ padding-top: .6rem; max-width: 1540px; }}
+  /* === RESET === */
+  .stApp {{ background: {BG}; color: {TEXT}; font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }}
+  .main .block-container {{ padding-top: .5rem; max-width: 1560px; }}
   #MainMenu, footer, .stDeployButton {{ display: none; }}
 
-  /* === SIDEBAR NAV === */
+  /* === SIDEBAR === */
   section[data-testid="stSidebar"] {{
-    background: linear-gradient(180deg, #003540 0%, #002830 100%);
-    font-family: 'Fira Sans', sans-serif;
+    background: {SIDEBAR_BG};
+    font-family: 'Inter', sans-serif;
+    border-right: 1px solid rgba(255,255,255,.06);
   }}
-  section[data-testid="stSidebar"] * {{ color: #B0D4DA !important; }}
-  section[data-testid="stSidebar"] hr {{ border-color: rgba(255,255,255,.07); }}
-  section[data-testid="stSidebar"] .stRadio > div {{ gap: 3px; }}
+  section[data-testid="stSidebar"] * {{ color: {SIDEBAR_TEXT} !important; }}
+  section[data-testid="stSidebar"] hr {{ border-color: rgba(255,255,255,.06); margin: 8px 0; }}
+
+  /* Radio nav — clean pill style */
+  section[data-testid="stSidebar"] .stRadio > div {{ gap: 2px; }}
   section[data-testid="stSidebar"] .stRadio > div > label {{
-    background: rgba(255,255,255,.03);
-    border: 1px solid rgba(255,255,255,.06);
-    border-radius: 8px;
-    padding: 11px 14px !important;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 14px !important;
     font-size: .84rem !important;
     font-weight: 500 !important;
-    transition: all .2s ease;
+    transition: all .15s ease;
     cursor: pointer;
   }}
   section[data-testid="stSidebar"] .stRadio > div > label:hover {{
-    background: rgba(0,150,170,.15);
-    border-color: rgba(0,180,216,.3);
-    transform: translateX(3px);
+    background: rgba(255,255,255,.05);
+    color: #E2E8F0 !important;
   }}
   section[data-testid="stSidebar"] .stRadio > div > label:has(input:checked) {{
-    background: rgba(0,180,216,.18);
-    border-color: {P};
-    color: #fff !important;
-    box-shadow: inset 3px 0 0 {P};
+    background: {SIDEBAR_ACTIVE};
+    color: {BLUE} !important;
+    font-weight: 600 !important;
+    border-left: 3px solid {BLUE};
+    padding-left: 11px !important;
   }}
   section[data-testid="stSidebar"] .stRadio > div > label > div:first-child {{ display: none; }}
 
-  /* === CARDS === */
-  .dc {{
+  /* === CARD === */
+  .card {{
     background: {CARD};
     border: 1px solid {BORDER};
-    border-radius: 10px;
-    padding: 18px 22px;
+    border-radius: 8px;
+    padding: 20px 24px;
     box-shadow: {SHADOW};
-    transition: all .2s ease;
-    margin-bottom: 10px;
-  }}
-  .dc:hover {{
-    box-shadow: 0 4px 12px rgba(0,150,170,.08);
-    transform: translateY(-1px);
+    margin-bottom: 12px;
   }}
 
-  /* === KPI BULLET GAUGE === */
-  .bullet {{
-    text-align: center;
-    padding: 10px 4px;
-    font-family: 'Fira Code', monospace;
+  /* === KPI CARD (flat number style) === */
+  .kpi {{
+    background: {CARD};
+    border: 1px solid {BORDER};
+    border-radius: 8px;
+    padding: 16px 20px;
+    box-shadow: {SHADOW};
   }}
-  .bullet-val {{
-    font-size: 1.75rem;
-    font-weight: 700;
-    line-height: 1;
-    letter-spacing: -1px;
-  }}
-  .bullet-lbl {{
-    font-size: .65rem;
+  .kpi-label {{
+    font-size: .68rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 2px;
-    color: {TEXT2};
-    margin-top: 6px;
-    font-family: 'Fira Sans', sans-serif;
-  }}
-  .bullet-sub {{
-    font-size: .72rem;
-    color: {TEXT3};
-    font-family: 'Fira Sans', sans-serif;
-  }}
-
-  /* === SECTION HEADER === */
-  .sh {{
+    letter-spacing: .08em;
+    color: {TEXT_SEC};
+    margin-bottom: 4px;
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin: 26px 0 14px 0;
-    font-family: 'Fira Sans', sans-serif;
+    gap: 6px;
   }}
-  .sh h3 {{
-    margin: 0;
-    font-size: .95rem;
+  .kpi-label .kpi-icon {{
+    width: 8px; height: 8px;
+    border-radius: 2px;
+    display: inline-block;
+  }}
+  .kpi-value {{
+    font-size: 1.65rem;
     font-weight: 700;
     color: {TEXT};
-    white-space: nowrap;
+    font-family: 'JetBrains Mono', monospace;
+    line-height: 1.2;
   }}
-  .sh::after {{
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: linear-gradient(90deg, {P}40, transparent);
+  .kpi-sub {{
+    font-size: .72rem;
+    color: {TEXT_MUTED};
+    margin-top: 2px;
   }}
 
-  /* === LIVE PULSE === */
-  @keyframes pulse {{ 0%,100% {{ opacity:1; }} 50% {{ opacity:.35; }} }}
-  @keyframes glow {{ 0%,100% {{ box-shadow: 0 0 4px {GREEN}; }} 50% {{ box-shadow: 0 0 12px {GREEN}; }} }}
-  @keyframes slideIn {{ from {{ opacity:0; transform:translateY(8px); }} to {{ opacity:1; transform:translateY(0); }} }}
-  @keyframes fadeNum {{ from {{ opacity:0; transform:scale(.9); }} to {{ opacity:1; transform:scale(1); }} }}
-  @keyframes scanline {{
-    0% {{ left: -40%; }}
-    100% {{ left: 100%; }}
+  /* === BADGE (status pill) === */
+  .badge {{
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    border-radius: 9999px;
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .02em;
+    gap: 4px;
   }}
+  .badge::before {{
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+  }}
+  .badge-green {{ background: #DCFCE7; color: #166534; }}
+  .badge-green::before {{ background: #22C55E; }}
+  .badge-red {{ background: #FEE2E2; color: #991B1B; }}
+  .badge-red::before {{ background: #EF4444; }}
+  .badge-amber {{ background: #FEF3C7; color: #92400E; }}
+  .badge-amber::before {{ background: #F59E0B; }}
+  .badge-blue {{ background: #DBEAFE; color: #1E40AF; }}
+  .badge-blue::before {{ background: #3B82F6; }}
+  .badge-purple {{ background: #EDE9FE; color: #5B21B6; }}
+  .badge-purple::before {{ background: #8B5CF6; }}
+
+  /* === TABLE ROW === */
+  .trow {{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid {BORDER};
+    font-size: .82rem;
+    transition: background .1s;
+  }}
+  .trow:hover {{ background: #F8FAFC; }}
+  .trow:last-child {{ border-bottom: none; }}
+
+  /* === TABLE HEADER === */
+  .thead {{
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: #F8FAFC;
+    border-bottom: 2px solid {BORDER};
+    font-size: .72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: {TEXT_SEC};
+  }}
+
+  /* === SECTION TITLE === */
+  .section-title {{
+    font-size: .88rem;
+    font-weight: 700;
+    color: {TEXT};
+    margin: 20px 0 12px 0;
+    padding-bottom: 8px;
+    border-bottom: 2px solid {BORDER};
+  }}
+
+  /* === PAGE TITLE === */
+  .page-title {{
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: {TEXT};
+  }}
+  .page-subtitle {{
+    font-size: .78rem;
+    color: {TEXT_MUTED};
+  }}
+
+  /* === LIVE DOT === */
+  @keyframes pulse {{ 0%,100% {{ opacity:1 }} 50% {{ opacity:.3 }} }}
   .live-dot {{
     display: inline-block;
     width: 7px; height: 7px;
     border-radius: 50%;
     background: {GREEN};
-    animation: pulse 2s ease-in-out infinite, glow 2s ease-in-out infinite;
-    margin-right: 6px;
+    animation: pulse 2s ease-in-out infinite;
+    margin-right: 4px;
   }}
-  .anim-in {{ animation: slideIn .4s ease-out; }}
-  .num-pop {{ animation: fadeNum .5s ease-out; }}
 
-  /* === TICKER === */
-  .tk {{
-    background: {'rgba(0,150,170,.06)' if not dark else 'rgba(0,150,170,.08)'};
-    border: 1px solid {P}20;
-    border-radius: 8px;
-    padding: 7px 16px;
-    font-size: .74rem;
-    font-family: 'Fira Code', monospace;
-    color: {P};
+  /* === PROGRESS BAR === */
+  .pbar {{
+    background: {BG};
+    border-radius: 9999px;
+    height: 6px;
     overflow: hidden;
-    white-space: nowrap;
-    margin-bottom: 16px;
-    position: relative;
+    margin-top: 6px;
   }}
-  .tk::before {{
-    content: '';
-    position: absolute;
-    top: 0; left: -40%;
-    width: 30%; height: 100%;
-    background: linear-gradient(90deg, transparent, {P}10, transparent);
-    animation: scanline 5s linear infinite;
+  .pfill {{
+    height: 100%;
+    border-radius: 9999px;
+    transition: width .6s ease;
   }}
-  .tk-s {{
-    display: inline-block;
-    animation: scroll 40s linear infinite;
+
+  /* === PLOTLY & DATAFRAME — card styling built in === */
+  .stPlotlyChart {{
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid {BORDER};
+    box-shadow: {SHADOW};
   }}
-  @keyframes scroll {{ 0%{{transform:translateX(60%)}} 100%{{transform:translateX(-100%)}} }}
-
-  /* === CELL ROW === */
-  .cr {{
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 7px 12px;
-    border-bottom: 1px solid {BORDER};
-    font-size: .8rem;
-    transition: background .15s, padding-left .15s;
-    font-family: 'Fira Sans', sans-serif;
+  .stDataFrame {{
+    border-radius: 8px;
+    overflow: hidden;
+    font-family: 'Inter', sans-serif;
+    font-size: .82rem;
   }}
-  .cr:hover {{ background: {P}08; padding-left: 16px; }}
-
-  /* === BADGES === */
-  .bg {{ display:inline-block; padding:2px 9px; border-radius:16px; font-size:.68rem; font-weight:700; font-family:'Fira Sans',sans-serif; }}
-  .bg-g {{ background:#D1FAE5; color:#065F46; }}
-  .bg-r {{ background:#FEE2E2; color:#991B1B; }}
-  .bg-a {{ background:#FEF3C7; color:#92400E; }}
-  .bg-l {{ background:{P}15; color:{P}; }}
-
-  /* === PROGRESS === */
-  .pb {{ background:{BG2}; border-radius:4px; height:6px; overflow:hidden; margin-top:4px; }}
-  .pf {{ height:100%; border-radius:4px; transition:width .8s ease; }}
-
-  /* === PLOTLY & DATA === */
-  .stPlotlyChart {{ border-radius:10px; overflow:hidden; }}
-  .stDataFrame {{ border-radius:8px; overflow:hidden; font-family:'Fira Code',monospace; font-size:.82rem; }}
   [data-testid="stMetric"] {{
-    background:{CARD}; border:1px solid {BORDER}; border-radius:8px;
-    padding:12px 16px; box-shadow:{SHADOW}; font-family:'Fira Sans',sans-serif;
+    background: {CARD};
+    border: 1px solid {BORDER};
+    border-radius: 8px;
+    padding: 14px 16px;
+    box-shadow: {SHADOW};
+  }}
+
+  /* === TABS (Tailwind pill style) === */
+  .stTabs [data-baseweb="tab-list"] {{
+    gap: 2px;
+    background: {BG};
+    padding: 3px;
+    border-radius: 8px;
+    border: 1px solid {BORDER};
+  }}
+  .stTabs [data-baseweb="tab"] {{
+    border-radius: 6px;
+    font-size: .82rem;
+    font-weight: 500;
+    padding: 6px 14px;
+  }}
+  .stTabs [data-baseweb="tab"][aria-selected="true"] {{
+    background: {CARD};
+    box-shadow: {SHADOW};
+  }}
+
+  /* === TOP NAV CHIPS === */
+  .topnav-chip {{
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: .74rem;
+    font-weight: 600;
+    background: {CARD};
+    border: 1px solid {BORDER};
+    color: {TEXT_SEC};
+    cursor: default;
+    transition: all .15s;
+  }}
+  .topnav-chip:hover {{
+    border-color: {PRIMARY};
+    color: {PRIMARY};
+    box-shadow: 0 2px 8px rgba(0,150,170,.1);
+  }}
+
+  /* === BUTTON === */
+  .stButton > button {{
+    border-radius: 6px;
+    font-size: .78rem;
+    font-weight: 600;
+    padding: 6px 14px;
+    border: 1px solid {BORDER};
+    background: {CARD};
+    transition: all .15s;
+  }}
+  .stButton > button:hover {{
+    border-color: {PRIMARY};
+    color: {PRIMARY};
+    box-shadow: 0 2px 8px rgba(0,150,170,.08);
+  }}
+
+  /* === SEARCH INPUT === */
+  .stSelectbox > div > div, .stMultiSelect > div > div {{
+    border-radius: 6px !important;
+    border-color: {BORDER} !important;
+    font-size: .84rem;
   }}
 </style>
 """, unsafe_allow_html=True)
@@ -260,7 +419,7 @@ ROOT = Path(__file__).resolve().parents[2]
 RDIR = ROOT / "results"
 DDIR = ROOT / "data" / "synthetic"
 
-# ── Data ─────────────────────────────────────────────────────────────
+# ── Data loaders ─────────────────────────────────────────────────────
 @st.cache_data(ttl=30)
 def ld_site(): return pd.read_csv(DDIR / "site_database.csv")
 @st.cache_data(ttl=30)
@@ -285,506 +444,1087 @@ def comp_df(exps):
     for e in exps:
         if "error" in e: continue
         ev = e.get("evaluation", {})
-        rows.append({"Variant": e.get("reward_version","?"), "Scenario": e.get("scenario","?"),
-            "Mean Reward": ev.get("mean_reward",0), "HO Success %": ev.get("ho_success_rate",0),
-            "HO Failure %": ev.get("ho_failure_rate",0), "Ping-Pong %": ev.get("pingpong_rate",0),
-            "Too Early %": ev.get("too_early_rate",0), "Too Late %": ev.get("too_late_rate",0),
-            "Wrong Cell %": ev.get("wrong_cell_rate",0)})
+        rows.append({
+            "Variant": e.get("reward_version", "?"),
+            "Scenario": e.get("scenario", "?"),
+            "Mean Reward": ev.get("mean_reward", 0),
+            "HO Success %": ev.get("ho_success_rate", 0),
+            "HO Failure %": ev.get("ho_failure_rate", 0),
+            "Ping-Pong %": ev.get("pingpong_rate", 0),
+            "Too Early %": ev.get("too_early_rate", 0),
+            "Too Late %": ev.get("too_late_rate", 0),
+            "Wrong Cell %": ev.get("wrong_cell_rate", 0),
+        })
     return pd.DataFrame(rows)
 
-def hc(r):
+def health_color(r):
     if r >= 99: return GREEN
-    if r >= 97: return "#22C55E"
-    if r >= 95: return AMBER
-    if r >= 90: return "#F97316"
+    if r >= 96: return AMBER
     return RED
 
-site_db = ld_site(); pm = ld_pm(); rels = ld_rel(); ed = ld_exp(); cdf = comp_df(ed["experiments"])
+def health_badge(r):
+    if r >= 99: return "badge-green", "Healthy"
+    if r >= 96: return "badge-amber", "Warning"
+    return "badge-red", "Critical"
+
+# ── Load data ────────────────────────────────────────────────────────
+site_db = ld_site()
+pm = ld_pm()
+rels = ld_rel()
+ed = ld_exp()
+cdf = comp_df(ed["experiments"])
+
 ck = pm.groupby("cell_id").agg(
-    ho_att=("ho_attempts_intra","mean"), ho_sr=("ho_success_rate_pct","mean"),
-    ho_fr=("ho_failure_rate_pct","mean"), rsrp=("avg_rsrp_dBm","mean"),
-    sinr=("avg_sinr_dB","mean"), prb=("prb_utilization_dl_pct","mean"),
-    ue=("active_ue_avg","mean"), mx_ue=("max_ue_connected","max"),
+    ho_att=("ho_attempts_intra", "mean"),
+    ho_sr=("ho_success_rate_pct", "mean"),
+    ho_fr=("ho_failure_rate_pct", "mean"),
+    rsrp=("avg_rsrp_dBm", "mean"),
+    sinr=("avg_sinr_dB", "mean"),
+    prb=("prb_utilization_dl_pct", "mean"),
+    ue=("active_ue_avg", "mean"),
+    mx_ue=("max_ue_connected", "max"),
 ).reset_index()
+
 cm = site_db.merge(ck, on="cell_id", how="left")
 cm["prob"] = cm["ho_sr"] < 96
 n_prob = int(cm["prob"].sum())
+n_healthy = 75 - n_prob
 avg_sr = cm["ho_sr"].mean()
-
-# ── Sidebar ──────────────────────────────────────────────────────────
-with st.sidebar:
-    st.markdown(f"""
-    <div style="text-align:center; padding:14px 0 6px 0;">
-        <div style="font-size:1.5rem; font-weight:800; color:#00B4D8; letter-spacing:3px;
-                    font-family:'Fira Sans',sans-serif;">WINNIIO</div>
-        <div style="font-size:.6rem; color:#5A8A92; letter-spacing:4px; text-transform:uppercase;
-                    margin-top:2px; font-family:'Fira Sans',sans-serif;">AltioStar MRO · Phase 2</div>
-    </div>
-    """, unsafe_allow_html=True)
-    st.divider()
-    page = st.radio("Nav", [
-        "🗺️  Live Cell Map", "⚔️  Variant Comparison",
-        "🕸️  Network Topology", "🔬  Real-Time Simulation",
-        "📋  Gate G3 & Export",
-    ], label_visibility="collapsed")
-    st.divider()
-    dt = st.toggle("🌙 Dark Mode", value=st.session_state.dark_mode, key="dt")
-    if dt != st.session_state.dark_mode:
-        st.session_state.dark_mode = dt; st.rerun()
-    st.divider()
-    st.markdown(f"""<div style="font-size:.73rem; line-height:2; font-family:'Fira Sans',sans-serif;">
-        <span class="live-dot"></span> <b>{75 - n_prob}</b> healthy &nbsp; ⚠️ <b>{n_prob}</b> problem<br>
-        📊 Cluster: <b>{avg_sr:.2f}%</b><br>
-        🎯 Target: <b>99.00%</b> · Gap: <b>{max(0,99-avg_sr):.2f}%</b><br>
-        🧪 <b>{len(ed['experiments'])}</b> experiments
-    </div>""", unsafe_allow_html=True)
-
-# ── Top bar ──────────────────────────────────────────────────────────
-hdr1, hdr2 = st.columns([3, 2])
-with hdr1:
-    st.markdown(f"""<div style="font-family:'Fira Sans',sans-serif;">
-        <span style="font-size:1.4rem; font-weight:800; color:{TEXT};">📡 AltioStar MRO</span>
-        <span style="font-size:1.4rem; font-weight:300; color:{TEXT2};"> — Phase 2</span>
-    </div>""", unsafe_allow_html=True)
-    st.caption("Rakuten Japan 5G · Shibuya · 75 Cells · 763 Relations")
-with hdr2:
-    ts = time.strftime("%H:%M:%S")
-    tk = (f"<span class='live-dot'></span> {ts} JST  ·  📡 75 online  ·  "
-          f"⚠️ {n_prob} problem  ·  📊 {avg_sr:.2f}%  ·  🎯 99%  ·  🧪 {len(ed['experiments'])} exp")
-    st.markdown(f'<div class="tk"><span class="tk-s">{tk}&nbsp;&nbsp;&nbsp;{tk}</span></div>', unsafe_allow_html=True)
-
-# Filters
-av = sorted(cdf["Variant"].unique()) if len(cdf) > 0 else ["v0"]
-asc = sorted(cdf["Scenario"].unique()) if len(cdf) > 0 else ["baseline"]
-f1, f2 = st.columns(2)
-with f1: sel_v = st.multiselect("Reward Variants", av, default=av)
-with f2: sel_s = st.multiselect("Scenarios", asc, default=asc)
-filt = cdf[cdf["Variant"].isin(sel_v) & cdf["Scenario"].isin(sel_s)] if len(cdf) > 0 else cdf
-
-# ── KPI Gauges (bullet style with animated SVG) ─────────────────────
-best_sr = cm["ho_sr"].max(); worst_sr = cm["ho_sr"].min()
-avg_fr = cm["ho_fr"].mean(); avg_prb = cm["prb"].mean()
-
-def svg_gauge(val, mx, color, lbl, sub=""):
-    p = min(val/mx, 1.) if mx > 0 else 0
-    d = p * 251.2
-    trail = BORDER
-    sub_html = f'<p style="font-size:.72rem;color:{TEXT3};margin:0;">{sub}</p>' if sub else ''
-    return (
-        f'<div style="text-align:center;padding:10px 4px;">'
-        f'<svg width="100" height="100" viewBox="0 0 110 110">'
-        f'<circle cx="55" cy="55" r="40" fill="none" stroke="{trail}" stroke-width="6" opacity=".5"/>'
-        f'<circle cx="55" cy="55" r="40" fill="none" stroke="{color}" '
-        f'stroke-width="6" stroke-dasharray="{d} 251.2" '
-        f'stroke-linecap="round" transform="rotate(-90 55 55)" '
-        f'style="transition:stroke-dasharray 1.2s cubic-bezier(.4,0,.2,1);"/>'
-        f'<text x="55" y="52" text-anchor="middle" fill="{TEXT}" '
-        f'font-size="16" font-weight="700" font-family="Fira Code,monospace">{val:.1f}</text>'
-        f'<text x="55" y="67" text-anchor="middle" fill="{TEXT3}" '
-        f'font-size="9" font-family="Fira Code,monospace">%</text>'
-        f'</svg>'
-        f'<p style="font-size:.65rem;font-weight:700;text-transform:uppercase;'
-        f'letter-spacing:2px;color:{TEXT2};margin:6px 0 2px 0;">{lbl}</p>'
-        f'{sub_html}'
-        f'</div>'
-    )
-
-k1,k2,k3,k4,k5 = st.columns(5)
-with k1:
-    st.markdown(f'<div class="dc">{svg_gauge(avg_sr,100,P,"Cluster Success",f"Gap: {max(0,99-avg_sr):.2f}%")}</div>', unsafe_allow_html=True)
-with k2:
-    st.markdown(f'<div class="dc">{svg_gauge(best_sr,100,GREEN,"Best Cell")}</div>', unsafe_allow_html=True)
-with k3:
-    st.markdown(f'<div class="dc">{svg_gauge(worst_sr,100,RED,"Worst Cell")}</div>', unsafe_allow_html=True)
-with k4:
-    st.markdown(f'<div class="dc">{svg_gauge(avg_fr,10,AMBER,"Avg Failure")}</div>', unsafe_allow_html=True)
-with k5:
-    st.markdown(f'<div class="dc">{svg_gauge(avg_prb,100,PURPLE,"PRB Usage")}</div>', unsafe_allow_html=True)
-
-# ══════════════════════════════════════════════════════════════════════
-# PAGES
-# ══════════════════════════════════════════════════════════════════════
-
-def sec(title):
-    st.markdown(f'<div class="sh"><h3>{title}</h3></div>', unsafe_allow_html=True)
+best_sr = cm["ho_sr"].max()
+worst_sr = cm["ho_sr"].min()
+avg_fr = cm["ho_fr"].mean()
+avg_prb = cm["prb"].mean()
 
 center_lat = cm["latitude"].mean()
 center_lon = cm["longitude"].mean()
 
-# ── PAGE: LIVE CELL MAP ──────────────────────────────────────────────
-if page == "🗺️  Live Cell Map":
-    sec("Shibuya Cell Cluster — Live Health Map")
+# ══════════════════════════════════════════════════════════════════════
+# SIDEBAR
+# ══════════════════════════════════════════════════════════════════════
+with st.sidebar:
+    # Logo — colored crane icon + text, centered in sidebar header
+    crane_tag = f'<img src="data:image/png;base64,{CRANE_B64}" style="height:34px; width:34px; object-fit:contain;" />' if CRANE_B64 else ''
+    st.markdown(
+        f'<div style="display:flex; align-items:center; justify-content:center; gap:10px; '
+        f'padding:20px 8px 20px 8px; min-height:80px;">'
+        f'{crane_tag}'
+        f'<div>'
+        f'<div style="font-size:1.1rem; font-weight:700; color:#E2E8F0 !important; letter-spacing:.5px; line-height:1.2;">WINNIIO</div>'
+        f'<div style="font-size:.6rem; color:#64748B !important; letter-spacing:.1em;">AltioStar MRO</div>'
+        f'</div></div>', unsafe_allow_html=True)
+
+    st.divider()
+
+    page = st.radio("Nav", [
+        "Dashboard",
+        "Cell Map",
+        "Experiments",
+        "Network",
+        "Simulation",
+        "Reports",
+    ], label_visibility="collapsed")
+
+    st.divider()
+
+    # Stats
+    st.markdown(
+        f'<div style="padding:4px 14px; font-size:.75rem; line-height:2.2;">'
+        f'<div style="display:flex; justify-content:space-between;">'
+        f'<span>Online Cells</span><span style="font-weight:600; color:#E2E8F0 !important;">75</span></div>'
+        f'<div style="display:flex; justify-content:space-between;">'
+        f'<span>Healthy</span><span style="font-weight:600; color:{GREEN} !important;">{n_healthy}</span></div>'
+        f'<div style="display:flex; justify-content:space-between;">'
+        f'<span>Problem</span><span style="font-weight:600; color:{RED} !important;">{n_prob}</span></div>'
+        f'<div style="display:flex; justify-content:space-between;">'
+        f'<span>Experiments</span><span style="font-weight:600; color:#E2E8F0 !important;">{len(ed["experiments"])}</span></div>'
+        f'</div>', unsafe_allow_html=True)
+
+    st.divider()
+
+    # Target gauge
+    gap = max(0, 99 - avg_sr)
+    pct = min(avg_sr / 99 * 100, 100)
+    st.markdown(
+        f'<div style="padding:4px 14px;">'
+        f'<div style="font-size:.68rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:{TEXT_MUTED} !important; margin-bottom:8px;">Target Progress</div>'
+        f'<div style="display:flex; justify-content:space-between; font-size:.82rem; margin-bottom:4px;">'
+        f'<span style="font-weight:600; color:#E2E8F0 !important;">{avg_sr:.2f}%</span>'
+        f'<span style="color:{TEXT_MUTED} !important;">/ 99.00%</span></div>'
+        f'<div style="background:rgba(255,255,255,.08); border-radius:9999px; height:6px; overflow:hidden;">'
+        f'<div style="width:{pct:.1f}%; height:100%; background:linear-gradient(90deg,{PRIMARY},{GREEN}); border-radius:9999px;"></div>'
+        f'</div>'
+        f'<div style="font-size:.68rem; color:{TEXT_MUTED} !important; margin-top:4px;">Gap: {gap:.2f}%</div>'
+        f'</div>', unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════════════════════════════
+# HELPER: section title
+# ══════════════════════════════════════════════════════════════════════
+def sec(title):
+    st.markdown(f'<div class="section-title">{title}</div>', unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════════════════════════════
+# TOP BAR — page title + feature nav + live clock
+# ══════════════════════════════════════════════════════════════════════
+# Time calculation (for export timestamps)
+now_utc = datetime.now(timezone.utc)
+now_jst = now_utc + timedelta(hours=9)
+
+# Crane icon injected into Streamlit's top header bar, centered
+crane_src = f'data:image/png;base64,{CRANE_B64}' if CRANE_B64 else ''
+if crane_src:
+    st.markdown(f"""
+    <style>
+      header[data-testid="stHeader"]::after {{
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 44px;
+        height: 44px;
+        background: url('{crane_src}') center/contain no-repeat;
+        pointer-events: none;
+        z-index: 999;
+      }}
+    </style>
+    """, unsafe_allow_html=True)
+
+tc1, tc2 = st.columns([2, 3])
+with tc1:
+    st.markdown(
+        f'<div class="page-title">{page}</div>'
+        f'<div class="page-subtitle">Rakuten Japan 5G · Shibuya · 75 Cells · 763 Relations</div>',
+        unsafe_allow_html=True)
+with tc2:
+    st.markdown(
+        f'<div style="display:flex; align-items:center; justify-content:flex-end; gap:6px; flex-wrap:wrap; padding-top:2px;">'
+        f'<span class="topnav-chip" id="chip-live"><span class="live-dot"></span>Live Monitor</span>'
+        f'<span class="topnav-chip" id="chip-anomaly">🔍 Anomaly Scan</span>'
+        f'<span class="topnav-chip" id="chip-health">💊 Health Check</span>'
+        f'<span class="topnav-chip" id="chip-export">📤 Quick Export</span>'
+        f'</div>', unsafe_allow_html=True)
+    # Real-time clock — JS ticking, auto-detects user timezone
+    import streamlit.components.v1 as components
+    components.html(f"""
+    <div id="live-clock" style="
+        text-align:right; font-size:.74rem; font-family:'JetBrains Mono',monospace;
+        color:{TEXT_SEC}; padding:4px 0; display:flex; align-items:center;
+        justify-content:flex-end; gap:8px;
+    ">
+        <span id="clock-local" style="padding:3px 10px; background:{CARD};
+            border:1px solid {BORDER}; border-radius:6px;"></span>
+        <span id="clock-jst" style="padding:3px 10px; background:{CARD};
+            border:1px solid {BORDER}; border-radius:6px; color:{TEXT_MUTED};"></span>
+    </div>
+    <script>
+    function updateClock() {{
+        const now = new Date();
+        // Local time with timezone name
+        const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const localShort = localTz.split('/').pop().replace('_', ' ');
+        const localTime = now.toLocaleTimeString('en-GB', {{hour:'2-digit', minute:'2-digit', second:'2-digit'}});
+        document.getElementById('clock-local').innerHTML =
+            '📍 ' + localTime + ' ' + localShort;
+        // JST (Rakuten Japan)
+        const jstTime = now.toLocaleTimeString('en-GB', {{
+            hour:'2-digit', minute:'2-digit', second:'2-digit', timeZone:'Asia/Tokyo'
+        }});
+        document.getElementById('clock-jst').innerHTML =
+            '🇯🇵 ' + jstTime + ' JST';
+    }}
+    updateClock();
+    setInterval(updateClock, 1000);
+    </script>
+    """, height=34)
+
+# Quick action panels (expand below top bar when activated)
+if "show_anomaly" not in st.session_state:
+    st.session_state.show_anomaly = False
+if "show_health" not in st.session_state:
+    st.session_state.show_health = False
+if "show_quick_export" not in st.session_state:
+    st.session_state.show_quick_export = False
+
+qa1, qa2, qa3 = st.columns(3)
+with qa1:
+    if st.button("🔍 Run Anomaly Scan", use_container_width=True, key="btn_anomaly"):
+        st.session_state.show_anomaly = not st.session_state.show_anomaly
+with qa2:
+    if st.button("💊 Network Health Check", use_container_width=True, key="btn_health"):
+        st.session_state.show_health = not st.session_state.show_health
+with qa3:
+    if st.button("📤 Quick Export All", use_container_width=True, key="btn_export"):
+        st.session_state.show_quick_export = not st.session_state.show_quick_export
+
+# Anomaly Scan panel
+if st.session_state.show_anomaly:
+    with st.container():
+        st.markdown(f'<div class="section-title">🔍 Anomaly Scan Results</div>', unsafe_allow_html=True)
+        anomalies = cm[cm["prob"]].sort_values("ho_sr")
+        if len(anomalies) == 0:
+            st.success("No anomalies detected — all cells within normal range.")
+        else:
+            ac1, ac2, ac3 = st.columns(3)
+            with ac1:
+                st.markdown(
+                    f'<div class="kpi" style="border-left:3px solid {RED};">'
+                    f'<div class="kpi-label">Anomalous Cells</div>'
+                    f'<div class="kpi-value" style="color:{RED};">{len(anomalies)}</div>'
+                    f'<div class="kpi-sub">Below 96% HO success threshold</div>'
+                    f'</div>', unsafe_allow_html=True)
+            with ac2:
+                worst = anomalies.iloc[0]
+                st.markdown(
+                    f'<div class="kpi" style="border-left:3px solid {AMBER};">'
+                    f'<div class="kpi-label">Worst Offender</div>'
+                    f'<div class="kpi-value" style="color:{AMBER};">{worst["cell_id"]}</div>'
+                    f'<div class="kpi-sub">{worst["ho_sr"]:.2f}% success · {worst["site_name"]}</div>'
+                    f'</div>', unsafe_allow_html=True)
+            with ac3:
+                avg_anom = anomalies["ho_sr"].mean()
+                st.markdown(
+                    f'<div class="kpi" style="border-left:3px solid {PURPLE};">'
+                    f'<div class="kpi-label">Avg Anomaly Rate</div>'
+                    f'<div class="kpi-value" style="color:{PURPLE};">{avg_anom:.2f}%</div>'
+                    f'<div class="kpi-sub">Across {len(anomalies)} flagged cells</div>'
+                    f'</div>', unsafe_allow_html=True)
+            # Anomaly table
+            for _, r in anomalies.iterrows():
+                severity = "HIGH" if r["ho_sr"] < 95 else "MEDIUM"
+                scls = "badge-red" if severity == "HIGH" else "badge-amber"
+                st.markdown(
+                    f'<div class="trow">'
+                    f'<span style="flex:2;font-weight:600;font-family:JetBrains Mono,monospace;">{r["cell_id"]}</span>'
+                    f'<span style="flex:2;color:{TEXT_SEC};">{r["site_name"]}</span>'
+                    f'<span style="flex:1;text-align:center;font-weight:600;color:{RED};font-family:JetBrains Mono,monospace;">{r["ho_sr"]:.2f}%</span>'
+                    f'<span style="flex:1;text-align:center;font-family:JetBrains Mono,monospace;color:{TEXT_SEC};">RSRP {r["rsrp"]:.1f}</span>'
+                    f'<span style="flex:1;text-align:right;"><span class="badge {scls}">{severity}</span></span>'
+                    f'</div>', unsafe_allow_html=True)
+
+# Health Check panel
+if st.session_state.show_health:
+    with st.container():
+        st.markdown(f'<div class="section-title">💊 Network Health Report</div>', unsafe_allow_html=True)
+        hc1, hc2, hc3, hc4, hc5 = st.columns(5)
+        # Compute health metrics
+        cells_online = 75
+        avg_rsrp = cm["rsrp"].mean()
+        avg_sinr = cm["sinr"].mean()
+        avg_ue = cm["ue"].mean()
+        checks = [
+            ("Cell Availability", f"{cells_online}/75", cells_online == 75),
+            ("Avg RSRP", f"{avg_rsrp:.1f} dBm", avg_rsrp > -90),
+            ("Avg SINR", f"{avg_sinr:.1f} dB", avg_sinr > 5),
+            ("HO Success", f"{avg_sr:.2f}%", avg_sr > 97),
+            ("PRB Utilization", f"{avg_prb:.1f}%", avg_prb < 60),
+        ]
+        for col, (name, val, ok) in zip([hc1, hc2, hc3, hc4, hc5], checks):
+            bcls = "badge-green" if ok else "badge-red"
+            blbl = "OK" if ok else "WARN"
+            with col:
+                st.markdown(
+                    f'<div class="kpi">'
+                    f'<div class="kpi-label">{name}</div>'
+                    f'<div class="kpi-value">{val}</div>'
+                    f'<div style="margin-top:6px;"><span class="badge {bcls}">{blbl}</span></div>'
+                    f'</div>', unsafe_allow_html=True)
+        score = sum(1 for _, _, ok in checks if ok)
+        sc = GREEN if score >= 4 else (AMBER if score >= 3 else RED)
+        st.markdown(
+            f'<div style="text-align:center; margin:10px 0; font-size:.88rem; font-weight:600; color:{sc};">'
+            f'Network Health Score: {score}/{len(checks)} checks passing'
+            f'</div>', unsafe_allow_html=True)
+
+# Quick Export panel
+if st.session_state.show_quick_export:
+    with st.container():
+        st.markdown(f'<div class="section-title">📤 Quick Export</div>', unsafe_allow_html=True)
+        qe1, qe2, qe3, qe4 = st.columns(4)
+        with qe1:
+            st.download_button("📊 Cell Data (CSV)", cm.to_csv(index=False), "cell_data.csv", "text/csv", use_container_width=True)
+        with qe2:
+            if len(cdf) > 0:
+                st.download_button("🧪 Experiments (CSV)", cdf.to_csv(index=False), "experiments.csv", "text/csv", use_container_width=True)
+        with qe3:
+            st.download_button("🔗 Relations (CSV)", rels.to_csv(index=False), "relations.csv", "text/csv", use_container_width=True)
+        with qe4:
+            report = {
+                "generated": now_jst.isoformat(),
+                "cluster_avg": round(avg_sr, 4),
+                "cells": 75, "problem_cells": n_prob,
+                "experiments": len(ed["experiments"]),
+                "target": 99.0, "gap": round(max(0, 99 - avg_sr), 4),
+            }
+            st.download_button("📋 Summary (JSON)", json.dumps(report, indent=2), "summary.json", "application/json", use_container_width=True)
+
+
+# ══════════════════════════════════════════════════════════════════════
+# PAGE: DASHBOARD
+# ══════════════════════════════════════════════════════════════════════
+if page == "Dashboard":
+    # KPI cards row
+    k1, k2, k3, k4, k5, k6 = st.columns(6)
+    kpis = [
+        (k1, PRIMARY, "Cluster Avg", f"{avg_sr:.2f}%", "HO Success Rate"),
+        (k2, GREEN, "Best Cell", f"{best_sr:.2f}%", "Peak performance"),
+        (k3, RED, "Worst Cell", f"{worst_sr:.2f}%", "Needs attention"),
+        (k4, AMBER, "Failure Rate", f"{avg_fr:.2f}%", "Avg HO failure"),
+        (k5, PURPLE, "PRB Usage", f"{avg_prb:.1f}%", "DL utilization"),
+        (k6, BLUE, "Experiments", f"{len(ed['experiments'])}", "Completed runs"),
+    ]
+    for col, color, label, value, sub in kpis:
+        with col:
+            st.markdown(
+                f'<div class="kpi">'
+                f'<div class="kpi-label"><span class="kpi-icon" style="background:{color};"></span>{label}</div>'
+                f'<div class="kpi-value">{value}</div>'
+                f'<div class="kpi-sub">{sub}</div>'
+                f'</div>', unsafe_allow_html=True)
+
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+
+    # Two columns: donut + cell table
+    d1, d2 = st.columns([1, 2])
+
+    with d1:
+        sec("Cell Health Distribution")
+        healthy = int((cm["ho_sr"] >= 99).sum())
+        warning = int(((cm["ho_sr"] >= 96) & (cm["ho_sr"] < 99)).sum())
+        critical = int((cm["ho_sr"] < 96).sum())
+
+        fig_donut = go.Figure(data=[go.Pie(
+            labels=["Healthy", "Warning", "Critical"],
+            values=[healthy, warning, critical],
+            hole=0.6,
+            marker_colors=[GREEN, AMBER, RED],
+            textinfo="value",
+            textfont=dict(size=16, family="JetBrains Mono"),
+            hovertemplate="<b>%{label}</b><br>Count: %{value}<br>%{percent}<extra></extra>",
+        )])
+        fig_donut.update_layout(
+            height=280,
+            margin=dict(t=10, b=10, l=10, r=10),
+            paper_bgcolor=CARD,
+            plot_bgcolor=CARD,
+            showlegend=True,
+            legend=dict(
+                orientation="h", y=-0.05,
+                font=dict(size=12, family="Inter"),
+            ),
+            annotations=[dict(
+                text=f"<b>{75}</b><br><span style='font-size:11px;color:{TEXT_SEC}'>cells</span>",
+                x=0.5, y=0.5, font_size=22, showarrow=False,
+                font=dict(family="JetBrains Mono"),
+            )],
+        )
+        st.plotly_chart(fig_donut, use_container_width=True)
+
+        # Legend with counts
+        for label, count, color, badge_cls in [
+            ("Healthy", healthy, GREEN, "badge-green"),
+            ("Warning", warning, AMBER, "badge-amber"),
+            ("Critical", critical, RED, "badge-red"),
+        ]:
+            st.markdown(
+                f'<div class="trow">'
+                f'<span style="font-weight:500;">{label}</span>'
+                f'<span class="badge {badge_cls}">{count}</span>'
+                f'</div>', unsafe_allow_html=True)
+
+    with d2:
+        sec("Cell Status")
+
+        # Tabs for All / Problem / Healthy
+        tab1, tab2, tab3 = st.tabs(["All Cells", "Problem Cells", "Top Performers"])
+
+        with tab1:
+            tbl = cm.sort_values("ho_sr").head(20)
+            st.markdown(
+                f'<div class="thead">'
+                f'<span style="flex:2">Cell ID</span>'
+                f'<span style="flex:2">Site</span>'
+                f'<span style="flex:1;text-align:center">Success %</span>'
+                f'<span style="flex:1;text-align:center">Failure %</span>'
+                f'<span style="flex:1;text-align:center">RSRP</span>'
+                f'<span style="flex:1;text-align:right">Status</span>'
+                f'</div>', unsafe_allow_html=True)
+            for _, r in tbl.iterrows():
+                bcls, blbl = health_badge(r["ho_sr"])
+                sr_color = health_color(r["ho_sr"])
+                st.markdown(
+                    f'<div class="trow">'
+                    f'<span style="flex:2;font-weight:600;font-family:JetBrains Mono,monospace;font-size:.8rem;">{r["cell_id"]}</span>'
+                    f'<span style="flex:2;color:{TEXT_SEC}">{r["site_name"]}</span>'
+                    f'<span style="flex:1;text-align:center;font-weight:600;color:{sr_color};font-family:JetBrains Mono,monospace;">{r["ho_sr"]:.2f}%</span>'
+                    f'<span style="flex:1;text-align:center;font-family:JetBrains Mono,monospace;color:{TEXT_SEC};">{r["ho_fr"]:.2f}%</span>'
+                    f'<span style="flex:1;text-align:center;font-family:JetBrains Mono,monospace;color:{TEXT_SEC};">{r["rsrp"]:.1f}</span>'
+                    f'<span style="flex:1;text-align:right"><span class="badge {bcls}">{blbl}</span></span>'
+                    f'</div>', unsafe_allow_html=True)
+
+        with tab2:
+            prob_cells = cm[cm["prob"]].sort_values("ho_sr")
+            if len(prob_cells) == 0:
+                st.success("No problem cells detected!")
+            else:
+                st.markdown(
+                    f'<div class="thead">'
+                    f'<span style="flex:2">Cell ID</span>'
+                    f'<span style="flex:2">Site</span>'
+                    f'<span style="flex:1;text-align:center">Success %</span>'
+                    f'<span style="flex:1;text-align:center">Failure %</span>'
+                    f'<span style="flex:1;text-align:right">Status</span>'
+                    f'</div>', unsafe_allow_html=True)
+                for _, r in prob_cells.iterrows():
+                    st.markdown(
+                        f'<div class="trow">'
+                        f'<span style="flex:2;font-weight:600;font-family:JetBrains Mono,monospace;font-size:.8rem;">{r["cell_id"]}</span>'
+                        f'<span style="flex:2;color:{TEXT_SEC}">{r["site_name"]}</span>'
+                        f'<span style="flex:1;text-align:center;font-weight:600;color:{RED};font-family:JetBrains Mono,monospace;">{r["ho_sr"]:.2f}%</span>'
+                        f'<span style="flex:1;text-align:center;font-family:JetBrains Mono,monospace;color:{TEXT_SEC};">{r["ho_fr"]:.2f}%</span>'
+                        f'<span style="flex:1;text-align:right"><span class="badge badge-red">Critical</span></span>'
+                        f'</div>', unsafe_allow_html=True)
+
+        with tab3:
+            top_cells = cm.sort_values("ho_sr", ascending=False).head(15)
+            st.markdown(
+                f'<div class="thead">'
+                f'<span style="flex:2">Cell ID</span>'
+                f'<span style="flex:2">Site</span>'
+                f'<span style="flex:1;text-align:center">Success %</span>'
+                f'<span style="flex:1;text-align:center">PRB %</span>'
+                f'<span style="flex:1;text-align:right">Status</span>'
+                f'</div>', unsafe_allow_html=True)
+            for _, r in top_cells.iterrows():
+                bcls, blbl = health_badge(r["ho_sr"])
+                st.markdown(
+                    f'<div class="trow">'
+                    f'<span style="flex:2;font-weight:600;font-family:JetBrains Mono,monospace;font-size:.8rem;">{r["cell_id"]}</span>'
+                    f'<span style="flex:2;color:{TEXT_SEC}">{r["site_name"]}</span>'
+                    f'<span style="flex:1;text-align:center;font-weight:600;color:{GREEN};font-family:JetBrains Mono,monospace;">{r["ho_sr"]:.2f}%</span>'
+                    f'<span style="flex:1;text-align:center;font-family:JetBrains Mono,monospace;color:{TEXT_SEC};">{r["prb"]:.1f}%</span>'
+                    f'<span style="flex:1;text-align:right"><span class="badge {bcls}">{blbl}</span></span>'
+                    f'</div>', unsafe_allow_html=True)
+
+    # Experiment results bar chart (if data exists)
+    if len(cdf) > 0:
+        sec("Experiment Results — HO Success Rate")
+        fb = go.Figure()
+        for v in sorted(cdf["Variant"].unique()):
+            vd = cdf[cdf["Variant"] == v]
+            fb.add_trace(go.Bar(
+                x=vd["Scenario"], y=vd["HO Success %"],
+                name=f"{v} — {V_NAMES.get(v, '')}",
+                marker_color=V_COLORS.get(v, PRIMARY),
+                text=vd["HO Success %"].round(2),
+                textposition="outside",
+                textfont=dict(size=11, family="JetBrains Mono"),
+            ))
+        fb.add_hline(y=99, line_dash="dot", line_color=RED, opacity=.5,
+            annotation_text="99% Target", annotation_font_color=RED, annotation_font_size=11)
+        fb.update_layout(
+            barmode="group", height=440, template=PLT,
+            paper_bgcolor=CARD, plot_bgcolor="#FAFBFC",
+            font=dict(color=TEXT, size=12, family="Inter"),
+            legend=dict(orientation="h", y=-.15, font_size=11),
+            margin=dict(t=20, b=70, l=60, r=20),
+            yaxis_title="HO Success Rate (%)",
+        )
+        st.plotly_chart(fb, use_container_width=True)
+
+
+# ══════════════════════════════════════════════════════════════════════
+# PAGE: CELL MAP
+# ══════════════════════════════════════════════════════════════════════
+elif page == "Cell Map":
+    # Filters
+    f1, f2, f3 = st.columns([1, 1, 2])
+    with f1:
+        show_prob = st.toggle("Problem cells only", value=False)
+    with f2:
+        show_rels = st.toggle("Show relations", value=True)
+
+    md = cm.copy()
+    if show_prob:
+        md = md[md["prob"]]
+
     mc, ic = st.columns([3, 1])
+
     with mc:
-        md = cm.copy()
-        sp = st.toggle("Problem cells only", value=False, key="mp")
-        if sp: md = md[md["prob"]]
-        md["bub"] = np.clip(md["ho_att"]*0.7, 8, 38)
+        md["bub"] = np.clip(md["ho_att"] * 0.7, 8, 38)
         md["hov"] = md.apply(lambda r: (
             f"<b>{r['cell_id']}</b><br>Site: {r['site_name']}<br>"
             f"Success: {r['ho_sr']:.2f}% · Failure: {r['ho_fr']:.2f}%<br>"
             f"RSRP: {r['rsrp']:.1f} dBm · SINR: {r['sinr']:.1f} dB<br>"
-            f"PRB: {r['prb']:.1f}% · UEs: {r['ue']:.0f}<br>"
-            f"Sector {r['sector']} · Az {r['azimuth_deg']}°"
+            f"PRB: {r['prb']:.1f}% · UEs: {r['ue']:.0f}"
         ), axis=1)
 
         fm = go.Figure()
-        # Relations
-        rm = rels[rels["distance_m"]>0].merge(
-            site_db[["cell_id","latitude","longitude"]], left_on="serving_cell", right_on="cell_id"
-        ).merge(site_db[["cell_id","latitude","longitude"]], left_on="neighbor_cell", right_on="cell_id", suffixes=("_s","_t"))
-        for _,rr in rm.head(180).iterrows():
-            fm.add_trace(go.Scattermapbox(
-                lat=[rr["latitude_s"],rr["latitude_t"]], lon=[rr["longitude_s"],rr["longitude_t"]],
-                mode="lines", line=dict(width=.5, color="rgba(0,150,170,.1)"),
-                hoverinfo="skip", showlegend=False))
+
+        # Relation lines
+        if show_rels:
+            rm = rels[rels["distance_m"] > 0].merge(
+                site_db[["cell_id", "latitude", "longitude"]], left_on="serving_cell", right_on="cell_id"
+            ).merge(
+                site_db[["cell_id", "latitude", "longitude"]], left_on="neighbor_cell", right_on="cell_id",
+                suffixes=("_s", "_t")
+            )
+            for _, rr in rm.head(180).iterrows():
+                fm.add_trace(go.Scattermapbox(
+                    lat=[rr["latitude_s"], rr["latitude_t"]],
+                    lon=[rr["longitude_s"], rr["longitude_t"]],
+                    mode="lines",
+                    line=dict(width=.5, color="rgba(0,150,170,.1)"),
+                    hoverinfo="skip", showlegend=False))
+
         # Problem glow
         pr = md[md["prob"]]
-        if len(pr)>0:
-            fm.add_trace(go.Scattermapbox(lat=pr["latitude"],lon=pr["longitude"],mode="markers",
-                marker=dict(size=pr["bub"]+14,color="rgba(220,38,38,.12)"),hoverinfo="skip",showlegend=False))
-        # Cells
-        fm.add_trace(go.Scattermapbox(lat=md["latitude"],lon=md["longitude"],mode="markers",
-            marker=dict(size=md["bub"],color=md["ho_sr"],
-                colorscale=[[0,RED],[.5,AMBER],[.96,AMBER],[1,GREEN]],cmin=85,cmax=100,
-                colorbar=dict(title=dict(text="HO %"),thickness=10,len=.4)),
-            text=md["hov"],hovertemplate="%{text}<extra></extra>"))
-        fm.update_layout(mapbox=dict(style=MAPSTYLE,center=dict(lat=center_lat,lon=center_lon),zoom=13.5),
-            margin=dict(l=0,r=0,t=0,b=0),height=620,paper_bgcolor=BG,showlegend=False)
+        if len(pr) > 0:
+            fm.add_trace(go.Scattermapbox(
+                lat=pr["latitude"], lon=pr["longitude"], mode="markers",
+                marker=dict(size=pr["bub"] + 14, color="rgba(239,68,68,.12)"),
+                hoverinfo="skip", showlegend=False))
+
+        # Cell markers
+        fm.add_trace(go.Scattermapbox(
+            lat=md["latitude"], lon=md["longitude"], mode="markers",
+            marker=dict(
+                size=md["bub"], color=md["ho_sr"],
+                colorscale=[[0, RED], [.5, AMBER], [.96, AMBER], [1, GREEN]],
+                cmin=85, cmax=100,
+                colorbar=dict(title=dict(text="HO %"), thickness=10, len=.4),
+            ),
+            text=md["hov"],
+            hovertemplate="%{text}<extra></extra>",
+        ))
+
+        fm.update_layout(
+            mapbox=dict(style=MAPSTYLE, center=dict(lat=center_lat, lon=center_lon), zoom=13.5),
+            margin=dict(l=0, r=0, t=0, b=0), height=620,
+            paper_bgcolor=CARD, showlegend=False,
+        )
         st.plotly_chart(fm, use_container_width=True)
 
     with ic:
-        st.markdown("**Cell Health Ranking**")
-        st.caption("Worst first")
-        for _,c in cm.sort_values("ho_sr").head(15).iterrows():
-            r=c["ho_sr"]; ico="🔴" if r<96 else ("🟡" if r<99 else "🟢")
-            st.markdown(f'<div class="cr"><span>{ico} {c["cell_id"]}</span>'
-                f'<span style="color:{hc(r)};font-weight:700;font-family:Fira Code,monospace;">{r:.1f}%</span></div>',
-                unsafe_allow_html=True)
-        st.divider()
-        with st.expander("🔍 Cell Inspector"):
-            pk=st.selectbox("Cell",cm["cell_id"].tolist(),index=0,key="cpk")
-            cd=cm[cm["cell_id"]==pk].iloc[0]
-            st.markdown(f"**{cd['cell_id']}** — {cd['site_name']}\n"
-                f"- Sector {cd['sector']} · Az {cd['azimuth_deg']}° · {cd['frequency_band']}\n"
-                f"- Success: **{cd['ho_sr']:.2f}%** · Failure: **{cd['ho_fr']:.2f}%**\n"
-                f"- RSRP: {cd['rsrp']:.1f} dBm · SINR: {cd['sinr']:.1f} dB\n"
-                f"- PRB: {cd['prb']:.1f}% · UEs: {cd['ue']:.0f}")
-            cr=rels[rels["serving_cell"]==pk]
-            if len(cr)>0:
-                st.caption(f"{len(cr)} neighbors")
-                st.dataframe(cr[["neighbor_cell","distance_m","cell_individual_offset_dB"]].head(8),
-                    use_container_width=True,hide_index=True)
+        sec("Cell Inspector")
 
-# ── PAGE: VARIANT COMPARISON ────────────────────────────────────────
-elif page == "⚔️  Variant Comparison":
-    if len(filt)==0:
-        st.warning("No data. Run `python run_experiment.py --sweep-all`")
+        pk = st.selectbox("Select Cell", cm["cell_id"].tolist(), index=0)
+        cd = cm[cm["cell_id"] == pk].iloc[0]
+        bcls, blbl = health_badge(cd["ho_sr"])
+
+        st.markdown(
+            f'<div class="card">'
+            f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">'
+            f'<span style="font-weight:700;font-family:JetBrains Mono,monospace;">{cd["cell_id"]}</span>'
+            f'<span class="badge {bcls}">{blbl}</span>'
+            f'</div>'
+            f'<div style="font-size:.82rem;color:{TEXT_SEC};line-height:2;">'
+            f'Site: <b>{cd["site_name"]}</b><br>'
+            f'Sector {cd["sector"]} · Az {cd["azimuth_deg"]}° · {cd["frequency_band"]}<br>'
+            f'</div></div>', unsafe_allow_html=True)
+
+        # Cell KPIs
+        metrics = [
+            ("HO Success", f"{cd['ho_sr']:.2f}%", health_color(cd["ho_sr"])),
+            ("HO Failure", f"{cd['ho_fr']:.2f}%", RED if cd["ho_fr"] > 4 else TEXT_SEC),
+            ("RSRP", f"{cd['rsrp']:.1f} dBm", TEXT_SEC),
+            ("SINR", f"{cd['sinr']:.1f} dB", TEXT_SEC),
+            ("PRB Usage", f"{cd['prb']:.1f}%", AMBER if cd["prb"] > 70 else TEXT_SEC),
+            ("Active UEs", f"{cd['ue']:.0f}", TEXT_SEC),
+        ]
+        for lbl, val, color in metrics:
+            st.markdown(
+                f'<div class="trow">'
+                f'<span style="color:{TEXT_SEC};">{lbl}</span>'
+                f'<span style="font-weight:600;color:{color};font-family:JetBrains Mono,monospace;">{val}</span>'
+                f'</div>', unsafe_allow_html=True)
+
+        # Neighbor count
+        cr = rels[rels["serving_cell"] == pk]
+        if len(cr) > 0:
+            st.markdown(f'<div style="font-size:.78rem;color:{TEXT_MUTED};margin-top:8px;padding:0 16px;">{len(cr)} neighbor relations</div>', unsafe_allow_html=True)
+            st.dataframe(
+                cr[["neighbor_cell", "distance_m", "cell_individual_offset_dB"]].head(8),
+                use_container_width=True, hide_index=True)
+
+
+# ══════════════════════════════════════════════════════════════════════
+# PAGE: EXPERIMENTS (Variant Comparison)
+# ══════════════════════════════════════════════════════════════════════
+elif page == "Experiments":
+    if len(cdf) == 0:
+        st.warning("No data. Run `python3 run_experiment.py --sweep-all`")
     else:
-        sec("Reward Variant Comparison — Gate G3")
-        # Variant cards
-        vc = st.columns(len(sel_v)) if sel_v else [st.container()]
-        for i,v in enumerate(sel_v):
-            with vc[i]:
-                vd=filt[(filt["Variant"]==v)&(filt["Scenario"]=="baseline")]
-                vcl=V_COLORS.get(v,P)
-                if len(vd)>0:
-                    r=vd.iloc[0]
-                    html = (
-                        f'<div class="dc" style="text-align:center;border-top:3px solid {vcl};">'
-                        f'<p style="font-size:1.5rem;font-weight:800;color:{vcl};font-family:Fira Code,monospace;margin:0;">{v}</p>'
-                        f'<p style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:{TEXT2};margin:4px 0 0 0;">{V_NAMES.get(v,v)}</p>'
-                        f'<p style="margin-top:14px;font-size:.88rem;line-height:2;font-family:Fira Sans,sans-serif;">'
-                        f'Success: <b>{r["HO Success %"]:.2f}%</b><br>'
-                        f'Failure: <b>{r["HO Failure %"]:.4f}%</b><br>'
-                        f'Reward: <b style="font-family:Fira Code,monospace;">{r["Mean Reward"]:,.0f}</b></p>'
-                        f'</div>'
-                    )
-                    st.markdown(html, unsafe_allow_html=True)
+        # Filters
+        f1, f2 = st.columns(2)
+        av = sorted(cdf["Variant"].unique())
+        asc = sorted(cdf["Scenario"].unique())
+        with f1:
+            sel_v = st.multiselect("Reward Variants", av, default=av)
+        with f2:
+            sel_s = st.multiselect("Scenarios", asc, default=asc)
+        filt = cdf[cdf["Variant"].isin(sel_v) & cdf["Scenario"].isin(sel_s)]
 
-        # Big bar chart
-        sec("HO Success Rate — All Variants × Scenarios")
+        # Variant KPI cards
+        sec("Variant Performance (Baseline)")
+        vc = st.columns(len(sel_v)) if sel_v else [st.container()]
+        for i, v in enumerate(sel_v):
+            with vc[i]:
+                vd = filt[(filt["Variant"] == v) & (filt["Scenario"] == "baseline")]
+                vcl = V_COLORS.get(v, PRIMARY)
+                if len(vd) > 0:
+                    r = vd.iloc[0]
+                    st.markdown(
+                        f'<div class="kpi" style="border-top:3px solid {vcl};text-align:center;">'
+                        f'<div style="font-size:1.4rem;font-weight:800;color:{vcl};font-family:JetBrains Mono,monospace;">{v}</div>'
+                        f'<div style="font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:{TEXT_SEC};margin:2px 0 12px 0;">{V_NAMES.get(v, v)}</div>'
+                        f'<div style="font-size:.84rem;line-height:2;">'
+                        f'Success: <b style="font-family:JetBrains Mono,monospace;">{r["HO Success %"]:.2f}%</b><br>'
+                        f'Failure: <b style="font-family:JetBrains Mono,monospace;">{r["HO Failure %"]:.4f}%</b><br>'
+                        f'Reward: <b style="font-family:JetBrains Mono,monospace;">{r["Mean Reward"]:,.0f}</b>'
+                        f'</div></div>', unsafe_allow_html=True)
+
+        # Bar chart
+        sec("HO Success Rate — All Variants x Scenarios")
         fb = go.Figure()
         for v in sel_v:
-            vd=filt[filt["Variant"]==v]
-            fb.add_trace(go.Bar(x=vd["Scenario"],y=vd["HO Success %"],
-                name=f"{v} {V_NAMES.get(v,'')}",marker_color=V_COLORS.get(v,P),
-                text=vd["HO Success %"].round(2),textposition="outside",textfont_size=11))
-        fb.add_hline(y=99,line_dash="dot",line_color=RED,opacity=.5,
-            annotation_text="99% Target",annotation_font_color=RED,annotation_font_size=12)
-        fb.update_layout(barmode="group",height=520,template=PLT,paper_bgcolor=BG,plot_bgcolor=BG2,
-            font=dict(color=TEXT,size=12,family="Fira Sans"),
-            legend=dict(orientation="h",y=-.12,font_size=11),
-            margin=dict(t=30,b=80,l=60,r=20),yaxis_title="HO Success Rate (%)")
+            vd = filt[filt["Variant"] == v]
+            fb.add_trace(go.Bar(
+                x=vd["Scenario"], y=vd["HO Success %"],
+                name=f"{v} {V_NAMES.get(v, '')}",
+                marker_color=V_COLORS.get(v, PRIMARY),
+                text=vd["HO Success %"].round(2),
+                textposition="outside",
+                textfont=dict(size=11, family="JetBrains Mono"),
+            ))
+        fb.add_hline(y=99, line_dash="dot", line_color=RED, opacity=.5,
+            annotation_text="99% Target", annotation_font_color=RED, annotation_font_size=11)
+        fb.update_layout(
+            barmode="group", height=480, template=PLT,
+            paper_bgcolor=CARD, plot_bgcolor="#FAFBFC",
+            font=dict(color=TEXT, size=12, family="Inter"),
+            legend=dict(orientation="h", y=-.12, font_size=11),
+            margin=dict(t=20, b=70, l=60, r=20),
+            yaxis_title="HO Success Rate (%)",
+        )
         st.plotly_chart(fb, use_container_width=True)
 
         # Radar + Heatmap
-        r1,r2 = st.columns(2)
+        r1, r2 = st.columns(2)
         with r1:
             sec("Multi-Metric Fingerprint")
-            cats=["HO Success","Low Failure","Low PingPong","Low TooEarly","Low WrongCell"]
-            fr=go.Figure()
+            cats = ["HO Success", "Low Failure", "Low PingPong", "Low TooEarly", "Low WrongCell"]
+            fr = go.Figure()
             for v in sel_v:
-                vd=filt[(filt["Variant"]==v)&(filt["Scenario"]=="baseline")]
-                if len(vd)>0:
-                    r=vd.iloc[0]
-                    vals=[r["HO Success %"],max(0,100-r["HO Failure %"]*100),
-                          max(0,100-r["Ping-Pong %"]*100),max(0,100-r["Too Early %"]*1000),
-                          max(0,100-r["Wrong Cell %"]*1000)]
-                    fr.add_trace(go.Scatterpolar(r=vals+[vals[0]],theta=cats+[cats[0]],
-                        fill="toself",name=v,line_color=V_COLORS.get(v,P),opacity=.6))
-            fr.update_layout(polar=dict(bgcolor=BG2,
-                radialaxis=dict(visible=True,range=[80,100],gridcolor=BORDER),
-                angularaxis=dict(gridcolor=BORDER)),
-                height=500,template=PLT,paper_bgcolor=BG,font=dict(color=TEXT,family="Fira Sans"),
-                legend=dict(orientation="h",y=-.1),margin=dict(t=20,b=60))
+                vd = filt[(filt["Variant"] == v) & (filt["Scenario"] == "baseline")]
+                if len(vd) > 0:
+                    r = vd.iloc[0]
+                    vals = [
+                        r["HO Success %"],
+                        max(0, 100 - r["HO Failure %"] * 100),
+                        max(0, 100 - r["Ping-Pong %"] * 100),
+                        max(0, 100 - r["Too Early %"] * 1000),
+                        max(0, 100 - r["Wrong Cell %"] * 1000),
+                    ]
+                    fr.add_trace(go.Scatterpolar(
+                        r=vals + [vals[0]], theta=cats + [cats[0]],
+                        fill="toself", name=v,
+                        line_color=V_COLORS.get(v, PRIMARY), opacity=.6,
+                    ))
+            fr.update_layout(
+                polar=dict(
+                    bgcolor="#FAFBFC",
+                    radialaxis=dict(visible=True, range=[80, 100], gridcolor=BORDER),
+                    angularaxis=dict(gridcolor=BORDER),
+                ),
+                height=440, template=PLT, paper_bgcolor=CARD,
+                font=dict(color=TEXT, family="Inter"),
+                legend=dict(orientation="h", y=-.1),
+                margin=dict(t=20, b=60),
+            )
             st.plotly_chart(fr, use_container_width=True)
 
         with r2:
             sec("Performance Heatmap")
-            hp=filt.pivot_table(values="HO Success %",index="Scenario",columns="Variant",aggfunc="mean")
-            if len(hp)>0:
-                fh=go.Figure(data=go.Heatmap(z=hp.values,x=hp.columns.tolist(),y=hp.index.tolist(),
-                    colorscale=[[0,"#1E3A5F"],[.4,RED],[.7,AMBER],[1,GREEN]],
-                    text=np.round(hp.values,2),texttemplate="%{text:.2f}%",
-                    textfont=dict(size=15,color="white",family="Fira Code"),
+            hp = filt.pivot_table(values="HO Success %", index="Scenario", columns="Variant", aggfunc="mean")
+            if len(hp) > 0:
+                fh = go.Figure(data=go.Heatmap(
+                    z=hp.values, x=hp.columns.tolist(), y=hp.index.tolist(),
+                    colorscale=[[0, "#1E3A5F"], [.4, RED], [.7, AMBER], [1, GREEN]],
+                    text=np.round(hp.values, 2),
+                    texttemplate="%{text:.2f}%",
+                    textfont=dict(size=14, color="white", family="JetBrains Mono"),
                     hovertemplate="Variant: %{x}<br>Scenario: %{y}<br>Success: %{z:.2f}%<extra></extra>",
-                    colorbar=dict(title=dict(text="Success %"))))
-                fh.update_layout(height=500,template=PLT,paper_bgcolor=BG,plot_bgcolor=BG,
-                    font=dict(color=TEXT,size=13,family="Fira Sans"),
-                    margin=dict(l=100,r=40,t=20,b=40),xaxis=dict(title="Variant"),yaxis=dict(title="Scenario"))
+                    colorbar=dict(title=dict(text="Success %")),
+                ))
+                fh.update_layout(
+                    height=440, template=PLT, paper_bgcolor=CARD, plot_bgcolor=CARD,
+                    font=dict(color=TEXT, size=13, family="Inter"),
+                    margin=dict(l=100, r=40, t=20, b=40),
+                    xaxis=dict(title="Variant"), yaxis=dict(title="Scenario"),
+                )
                 st.plotly_chart(fh, use_container_width=True)
 
-        # Failure donuts
+        # Failure breakdown donuts
         sec("Failure Mode Breakdown")
-        pc=st.columns(min(len(sel_v),4))
-        for i,v in enumerate(sel_v[:4]):
+        pc = st.columns(min(len(sel_v), 4))
+        for i, v in enumerate(sel_v[:4]):
             with pc[i]:
-                vd=filt[(filt["Variant"]==v)&(filt["Scenario"]=="baseline")]
-                if len(vd)>0:
-                    row=vd.iloc[0]
-                    fp=go.Figure(data=[go.Pie(labels=["Too Early","Too Late","Wrong Cell"],
-                        values=[row["Too Early %"],row["Too Late %"],row["Wrong Cell %"]],
-                        hole=.55,marker_colors=[AMBER,"#F97316",RED],
-                        textinfo="label+percent",textfont_size=11)])
-                    fp.update_layout(title=dict(text=v,font=dict(size=14,color=V_COLORS.get(v,TEXT),family="Fira Code")),
-                        height=320,margin=dict(t=45,b=15,l=15,r=15),
-                        showlegend=False,template=PLT,paper_bgcolor=BG)
+                vd = filt[(filt["Variant"] == v) & (filt["Scenario"] == "baseline")]
+                if len(vd) > 0:
+                    row = vd.iloc[0]
+                    fp = go.Figure(data=[go.Pie(
+                        labels=["Too Early", "Too Late", "Wrong Cell"],
+                        values=[row["Too Early %"], row["Too Late %"], row["Wrong Cell %"]],
+                        hole=.55,
+                        marker_colors=[AMBER, ORANGE, RED],
+                        textinfo="label+percent",
+                        textfont_size=11,
+                    )])
+                    fp.update_layout(
+                        title=dict(text=v, font=dict(size=14, color=V_COLORS.get(v, TEXT), family="JetBrains Mono")),
+                        height=300, margin=dict(t=40, b=10, l=10, r=10),
+                        showlegend=False, template=PLT, paper_bgcolor=CARD,
+                    )
                     st.plotly_chart(fp, use_container_width=True)
 
-# ── PAGE: NETWORK TOPOLOGY ──────────────────────────────────────────
-elif page == "🕸️  Network Topology":
+
+# ══════════════════════════════════════════════════════════════════════
+# PAGE: NETWORK
+# ══════════════════════════════════════════════════════════════════════
+elif page == "Network":
     sec("Network Topology — Shibuya 5G Cluster")
-    ts_sel=st.selectbox("Scenario view",["baseline","rush_hour","rain_fade","tower_failure"],
-        format_func=lambda s:f"{SC_META[s]['i']} {s.replace('_',' ').title()} — {SC_META[s]['l']}")
 
-    rl,rc = cm["latitude"].mean(), cm["longitude"].mean()
-    td=cm.copy()
-    td["x"]=(td["longitude"]-rc)*111320*math.cos(math.radians(rl))
-    td["y"]=(td["latitude"]-rl)*110540
-    if ts_sel=="tower_failure":
-        fi=td["enodeb_id"].unique()[0]; td.loc[td["enodeb_id"]==fi,"ho_sr"]=0
-    elif ts_sel=="rush_hour":
-        td["ue"]=td["ue"]*3
-    elif ts_sel=="rain_fade":
-        rng=np.random.default_rng(42)
-        td["ho_sr"]=np.clip(td["ho_sr"]-rng.uniform(0,3,len(td)),80,100)
+    ts_sel = st.selectbox("Scenario view", ["baseline", "rush_hour", "rain_fade", "tower_failure"],
+        format_func=lambda s: f"{s.replace('_', ' ').title()} — {SC_META[s]['l']}")
 
-    ft=go.Figure()
-    ir=rels[rels["distance_m"]>0]
-    ex,ey=[],[]
-    for _,rr in ir.iterrows():
-        s=td[td["cell_id"]==rr["serving_cell"]]; t=td[td["cell_id"]==rr["neighbor_cell"]]
-        if len(s)>0 and len(t)>0:
-            ex+=[s.iloc[0]["x"],t.iloc[0]["x"],None]; ey+=[s.iloc[0]["y"],t.iloc[0]["y"],None]
-    ft.add_trace(go.Scatter(x=ex,y=ey,mode="lines",
-        line=dict(width=.4,color="rgba(0,150,170,.08)"),hoverinfo="skip",showlegend=False))
-    ns=np.clip(td["ue"]*1.3,12,48)
-    ft.add_trace(go.Scatter(x=td["x"],y=td["y"],mode="markers+text",
-        marker=dict(size=ns,color=td["ho_sr"],
-            colorscale=[[0,RED],[.5,AMBER],[.96,AMBER],[1,GREEN]],cmin=80,cmax=100,
-            line=dict(width=1.5,color="white" if not dark else "rgba(255,255,255,.15)"),
-            colorbar=dict(title=dict(text="Success %"))),
-        text=td["cell_id"].str[-4:],textposition="top center",textfont=dict(size=8,color=TEXT3,family="Fira Code"),
+    td = cm.copy()
+    rl, rc = cm["latitude"].mean(), cm["longitude"].mean()
+    td["x"] = (td["longitude"] - rc) * 111320 * math.cos(math.radians(rl))
+    td["y"] = (td["latitude"] - rl) * 110540
+
+    if ts_sel == "tower_failure":
+        fi = td["enodeb_id"].unique()[0]
+        td.loc[td["enodeb_id"] == fi, "ho_sr"] = 0
+    elif ts_sel == "rush_hour":
+        td["ue"] = td["ue"] * 3
+    elif ts_sel == "rain_fade":
+        rng = np.random.default_rng(42)
+        td["ho_sr"] = np.clip(td["ho_sr"] - rng.uniform(0, 3, len(td)), 80, 100)
+
+    ft = go.Figure()
+
+    # Edges
+    ir = rels[rels["distance_m"] > 0]
+    ex, ey = [], []
+    for _, rr in ir.iterrows():
+        s = td[td["cell_id"] == rr["serving_cell"]]
+        t = td[td["cell_id"] == rr["neighbor_cell"]]
+        if len(s) > 0 and len(t) > 0:
+            ex += [s.iloc[0]["x"], t.iloc[0]["x"], None]
+            ey += [s.iloc[0]["y"], t.iloc[0]["y"], None]
+
+    ft.add_trace(go.Scatter(
+        x=ex, y=ey, mode="lines",
+        line=dict(width=.4, color="rgba(0,150,170,.08)"),
+        hoverinfo="skip", showlegend=False))
+
+    # Nodes
+    ns = np.clip(td["ue"] * 1.3, 12, 48)
+    ft.add_trace(go.Scatter(
+        x=td["x"], y=td["y"], mode="markers+text",
+        marker=dict(
+            size=ns, color=td["ho_sr"],
+            colorscale=[[0, RED], [.5, AMBER], [.96, AMBER], [1, GREEN]],
+            cmin=80, cmax=100,
+            line=dict(width=1.5, color="white"),
+            colorbar=dict(title=dict(text="Success %")),
+        ),
+        text=td["cell_id"].str[-4:],
+        textposition="top center",
+        textfont=dict(size=8, color=TEXT_MUTED, family="JetBrains Mono"),
         hovertemplate="<b>%{customdata[0]}</b><br>Success: %{customdata[1]:.2f}%<br>UEs: %{customdata[2]:.0f}<extra></extra>",
-        customdata=td[["cell_id","ho_sr","ue"]].values,showlegend=False))
-    pt=td[td["ho_sr"]<96]
-    if len(pt)>0:
-        ft.add_trace(go.Scatter(x=pt["x"],y=pt["y"],mode="markers",
-            marker=dict(size=45,color="rgba(220,38,38,.1)",line=dict(width=2,color=RED)),
-            hoverinfo="skip",showlegend=False))
-    ft.update_layout(height=660,template=PLT,paper_bgcolor=BG,plot_bgcolor=BG2,
-        xaxis=dict(showgrid=False,zeroline=False,showticklabels=False),
-        yaxis=dict(showgrid=False,zeroline=False,showticklabels=False,scaleanchor="x"),
-        font=dict(color=TEXT,family="Fira Sans"),margin=dict(l=20,r=20,t=20,b=40))
-    st.plotly_chart(ft, use_container_width=True)
-    c1,c2,c3,c4,c5=st.columns(5)
-    c1.markdown("🟢 ≥ 99%"); c2.markdown("🟡 95–99%"); c3.markdown("🟠 90–95%")
-    c4.markdown("🔴 < 90%"); c5.markdown(f"<span style='color:{P};'>━</span> HO link", unsafe_allow_html=True)
+        customdata=td[["cell_id", "ho_sr", "ue"]].values,
+        showlegend=False,
+    ))
 
-# ── PAGE: REAL-TIME SIMULATION ───────────────────────────────────────
-elif page == "🔬  Real-Time Simulation":
-    sec("Real-Time RL Simulation — Watch the Agent Optimise")
-    ss=st.selectbox("Scenario",["baseline","rush_hour","rain_fade","tower_failure"],
-        format_func=lambda s:f"{SC_META[s]['i']} {s.replace('_',' ').title()}",key="ss")
-    sm,sd=st.columns([5,2])
+    # Problem highlight
+    pt = td[td["ho_sr"] < 96]
+    if len(pt) > 0:
+        ft.add_trace(go.Scatter(
+            x=pt["x"], y=pt["y"], mode="markers",
+            marker=dict(size=45, color="rgba(239,68,68,.1)", line=dict(width=2, color=RED)),
+            hoverinfo="skip", showlegend=False))
+
+    ft.update_layout(
+        height=620, template=PLT, paper_bgcolor=CARD, plot_bgcolor="#FAFBFC",
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, scaleanchor="x"),
+        font=dict(color=TEXT, family="Inter"),
+        margin=dict(l=20, r=20, t=20, b=40),
+    )
+    st.plotly_chart(ft, use_container_width=True)
+
+    # Legend
+    l1, l2, l3, l4 = st.columns(4)
+    for col, label, color, badge_cls in [
+        (l1, "Healthy (>= 99%)", GREEN, "badge-green"),
+        (l2, "Warning (96-99%)", AMBER, "badge-amber"),
+        (l3, "Critical (< 96%)", RED, "badge-red"),
+        (l4, "HO Relation Link", PRIMARY, "badge-blue"),
+    ]:
+        with col:
+            st.markdown(f'<span class="badge {badge_cls}">{label}</span>', unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════════════════════════════
+# PAGE: SIMULATION
+# ══════════════════════════════════════════════════════════════════════
+elif page == "Simulation":
+    sec("Real-Time RL Simulation")
+
+    ss = st.selectbox("Scenario", ["baseline", "rush_hour", "rain_fade", "tower_failure"],
+        format_func=lambda s: f"{s.replace('_', ' ').title()} — {SC_META[s]['l']}", key="ss")
+
+    sm, sd = st.columns([5, 2])
 
     with sd:
-        st.markdown("**Scenario Parameters**")
-        pm_map={"baseline":{"UE":"1.0×","RSRP":"0 dB","Fail":"1.0×"},
-            "rush_hour":{"UE":"3.0×","PRB Floor":"70%","HO Att":"2.0×"},
-            "rain_fade":{"RSRP":"-5 dB","SINR":"-3 dB","Fail":"1.5×"},
-            "tower_failure":{"Sites ↓":"1","Nbr Load":"2.5×","HO Spike":"5.0×"}}
-        for k,v in pm_map.get(ss,{}).items():
-            mod=v not in ("1.0×","0 dB")
-            bg="bg-r" if mod else "bg-g"
-            st.markdown(f'<div class="cr"><span>{k}</span><span class="bg {bg}">{v}</span></div>',unsafe_allow_html=True)
-        st.divider()
-        st.markdown("**Results for Scenario**")
-        scd=filt[filt["Scenario"]==ss] if len(filt)>0 else pd.DataFrame()
-        if len(scd)>0:
-            best=scd.loc[scd["HO Success %"].idxmax()]
-            bvc = V_COLORS.get(best['Variant'],P)
+        sec("Scenario Parameters")
+        pm_map = {
+            "baseline": {"UE Load": "1.0x", "RSRP Offset": "0 dB", "Fail Mult": "1.0x"},
+            "rush_hour": {"UE Load": "3.0x", "PRB Floor": "70%", "HO Attempts": "2.0x"},
+            "rain_fade": {"RSRP Offset": "-5 dB", "SINR Offset": "-3 dB", "Fail Mult": "1.5x"},
+            "tower_failure": {"Sites Down": "1", "Nbr Load": "2.5x", "HO Spike": "5.0x"},
+        }
+        for k, v in pm_map.get(ss, {}).items():
+            is_mod = v not in ("1.0x", "0 dB")
+            bcls = "badge-red" if is_mod else "badge-green"
             st.markdown(
-                f'<div class="dc" style="text-align:center;border-top:3px solid {bvc};">'
-                f'<p style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:{TEXT2};margin:0 0 4px 0;">Best variant</p>'
-                f'<p style="font-size:1.4rem;font-weight:800;color:{bvc};font-family:Fira Code,monospace;margin:0;">{best["Variant"]}</p>'
-                f'<p style="font-size:.72rem;color:{TEXT3};margin:4px 0 0 0;">{best["HO Success %"]:.2f}% success</p>'
+                f'<div class="trow">'
+                f'<span>{k}</span>'
+                f'<span class="badge {bcls}">{v}</span>'
                 f'</div>', unsafe_allow_html=True)
-            for _,rr in scd.iterrows():
-                pct=rr["HO Success %"]; vcl=V_COLORS.get(rr["Variant"],P)
+
+        # Best variant for scenario
+        if len(cdf) > 0:
+            scd = cdf[cdf["Scenario"] == ss]
+            if len(scd) > 0:
+                sec("Best Variant")
+                best = scd.loc[scd["HO Success %"].idxmax()]
+                bvc = V_COLORS.get(best["Variant"], PRIMARY)
                 st.markdown(
-                    f'<div style="margin-bottom:10px;">'
-                    f'<div style="display:flex;justify-content:space-between;font-size:.82rem;font-family:Fira Sans,sans-serif;">'
-                    f'<span style="color:{vcl};font-weight:600;">{rr["Variant"]}</span>'
-                    f'<span style="color:{TEXT2};font-family:Fira Code,monospace;">{pct:.2f}%</span></div>'
-                    f'<div class="pb"><div class="pf" style="width:{min(pct,100)}%;background:{vcl};"></div></div>'
+                    f'<div class="kpi" style="text-align:center;border-top:3px solid {bvc};">'
+                    f'<div style="font-size:1.4rem;font-weight:800;color:{bvc};font-family:JetBrains Mono,monospace;">{best["Variant"]}</div>'
+                    f'<div style="font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:{TEXT_SEC};margin:4px 0;">Best for {ss.replace("_"," ")}</div>'
+                    f'<div style="font-size:.88rem;font-weight:600;font-family:JetBrains Mono,monospace;">{best["HO Success %"]:.2f}%</div>'
                     f'</div>', unsafe_allow_html=True)
+
+                # Progress bars for all variants
+                for _, rr in scd.iterrows():
+                    pct = rr["HO Success %"]
+                    vcl = V_COLORS.get(rr["Variant"], PRIMARY)
+                    st.markdown(
+                        f'<div style="margin:8px 0;">'
+                        f'<div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:2px;">'
+                        f'<span style="color:{vcl};font-weight:600;">{rr["Variant"]}</span>'
+                        f'<span style="font-family:JetBrains Mono,monospace;color:{TEXT_SEC};">{pct:.2f}%</span></div>'
+                        f'<div class="pbar"><div class="pfill" style="width:{min(pct, 100)}%;background:{vcl};"></div></div>'
+                        f'</div>', unsafe_allow_html=True)
 
     with sm:
         @st.fragment(run_every=2)
         def live():
-            step=st.session_state.get("sim_step",0); st.session_state.sim_step=step+1
-            rng=np.random.default_rng(step); nc=len(cm)
-            base=cm["ho_sr"].values.copy()
-            imp=np.clip(step*.02,0,2.5); noise=rng.normal(0,.25,nc)
-            lsr=np.clip(base+imp+noise,80,100)
-            ai=step%nc; ac=cm.iloc[ai]; cio=rng.choice([-2,-1,0,1,2])
-            lr=float(np.sum(lsr*cm["ho_att"].values)/100)
-            alv=float(np.mean(lsr)); plv=int(np.sum(lsr<96))
+            step = st.session_state.get("sim_step", 0)
+            st.session_state.sim_step = step + 1
+            rng = np.random.default_rng(step)
+            nc = len(cm)
+            base = cm["ho_sr"].values.copy()
+            imp = np.clip(step * .02, 0, 2.5)
+            noise = rng.normal(0, .25, nc)
+            lsr = np.clip(base + imp + noise, 80, 100)
+            ai = step % nc
+            ac = cm.iloc[ai]
+            cio = rng.choice([-2, -1, 0, 1, 2])
+            lr = float(np.sum(lsr * cm["ho_att"].values) / 100)
+            alv = float(np.mean(lsr))
+            plv = int(np.sum(lsr < 96))
 
-            cio_c = GREEN if cio>0 else (RED if cio<0 else AMBER)
-            cio_s = f'+{cio}' if cio>0 else str(cio)
-            prob_c = GREEN if plv<=3 else RED
-            # Use native streamlit metrics for the live panel — no HTML leaks
+            # Live header
             st.markdown(
-                f'<div class="dc">'
-                f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">'
-                f'<span class="bg bg-l"><span class="live-dot"></span> LIVE — Step {step}</span>'
-                f'<span style="font-size:.72rem;color:{TEXT3};font-family:Fira Code,monospace;">{time.strftime("%H:%M:%S")}</span>'
-                f'</div></div>', unsafe_allow_html=True)
-            lc1,lc2,lc3,lc4,lc5 = st.columns(5)
+                f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
+                f'<span class="badge badge-blue"><span class="live-dot" style="margin-right:4px;"></span>LIVE — Step {step}</span>'
+                f'<span style="font-size:.78rem;color:{TEXT_MUTED};font-family:JetBrains Mono,monospace;">{time.strftime("%H:%M:%S")}</span>'
+                f'</div>', unsafe_allow_html=True)
+
+            # KPI row
+            lc1, lc2, lc3, lc4 = st.columns(4)
             lc1.metric("Cluster", f"{alv:.2f}%")
             lc2.metric("Reward", f"{lr:,.0f}")
             lc3.metric("Problems", f"{plv}")
-            lc4.metric("Active Cell", ac['cell_id'])
-            lc5.metric("CIO Δ", f"{cio_s} dB")
+            lc4.metric("CIO", f"{cio:+d} dB")
 
             # Live map
-            sdf=cm.copy(); sdf["lsr"]=lsr
-            fs=go.Figure()
-            fs.add_trace(go.Scattermapbox(lat=sdf["latitude"],lon=sdf["longitude"],mode="markers",
-                marker=dict(size=np.clip(sdf["ho_att"]*.5,6,28),color=sdf["lsr"],
-                    colorscale=[[0,RED],[.5,AMBER],[.96,AMBER],[1,GREEN]],cmin=88,cmax=100),
+            sdf = cm.copy()
+            sdf["lsr"] = lsr
+            fs = go.Figure()
+            fs.add_trace(go.Scattermapbox(
+                lat=sdf["latitude"], lon=sdf["longitude"], mode="markers",
+                marker=dict(
+                    size=np.clip(sdf["ho_att"] * .5, 6, 28),
+                    color=sdf["lsr"],
+                    colorscale=[[0, RED], [.5, AMBER], [.96, AMBER], [1, GREEN]],
+                    cmin=88, cmax=100,
+                ),
                 hovertemplate="<b>%{customdata[0]}</b><br>Success: %{customdata[1]:.2f}%<extra></extra>",
-                customdata=np.column_stack([sdf["cell_id"],sdf["lsr"]])))
-            fs.add_trace(go.Scattermapbox(lat=[ac["latitude"]],lon=[ac["longitude"]],mode="markers",
-                marker=dict(size=24,color=P,opacity=.5),
-                hovertemplate=f"<b>ACTIVE: {ac['cell_id']}</b><br>CIO: {cio:+d} dB<extra></extra>"))
-            fs.update_layout(mapbox=dict(style=MAPSTYLE,center=dict(lat=center_lat,lon=center_lon),zoom=13),
-                margin=dict(l=0,r=0,t=0,b=0),height=420,paper_bgcolor=BG,showlegend=False)
+                customdata=np.column_stack([sdf["cell_id"], sdf["lsr"]]),
+            ))
+            fs.add_trace(go.Scattermapbox(
+                lat=[ac["latitude"]], lon=[ac["longitude"]], mode="markers",
+                marker=dict(size=24, color=PRIMARY, opacity=.5),
+                hovertemplate=f"<b>ACTIVE: {ac['cell_id']}</b><br>CIO: {cio:+d} dB<extra></extra>",
+            ))
+            fs.update_layout(
+                mapbox=dict(style=MAPSTYLE, center=dict(lat=center_lat, lon=center_lon), zoom=13),
+                margin=dict(l=0, r=0, t=0, b=0), height=400,
+                paper_bgcolor=CARD, showlegend=False,
+            )
             st.plotly_chart(fs, use_container_width=True, key=f"s{step}")
 
-            st.markdown("**Agent Log**")
-            lines=[]
-            for s in range(max(0,step-6),step+1):
-                rl=np.random.default_rng(s); ci=s%nc; cn=cm.iloc[ci]["cell_id"]
-                adj=rl.choice([-2,-1,0,1,2]); rew=rl.uniform(50,200)
-                ar="→" if adj==0 else ("↑" if adj>0 else "↓")
-                lines.append(f"`[{s:04d}]` **{cn}** CIO {ar} {adj:+d} dB · reward {rew:.1f}")
-            for l in reversed(lines): st.markdown(l)
+            # Agent log
+            sec("Agent Log")
+            lines = []
+            for s in range(max(0, step - 6), step + 1):
+                rl = np.random.default_rng(s)
+                ci = s % nc
+                cn = cm.iloc[ci]["cell_id"]
+                adj = rl.choice([-2, -1, 0, 1, 2])
+                rew = rl.uniform(50, 200)
+                lines.append(f"`[{s:04d}]` **{cn}** CIO {adj:+d} dB · reward {rew:.1f}")
+            for l in reversed(lines):
+                st.markdown(l)
+
         live()
 
-# ── PAGE: GATE G3 & EXPORT ──────────────────────────────────────────
-elif page == "📋  Gate G3 & Export":
-    if len(filt)==0: st.warning("No data."); st.stop()
 
-    sec("KPI Delta Table — vs v0 Baseline")
-    base=filt[(filt["Variant"]=="v0")&(filt["Scenario"]=="baseline")]
-    if len(base)>0:
-        b=base.iloc[0]; dr=[]
-        for _,row in filt.iterrows():
-            dr.append({"Variant":row["Variant"],"Scenario":row["Scenario"],
-                "HO Success %":round(row["HO Success %"],2),
-                "Success Δ":round(row["HO Success %"]-b["HO Success %"],4),
-                "Failure Δ":round(row["HO Failure %"]-b["HO Failure %"],4),
-                "PingPong Δ":round(row["Ping-Pong %"]-b["Ping-Pong %"],4),
-                "Reward Δ":round(row["Mean Reward"]-b["Mean Reward"],1)})
-        ddf=pd.DataFrame(dr)
-        st.dataframe(ddf.style.format({"HO Success %":"{:.2f}","Success Δ":"{:+.4f}",
-            "Failure Δ":"{:+.4f}","PingPong Δ":"{:+.4f}","Reward Δ":"{:+.1f}"}),
-            use_container_width=True,hide_index=True,height=420)
+# ══════════════════════════════════════════════════════════════════════
+# PAGE: REPORTS
+# ══════════════════════════════════════════════════════════════════════
+elif page == "Reports":
+    if len(cdf) == 0:
+        st.warning("No data.")
+        st.stop()
 
-    st.divider()
-    sec("Best Variant Recommendation")
-    rcols=st.columns(len(sel_s))
-    for i,sc in enumerate(sel_s):
-        with rcols[i]:
-            sd=filt[filt["Scenario"]==sc]
-            if len(sd)>0:
-                best=sd.loc[sd["HO Success %"].idxmax()]; m=SC_META.get(sc,{})
-                bvc2 = V_COLORS.get(best['Variant'],TEXT)
-                st.markdown(
-                    f'<div class="dc" style="text-align:center;border-top:3px solid {m.get("c",P)};">'
-                    f'<p style="font-size:1.4rem;margin:0;">{m.get("i","📡")}</p>'
-                    f'<p style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:{TEXT2};margin:4px 0;">{sc.replace("_"," ").title()}</p>'
-                    f'<p style="font-size:1.4rem;font-weight:800;color:{bvc2};margin:8px 0;font-family:Fira Code,monospace;">{best["Variant"]}</p>'
-                    f'<p style="font-size:.72rem;color:{TEXT3};margin:0;">{best["HO Success %"]:.2f}% · {best["Mean Reward"]:,.0f} reward</p>'
-                    f'</div>', unsafe_allow_html=True)
+    # Filters
+    f1, f2 = st.columns(2)
+    av = sorted(cdf["Variant"].unique())
+    asc = sorted(cdf["Scenario"].unique())
+    with f1:
+        sel_v = st.multiselect("Reward Variants", av, default=av, key="rv")
+    with f2:
+        sel_s = st.multiselect("Scenarios", asc, default=asc, key="rs")
+    filt = cdf[cdf["Variant"].isin(sel_v) & cdf["Scenario"].isin(sel_s)]
 
-    st.divider()
-    sec("Export Data")
-    e1,e2,e3=st.columns(3)
-    with e1: st.download_button("📥 CSV",filt.to_csv(index=False),"mro_comparison.csv","text/csv",use_container_width=True)
-    with e2:
-        sw=ed.get("sweep",{})
-        if sw: st.download_button("📥 Sweep",json.dumps(sw,indent=2,default=str),"mro_sweep.json","application/json",use_container_width=True)
-    with e3:
-        rp={"gate":"G3","generated":pd.Timestamp.now().isoformat(),"data":filt.to_dict("records")}
-        st.download_button("📥 Report",json.dumps(rp,indent=2,default=str),"mro_g3.json","application/json",use_container_width=True)
+    tab_delta, tab_rec, tab_export, tab_gate = st.tabs([
+        "KPI Delta Table", "Recommendations", "Export Data", "Gate G3 Checklist"])
 
-    st.divider()
-    sec("Gate G3 Checklist")
-    chks=[("≥ 2 reward variants with KPI delta",len(filt["Variant"].unique())>=2),
-        ("≥ 3 distinct scenarios",len(filt["Scenario"].unique())>=3),
-        ("≥ 5 MLflow training runs",len(ed["experiments"])>=5),
-        ("Dashboard shows KPI differences",True),
-        ("Side-by-side comparison table",True),
-        ("Automated pipeline",True)]
-    for lbl,ok in chks:
-        bg="bg-g" if ok else "bg-r"
-        st.markdown(f'<div class="cr"><span>{"✅" if ok else "❌"} {lbl}</span><span class="bg {bg}">{"PASS" if ok else "FAIL"}</span></div>',
-            unsafe_allow_html=True)
-    ao=all(p for _,p in chks)
-    gc = GREEN if ao else RED
-    gt = '🎉 GATE G3 — ALL CHECKS PASSING' if ao else '⚠️ NOT READY'
-    gn = sum(p for _,p in chks)
-    st.markdown(
-        f'<div class="dc" style="text-align:center;margin-top:16px;border:2px solid {gc};">'
-        f'<p style="font-size:1.2rem;font-weight:800;color:{gc};font-family:Fira Sans,sans-serif;margin:0;">{gt}</p>'
-        f'<p style="font-size:.72rem;color:{TEXT3};margin:4px 0 0 0;">{gn}/{len(chks)} criteria met</p>'
-        f'</div>', unsafe_allow_html=True)
+    with tab_delta:
+        sec("KPI Delta — vs v0 Baseline")
+        base = filt[(filt["Variant"] == "v0") & (filt["Scenario"] == "baseline")]
+        if len(base) > 0:
+            b = base.iloc[0]
+            dr = []
+            for _, row in filt.iterrows():
+                dr.append({
+                    "Variant": row["Variant"],
+                    "Scenario": row["Scenario"],
+                    "HO Success %": round(row["HO Success %"], 2),
+                    "Success Delta": round(row["HO Success %"] - b["HO Success %"], 4),
+                    "Failure Delta": round(row["HO Failure %"] - b["HO Failure %"], 4),
+                    "PingPong Delta": round(row["Ping-Pong %"] - b["Ping-Pong %"], 4),
+                    "Reward Delta": round(row["Mean Reward"] - b["Mean Reward"], 1),
+                })
+            ddf = pd.DataFrame(dr)
+            st.dataframe(
+                ddf.style.format({
+                    "HO Success %": "{:.2f}",
+                    "Success Delta": "{:+.4f}",
+                    "Failure Delta": "{:+.4f}",
+                    "PingPong Delta": "{:+.4f}",
+                    "Reward Delta": "{:+.1f}",
+                }),
+                use_container_width=True, hide_index=True, height=420)
+
+    with tab_rec:
+        sec("Best Variant per Scenario")
+        rcols = st.columns(len(sel_s)) if sel_s else [st.container()]
+        for i, sc in enumerate(sel_s):
+            with rcols[i]:
+                sd = filt[filt["Scenario"] == sc]
+                if len(sd) > 0:
+                    best = sd.loc[sd["HO Success %"].idxmax()]
+                    bvc = V_COLORS.get(best["Variant"], PRIMARY)
+                    m = SC_META.get(sc, {})
+                    st.markdown(
+                        f'<div class="kpi" style="text-align:center;border-top:3px solid {m.get("c", PRIMARY)};">'
+                        f'<div style="font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:{TEXT_SEC};margin-bottom:8px;">{sc.replace("_"," ").title()}</div>'
+                        f'<div style="font-size:1.4rem;font-weight:800;color:{bvc};font-family:JetBrains Mono,monospace;">{best["Variant"]}</div>'
+                        f'<div style="font-size:.78rem;color:{TEXT_MUTED};margin-top:4px;">{best["HO Success %"]:.2f}% · {best["Mean Reward"]:,.0f} reward</div>'
+                        f'</div>', unsafe_allow_html=True)
+
+    with tab_export:
+        sec("Download Data")
+        e1, e2, e3 = st.columns(3)
+        with e1:
+            st.download_button("Download CSV", filt.to_csv(index=False), "mro_comparison.csv", "text/csv", use_container_width=True)
+        with e2:
+            sw = ed.get("sweep", {})
+            if sw:
+                st.download_button("Download Sweep", json.dumps(sw, indent=2, default=str), "mro_sweep.json", "application/json", use_container_width=True)
+        with e3:
+            rp = {"gate": "G3", "generated": pd.Timestamp.now().isoformat(), "data": filt.to_dict("records")}
+            st.download_button("Download Report", json.dumps(rp, indent=2, default=str), "mro_g3.json", "application/json", use_container_width=True)
+
+    with tab_gate:
+        sec("Gate G3 Checklist")
+        chks = [
+            ("At least 2 reward variants with KPI delta", len(cdf["Variant"].unique()) >= 2),
+            ("At least 3 distinct scenarios", len(cdf["Scenario"].unique()) >= 3),
+            ("At least 5 experiment runs", len(ed["experiments"]) >= 5),
+            ("Dashboard shows KPI differences", True),
+            ("Side-by-side comparison table", True),
+            ("Automated experiment pipeline", True),
+        ]
+
+        st.markdown(
+            f'<div class="thead">'
+            f'<span style="flex:3">Criterion</span>'
+            f'<span style="flex:1;text-align:right">Status</span>'
+            f'</div>', unsafe_allow_html=True)
+
+        for lbl, ok in chks:
+            bcls = "badge-green" if ok else "badge-red"
+            blbl = "Pass" if ok else "Fail"
+            st.markdown(
+                f'<div class="trow">'
+                f'<span style="flex:3;">{"✅" if ok else "❌"} {lbl}</span>'
+                f'<span style="flex:1;text-align:right;"><span class="badge {bcls}">{blbl}</span></span>'
+                f'</div>', unsafe_allow_html=True)
+
+        all_pass = all(p for _, p in chks)
+        gc = GREEN if all_pass else RED
+        gt = "ALL CHECKS PASSING" if all_pass else "NOT READY"
+        gn = sum(p for _, p in chks)
+        st.markdown(
+            f'<div class="card" style="text-align:center;margin-top:16px;border:2px solid {gc};">'
+            f'<div style="font-size:1.1rem;font-weight:700;color:{gc};">Gate G3 — {gt}</div>'
+            f'<div style="font-size:.78rem;color:{TEXT_MUTED};margin-top:4px;">{gn}/{len(chks)} criteria met</div>'
+            f'</div>', unsafe_allow_html=True)
+
 
 # ── Footer ───────────────────────────────────────────────────────────
-st.divider()
-st.caption("WINNIIO AltioStar MRO · Phase 2 · Rakuten Japan 5G · 75 Cells · 763 Relations · 99% Target")
+st.markdown(f'<div style="height:1px;background:{BORDER};margin:20px 0 12px 0;"></div>', unsafe_allow_html=True)
+st.markdown(
+    f'<div style="text-align:center;font-size:.72rem;color:{TEXT_MUTED};padding-bottom:16px;">'
+    f'WINNIIO AltioStar MRO · Phase 2 · Rakuten Japan 5G · 75 Cells · 763 Relations · 99% Target'
+    f'</div>', unsafe_allow_html=True)
