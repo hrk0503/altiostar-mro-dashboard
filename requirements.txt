@@ -11,4 +11,5 @@ pandas
 numpy
 pyarrow
 streamlit
+plotly
 torch

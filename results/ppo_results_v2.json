@@ -1,0 +1,96 @@
+{
+  "episode_rewards": [
+    42103.17,
+    54132.65,
+    66162.13,
+    78191.6,
+    90221.08,
+    102250.56,
+    114280.04,
+    126309.51,
+    138338.99,
+    150368.47,
+    162397.95,
+    174427.43,
+    186456.9,
+    198486.38,
+    210515.86
+  ],
+  "runs": [
+    {
+      "run_index": 1,
+      "mlflow_run_id": "7d9912e22abe43c3a4036411fa0d8cc6",
+      "mean_reward": 210515.8582078945,
+      "ho_success_rate": 79.2712061958359,
+      "ping_pong_rate": 0.01387426347010388,
+      "checkpoint_path": "D:\\WINNIIO LifeAtlas Internship 2026\\Developer\\altiostar-tokyo-mro\\checkpoints\\ppo_relation_v2_seed_42.zip",
+      "episode_rewards": [
+        42103.17,
+        54132.65,
+        66162.13,
+        78191.6,
+        90221.08,
+        102250.56,
+        114280.04,
+        126309.51,
+        138338.99,
+        150368.47,
+        162397.95,
+        174427.43,
+        186456.9,
+        198486.38,
+        210515.86
+      ]
+    },
+    {
+      "run_index": 2,
+      "mlflow_run_id": "6b8dfd623f7447b78a77c9ffa4e11639",
+      "mean_reward": 210496.93981572054,
+      "ho_success_rate": 79.27547198777594,
+      "ping_pong_rate": 0.013874350085069594,
+      "checkpoint_path": "D:\\WINNIIO LifeAtlas Internship 2026\\Developer\\altiostar-tokyo-mro\\checkpoints\\ppo_relation_v2_seed_43.zip",
+      "episode_rewards": [
+        42099.39,
+        54127.78,
+        66156.18,
+        78184.58,
+        90212.97,
+        102241.37,
+        114269.77,
+        126298.16,
+        138326.56,
+        150354.96,
+        162383.35,
+        174411.75,
+        186440.15,
+        198468.54,
+        210496.94
+      ]
+    }
+  ],
+  "best_run": {
+    "run_index": 1,
+    "mlflow_run_id": "7d9912e22abe43c3a4036411fa0d8cc6",
+    "mean_reward": 210515.8582078945,
+    "ho_success_rate": 79.2712061958359,
+    "ping_pong_rate": 0.01387426347010388,
+    "checkpoint_path": "D:\\WINNIIO LifeAtlas Internship 2026\\Developer\\altiostar-tokyo-mro\\checkpoints\\ppo_relation_v2_seed_42.zip",
+    "episode_rewards": [
+      42103.17,
+      54132.65,
+      66162.13,
+      78191.6,
+      90221.08,
+      102250.56,
+      114280.04,
+      126309.51,
+      138338.99,
+      150368.47,
+      162397.95,
+      174427.43,
+      186456.9,
+      198486.38,
+      210515.86
+    ]
+  }
+}
