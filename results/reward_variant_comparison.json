@@ -1,0 +1,46 @@
+{
+  "generated": "reward_variant_comparison",
+  "scenario": "baseline",
+  "episodes": 3,
+  "steps_per_episode": 10,
+  "note": "V0 excluded from best_performer ranking \u2014 count-based scale (~3000+) vs rate-based v1-v3 (~70-75)",
+  "best_performer": "V2",
+  "variants": [
+    {
+      "Variant": "V0",
+      "Mode": "RELATION",
+      "Avg Reward": 3164.4,
+      "HO Success %": 79.7,
+      "HO Failure %": 1.1,
+      "Ping-Pong Rate (%)": 1.52,
+      "Num Steps": 30
+    },
+    {
+      "Variant": "V1",
+      "Mode": "RELATION",
+      "Avg Reward": 71.774,
+      "HO Success %": 78.5,
+      "HO Failure %": 1.0,
+      "Ping-Pong Rate (%)": 1.18,
+      "Num Steps": 30
+    },
+    {
+      "Variant": "V2",
+      "Mode": "RELATION",
+      "Avg Reward": 73.361,
+      "HO Success %": 80.1,
+      "HO Failure %": 1.1,
+      "Ping-Pong Rate (%)": 1.49,
+      "Num Steps": 30
+    },
+    {
+      "Variant": "V3",
+      "Mode": "RELATION",
+      "Avg Reward": 71.695,
+      "HO Success %": 78.4,
+      "HO Failure %": 1.0,
+      "Ping-Pong Rate (%)": 1.36,
+      "Num Steps": 30
+    }
+  ]
+}
