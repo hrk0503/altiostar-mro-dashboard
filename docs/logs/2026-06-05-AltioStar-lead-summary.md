@@ -2,28 +2,37 @@
 
 ## Team attendance: 4/4 present
 
-## Gate progress: Phase 2, 100% complete — Reward variant comparison delivered
+## Gate progress: Phase 2 COMPLETE — All 12 Gate G3 criteria met
 
 - **Track A (Harshit + Ananyaa):**
-  - Harshit: Full training rerun with 25,000 timesteps across all 4 variants x 4 scenarios (16 experiments). Config updated `mro_default.yaml` reward_version v0 → v2 (Rate-Based, recommended variant). Dashboard polished with training convergence curves, before/after baseline comparison, enhanced Gate G3 checklist (12 criteria). Gate G3 summary document written (`docs/2026-06-05-gate-g3-phase2-summary.md`). All final merges and pushes done.
-  - Ananyaa: Merged sweep results + `reward_variant_comparison.json` from `feature/ananyaa-schema-mapper` → staging. Reward variant analysis document with per-scenario best variant recommendation.
+  - Harshit: Full training sweep — 25,000 timesteps across all 4 variants x 4 scenarios (16 experiments). Config updated `mro_default.yaml` reward_version v0 → v2 (Rate-Based). Dashboard polished with convergence curves, before/after baseline comparison, enhanced Gate G3 checklist (12 criteria). Gate G3 summary written. Found and fixed 25K results overwrite bug after Ananyaa's merge. Evening final merge — cherry-picked analysis doc, updated all logs, pushed all repos, Phase 2 closed.
+  - Ananyaa: Reward variant analysis document (`2026-06-05-reward-variant-analysis.md`) — V2 recommended across all scenarios, V0 excluded (raw counts). Merged sweep results + `reward_variant_comparison.json` to staging. Dashboard verified live with correct KPI rendering.
 
-- **Track B (Devika + Shourya):**
-  - Shourya: Pipeline end-to-end QA with `run_experiment.py`. Dashboard full user walkthrough — all 6 pages verified. Reproducibility guide documenting how to run the pipeline from a fresh clone.
-  - Devika: Final QA — `pytest -v` all 221+ tests green. Scenario engine testing (all 4 scenarios load and apply correctly). Phase 3 preparation — read Phase C requirements, drafted lead plan for next week.
+- **Track B (Shourya + Devika):**
+  - Shourya: Refactored ScenarioLoader — dynamic wiring into MROEnv reset/step for O(1) step-level modifications (8.5x test speedup: 1m55s → 11s). Seeded tower failure sampling. Pipeline reproducibility guide (150 lines). Started 50K sweep for Phase 3. Daily log pushed.
+  - Devika: QA testing report — 222/222 tests passed. Scenario engine QA — all 4 scenarios verified (rush_hour, rain_fade, tower_failure, baseline). Integration with MROEnv confirmed. Zero issues found.
+
+## Final numbers:
+- 222/222 tests passing
+- 16 experiments at 25,000 timesteps
+- 4 reward variants (v0/v1/v2/v3), 4 scenarios (baseline/rush_hour/rain_fade/tower_failure)
+- Best variant: v2 (Rate-Based), reward 210,579
+- Random baseline: 79.25% — agent matches at 25K, needs Phase 3 for improvement
+- Dashboard: https://altiostar-mro-dashboard.streamlit.app (auto-syncs every 15 min)
 
 ## Top blocker:
-- Agent hasn't improved over random baseline at 25K timesteps. Needs 50K-100K timesteps for meaningful learning. This is Phase 3's focus (Phase C: "Make it learn").
+- Agent hasn't surpassed random baseline at 25K timesteps. Phase 3 focus: 50K-100K timesteps for meaningful learning signal.
 
-## Tomorrow's priority (Phase 3 — Devika leads):
+## Monday priority (Phase 3 — Devika leads):
 - Devika: Define Phase 3 plan, assign tasks. Focus on higher timestep training.
 - Shourya: PPO training with 50K-100K timesteps, 5 seeded runs for statistical significance.
 - Ananyaa: Before/after KPI chart with improvement percentages.
 - Harshit: Docker containerization + support.
 
 ## Flag for Nicolas/Danial:
-- New dashboard URL: https://altiostar-mro-dashboard.streamlit.app (previous URL deleted during redeployment)
-- Default reward version changed to v2 (Rate-Based) — best performer, recommended for Phase 3 training
-- Dashboard auto-syncs from LifeAtlas upstream every 15 min — no manual deployment needed
+- Dashboard URL: https://altiostar-mro-dashboard.streamlit.app (password: Winniio-2019)
+- Default reward version changed to v2 (Rate-Based) — best performer
+- Dashboard auto-syncs from LifeAtlas upstream every 15 min
+- Phase 2 is officially closed. Phase 3 starts Monday with Devika as lead.
 
 — Harshit Kumar
