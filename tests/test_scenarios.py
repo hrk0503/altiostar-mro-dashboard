@@ -522,3 +522,22 @@ class TestMROEnvScenarioIntegration:
         env = MROEnv(scenario="rush_hour", scenario_seed=42)
         assert env._scenario_config["name"] == "rush_hour"
         assert env._scenario_config["ue_multiplier"] == 3.0
+
+    def test_scenario_config_passed_directly(self) -> None:
+        """MROEnv accepts a scenario_config dict directly in constructor."""
+        from src.env.mro_env import MROEnv
+        config = {
+            "name": "custom_test_config",
+            "ue_multiplier": 5.0,
+            "rsrp_offset_db": -2.0,
+        }
+        env = MROEnv(scenario_config=config, scenario_seed=42)
+        assert env.scenario_name == "custom_test_config"
+        assert env._scenario_config["ue_multiplier"] == 5.0
+        assert env._scenario_config["rsrp_offset_db"] == -2.0
+
+        # Also support passing via scenario parameter
+        env2 = MROEnv(scenario=config, scenario_seed=42)
+        assert env2.scenario_name == "custom_test_config"
+        assert env2._scenario_config["ue_multiplier"] == 5.0
+

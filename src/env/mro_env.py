@@ -82,8 +82,9 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
         cell_id: Optional[str] = None,
         reward_version: Optional[str] = None,
         reward_config_path: Optional[str] = None,
-        scenario: Optional[str] = None,
+        scenario: Optional[Union[str, Dict[str, Any]]] = None,
         scenario_seed: Optional[int] = None,
+        scenario_config: Optional[Dict[str, Any]] = None,
     ):
         super().__init__()
 
@@ -93,7 +94,22 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
         self.reward_weights: Dict[str, float] = reward_cfg["weights"]
 
         # ── Scenario configuration ──
-        self.scenario_name: str = scenario or "baseline"
+        self._failed_sites_list: List[str] = []
+        if scenario_config is not None:
+            self._scenario_config = scenario_config
+            self.scenario_name = scenario_config.get("name", "custom_scenario")
+        elif isinstance(scenario, dict):
+            self._scenario_config = scenario
+            self.scenario_name = scenario.get("name", "custom_scenario")
+        elif isinstance(scenario, str) and scenario != "baseline":
+            from src.env.scenario_loader import ScenarioLoader
+            loader = ScenarioLoader()
+            self._scenario_config = loader.load(scenario)
+            self.scenario_name = scenario
+        else:
+            self._scenario_config = {"name": "baseline", "description": "No modifications"}
+            self.scenario_name = "baseline"
+
         self._scenario_seed: Optional[int] = scenario_seed
 
         base_dir = Path(__file__).resolve().parents[2]
@@ -117,17 +133,7 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
                 self.pm_data_raw = pd.read_csv(pm_data_path)
                 _DF_CACHE[path_str] = self.pm_data_raw
 
-        # ── Apply scenario modifiers to PM data ──
-        if self.scenario_name != "baseline":
-            from src.env.scenario_loader import ScenarioLoader
-            loader = ScenarioLoader()
-            self._scenario_config = loader.load(self.scenario_name)
-            rng = np.random.default_rng(self._scenario_seed)
-            self.pm_data_raw = loader.apply(
-                self.pm_data_raw, self.scenario_name, rng=rng,
-            )
-        else:
-            self._scenario_config = {"name": "baseline", "description": "No modifications"}
+        # Note: Scenario configurations are applied dynamically on reset() and step().
 
         if isinstance(kpi_path, pd.DataFrame):
             self.kpi_data = kpi_path
@@ -316,6 +322,30 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
             self.ho_failure_rate_pct = float(row["ho_failure_rate_pct"])
             self.ho_pingpong_count = base_pingpong
 
+        # Apply scenario modifications on the fly
+        if self.scenario_name != "baseline" and self._scenario_config:
+            cfg = self._scenario_config
+            if self.cell_id[:-1] in self._failed_sites_list:
+                self.avg_rsrp_dBm = -140.0
+                self.avg_rsrq_dB = -20.0
+                self.avg_sinr_dB = -10.0
+                self.prb_utilization_dl_pct = 0.0
+                self.prb_utilization_ul_pct = 0.0
+                self.ho_success_rate_pct = 0.0
+                self.ho_failure_rate_pct = 0.0
+                self.ho_pingpong_count = 0.0
+            else:
+                self.avg_rsrp_dBm += cfg.get("rsrp_offset_db", 0.0)
+                self.avg_sinr_dB += cfg.get("sinr_offset_db", 0.0)
+                prb_floor = cfg.get("prb_floor", 0.0) * 100.0
+                self.prb_utilization_dl_pct = max(self.prb_utilization_dl_pct, prb_floor)
+                self.prb_utilization_ul_pct = max(self.prb_utilization_ul_pct, prb_floor)
+                
+                fail_mult = cfg.get("ho_failure_multiplier", 1.0)
+                if fail_mult != 1.0:
+                    self.ho_failure_rate_pct = min(100.0, self.ho_failure_rate_pct * fail_mult)
+                    self.ho_success_rate_pct = 100.0 - self.ho_failure_rate_pct
+
     def _get_obs(self) -> np.ndarray:
         return np.array([
             self.avg_rsrp_dBm,
@@ -371,6 +401,77 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
             )
         return float(reward)
 
+    def _apply_scenario_to_relation_state(self, state: np.ndarray, relation_idx: int) -> np.ndarray:
+        if not self._scenario_config or self.scenario_name == "baseline":
+            return state
+
+        cfg = self._scenario_config
+        src, tgt = self.relations[relation_idx]
+
+        # 1. Tower failure (failed_sites)
+        if "failed_sites" in cfg and cfg["failed_sites"] > 0:
+            if src[:-1] in self._failed_sites_list or tgt[:-1] in self._failed_sites_list:
+                state[0:8] = 0.0
+                return state
+
+        # 2. Multipliers
+        ue_mult = cfg.get("ue_multiplier", 1.0)
+        ho_att_mult = cfg.get("ho_attempt_multiplier", 1.0)
+        state[0] = round(state[0] * ue_mult * ho_att_mult)
+
+        ho_fail_mult = cfg.get("ho_failure_multiplier", 1.0)
+        state[2] = round(state[2] * ho_fail_mult)
+
+        # ho_attempt_spike for surviving neighbors
+        spike = cfg.get("ho_attempt_spike", 1.0)
+        if spike > 1.0 and len(self._failed_sites_list) > 0:
+            state[0] = round(state[0] * spike)
+
+        # neighbor_load_multiplier
+        neigh_load_mult = cfg.get("neighbor_load_multiplier", 1.0)
+        if neigh_load_mult != 1.0:
+            state[0] = round(state[0] * neigh_load_mult)
+
+        # Success rate/values adjustment (successes cannot exceed attempts)
+        if state[0] > 0:
+            if state[1] > state[0]:
+                state[1] = state[0]
+            if state[2] > state[0] - state[1]:
+                state[2] = state[0] - state[1]
+        else:
+            state[1:8] = 0.0
+
+        return state
+
+    def _apply_scenario_to_cell_obs(self, obs: np.ndarray) -> np.ndarray:
+        if not self._scenario_config or self.scenario_name == "baseline":
+            return obs
+
+        cfg = self._scenario_config
+
+        # 1. Tower failure
+        if "failed_sites" in cfg and cfg["failed_sites"] > 0:
+            if self.cell_id[:-1] in self._failed_sites_list:
+                return np.zeros_like(obs)
+
+        # 2. RSRP / SINR offsets
+        obs[0] += cfg.get("rsrp_offset_db", 0.0)
+        obs[2] += cfg.get("sinr_offset_db", 0.0)
+
+        # 3. PRB floor
+        prb_floor_pct = cfg.get("prb_floor", 0.0) * 100.0
+        obs[3] = max(obs[3], prb_floor_pct)
+        obs[4] = max(obs[4], prb_floor_pct)
+
+        # 4. HO failure multiplier
+        fail_mult = cfg.get("ho_failure_multiplier", 1.0)
+        if fail_mult != 1.0:
+            new_fail_pct = min(100.0, obs[6] * fail_mult)
+            obs[6] = new_fail_pct
+            obs[5] = 100.0 - new_fail_pct
+
+        return obs
+
     def reset(
         self,
         *,
@@ -379,6 +480,21 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
     ) -> Tuple[np.ndarray, Dict[str, Any]]:
         super().reset(seed=seed)
         self.episode_history = []
+
+        # Determine failed sites for this episode using the environment's seeded np_random
+        cfg = self._scenario_config
+        self._failed_sites_list = []
+        if cfg and cfg.get("failed_sites", 0) > 0:
+            if self.mode == "relation":
+                sites = list({str(src)[:-1] for src, _ in self.relations})
+            else:
+                sites = [self.cell_id[:-1]]
+            
+            n_failed = cfg["failed_sites"]
+            if len(sites) <= n_failed:
+                n_failed = max(len(sites) - 1, 0)
+            if n_failed > 0:
+                self._failed_sites_list = list(self.np_random.choice(sites, size=n_failed, replace=False))
 
         if self.mode == "relation":
             if options and options.get("random_start"):
@@ -391,7 +507,7 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
                 rel_df = self.relation_groups[(src, tgt)]["full_df"]
                 step_idx = self.current_step % len(rel_df)
                 row = rel_df.iloc[step_idx]
-                self.current_state[i] = [
+                state = np.array([
                     float(row["ho_attempts"]),
                     float(row["ho_successes"]),
                     float(row["ho_failures"]),
@@ -401,7 +517,11 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
                     float(row["correct_cell"]),
                     float(row["ping_pong"]),
                     float(row["cio_db"]),
-                ]
+                ], dtype=np.float32)
+                
+                # Apply scenario modifications on the fly
+                self.current_state[i] = self._apply_scenario_to_relation_state(state, i)
+
             info = {
                 "cell_id": self.cell_id,
                 "step": self.current_step,
@@ -416,6 +536,8 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
 
             self._update_state_from_replay(action=None)
             obs = self._get_obs()
+            # Apply scenario to cell observation on the fly
+            obs = self._apply_scenario_to_cell_obs(obs)
             info = {
                 "cell_id": self.cell_id,
                 "step": self.current_step,
@@ -467,6 +589,36 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
                 wrong = int(cio_info["wrong_cell"][idx_sampled])
                 correct = int(cio_info["correct_cell"][idx_sampled])
                 ping = int(cio_info["ping_pong"][idx_sampled])
+
+                # Apply scenario modifications on the fly
+                if self.scenario_name != "baseline" and self._scenario_config:
+                    cfg = self._scenario_config
+                    if src[:-1] in self._failed_sites_list or tgt[:-1] in self._failed_sites_list:
+                        att = succ = fail = early = late = wrong = correct = ping = 0
+                    else:
+                        ue_mult = cfg.get("ue_multiplier", 1.0)
+                        ho_att_mult = cfg.get("ho_attempt_multiplier", 1.0)
+                        att = round(att * ue_mult * ho_att_mult)
+                        
+                        ho_fail_mult = cfg.get("ho_failure_multiplier", 1.0)
+                        fail = round(fail * ho_fail_mult)
+                        
+                        spike = cfg.get("ho_attempt_spike", 1.0)
+                        if spike > 1.0 and len(self._failed_sites_list) > 0:
+                            att = round(att * spike)
+                            
+                        neigh_load_mult = cfg.get("neighbor_load_multiplier", 1.0)
+                        if neigh_load_mult != 1.0:
+                            att = round(att * neigh_load_mult)
+
+                        # Adjust succ and fail to not exceed att
+                        if att > 0:
+                            if succ > att:
+                                succ = att
+                            if fail > att - succ:
+                                fail = att - succ
+                        else:
+                            succ = fail = early = late = wrong = correct = ping = 0
 
                 next_state[i] = [
                     float(att),
