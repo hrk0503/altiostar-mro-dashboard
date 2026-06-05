@@ -1,0 +1,46 @@
+name: Sync staging from LifeAtlas upstream
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'  # Every 15 minutes
+  workflow_dispatch:        # Manual trigger button
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync upstream staging to dashboard
+        run: |
+          # Clone LifeAtlas upstream (private — needs PAT)
+          git clone --branch staging --single-branch \
+            https://x-access-token:${{ secrets.UPSTREAM_PAT }}@github.com/LifeAtlas/altiostar-tokyo-mro.git \
+            upstream
+
+          cd upstream
+
+          # Replace requirements.txt with dashboard-only deps
+          # (full requirements.txt has torch/SB3 which are too heavy for Streamlit Cloud)
+          cat > requirements.txt << 'REQS'
+          streamlit
+          plotly
+          pandas
+          numpy
+          pyyaml
+          REQS
+
+          # Commit the lightweight requirements (locally, for push)
+          git config user.name "Harshit Rana"
+          git config user.email "ranaharshit0503@gmail.com"
+          git add requirements.txt
+          git commit -m "ci: use dashboard-only requirements for Streamlit deploy" --allow-empty || true
+
+          # Push to dashboard repo's staging branch
+          git remote add dashboard \
+            https://x-access-token:${{ github.token }}@github.com/hrk0503/altiostar-mro-dashboard.git
+
+          git push dashboard staging --force
+
+          echo "Synced staging from LifeAtlas → dashboard deploy repo"
