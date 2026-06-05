@@ -1,0 +1,71 @@
+{
+  "episode_rewards": [
+    41346.62,
+    53159.94,
+    64973.26,
+    76786.58,
+    88599.9,
+    100413.23,
+    112226.55,
+    124039.87,
+    135853.19,
+    147666.51,
+    159479.83,
+    171293.15,
+    183106.47,
+    194919.79,
+    206733.11
+  ],
+  "runs": [
+    {
+      "run_index": 1,
+      "mlflow_run_id": "e1cb0646bc474f6e9b6ca9f176d3b8f8",
+      "mean_reward": 206733.11053199205,
+      "ho_success_rate": 79.2712061958359,
+      "ping_pong_rate": 0.01387426347010388,
+      "checkpoint_path": "D:\\WINNIIO LifeAtlas Internship 2026\\Developer\\altiostar-tokyo-mro\\checkpoints\\ppo_relation_v3_seed_42.zip",
+      "episode_rewards": [
+        41346.62,
+        53159.94,
+        64973.26,
+        76786.58,
+        88599.9,
+        100413.23,
+        112226.55,
+        124039.87,
+        135853.19,
+        147666.51,
+        159479.83,
+        171293.15,
+        183106.47,
+        194919.79,
+        206733.11
+      ]
+    }
+  ],
+  "best_run": {
+    "run_index": 1,
+    "mlflow_run_id": "e1cb0646bc474f6e9b6ca9f176d3b8f8",
+    "mean_reward": 206733.11053199205,
+    "ho_success_rate": 79.2712061958359,
+    "ping_pong_rate": 0.01387426347010388,
+    "checkpoint_path": "D:\\WINNIIO LifeAtlas Internship 2026\\Developer\\altiostar-tokyo-mro\\checkpoints\\ppo_relation_v3_seed_42.zip",
+    "episode_rewards": [
+      41346.62,
+      53159.94,
+      64973.26,
+      76786.58,
+      88599.9,
+      100413.23,
+      112226.55,
+      124039.87,
+      135853.19,
+      147666.51,
+      159479.83,
+      171293.15,
+      183106.47,
+      194919.79,
+      206733.11
+    ]
+  }
+}
