@@ -2,16 +2,16 @@
   "experiment": "v2_baseline",
   "reward_version": "v2",
   "scenario": "baseline",
-  "timestamp": "2026-06-05T02:31:24.821377+00:00",
+  "timestamp": "2026-06-05T18:12:23.707907+00:00",
   "config": {
-    "total_timesteps": 25000,
+    "total_timesteps": 50000,
     "eval_episodes": 10,
     "seed": 42,
     "algorithm": "PPO",
     "policy": "MlpPolicy"
   },
   "training": {
-    "time_s": 113.28,
+    "time_s": 2218.95,
     "episode_rewards": [
       210613.8177,
       210578.1858,
@@ -21,9 +21,17 @@
       210569.26,
       210445.3506,
       210571.0317,
-      210554.1451
+      210554.1451,
+      210601.0793,
+      210634.3478,
+      210636.7992,
+      210575.9152,
+      210610.1529,
+      210634.5939,
+      210600.1514,
+      210552.9363
     ],
-    "checkpoint_path": "checkpoints/ppo_v2_baseline.zip"
+    "checkpoint_path": "checkpoints\\ppo_v2_baseline.zip"
   },
   "evaluation": {
     "mean_reward": 210579.0769,
@@ -138,5 +146,5 @@
       }
     ]
   },
-  "mlflow_run_id": "e3a3fc80956243a19d8382d5533c0350"
+  "mlflow_run_id": "27c6042ec7674ce89f0e6d9e93956ce0"
 }

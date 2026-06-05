@@ -2,16 +2,16 @@
   "experiment": "v1_rush_hour",
   "reward_version": "v1",
   "scenario": "rush_hour",
-  "timestamp": "2026-06-05T02:20:55.137387+00:00",
+  "timestamp": "2026-06-05T15:23:48.584061+00:00",
   "config": {
-    "total_timesteps": 25000,
+    "total_timesteps": 50000,
     "eval_episodes": 10,
     "seed": 42,
     "algorithm": "PPO",
     "policy": "MlpPolicy"
   },
   "training": {
-    "time_s": 124.17,
+    "time_s": 2550.28,
     "episode_rewards": [
       34261.3458,
       34270.6668,
@@ -21,9 +21,17 @@
       34265.931,
       34220.8405,
       34260.6314,
-      34238.6732
+      34238.6732,
+      34259.4858,
+      34265.0689,
+      34270.3695,
+      34256.1284,
+      34259.414,
+      34256.0643,
+      34251.6677,
+      34257.5079
     ],
-    "checkpoint_path": "checkpoints/ppo_v1_rush_hour.zip"
+    "checkpoint_path": "checkpoints\\ppo_v1_rush_hour.zip"
   },
   "evaluation": {
     "mean_reward": 34245.8423,
@@ -138,5 +146,5 @@
       }
     ]
   },
-  "mlflow_run_id": "ca53bc1c7209460dac10ad8c90687b6e"
+  "mlflow_run_id": "3f39360179414935b4b04275e1e545d0"
 }

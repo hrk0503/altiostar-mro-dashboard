@@ -1,9 +1,9 @@
 {
-  "sweep_timestamp": "2026-06-05T03:02:05.438245+00:00",
+  "sweep_timestamp": "2026-06-05T18:52:45.056187+00:00",
   "total_experiments": 16,
   "successful": 16,
   "failed": 0,
-  "total_time_s": 3962.86,
+  "total_time_s": 96456.79,
   "config": {
     "variants": [
       "v0",
@@ -17,7 +17,7 @@
       "rain_fade",
       "tower_failure"
     ],
-    "timesteps_per_experiment": 25000,
+    "timesteps_per_experiment": 50000,
     "eval_episodes": 10,
     "seed": 42
   },
@@ -58,13 +58,13 @@
     {
       "variant": "v0",
       "scenario": "tower_failure",
-      "mean_reward": 8412941.1,
-      "ho_success_rate": 6.3634,
-      "ho_failure_rate": 0.0855,
-      "pingpong_rate": 0.1132,
-      "too_early_rate": 0.011,
-      "too_late_rate": 0.017,
-      "wrong_cell_rate": 0.059
+      "mean_reward": 8253684.6,
+      "ho_success_rate": 6.3599,
+      "ho_failure_rate": 0.0865,
+      "pingpong_rate": 0.1154,
+      "too_early_rate": 0.0111,
+      "too_late_rate": 0.0172,
+      "wrong_cell_rate": 0.0598
     },
     {
       "variant": "v1",
@@ -102,13 +102,13 @@
     {
       "variant": "v1",
       "scenario": "tower_failure",
-      "mean_reward": 16443.6484,
-      "ho_success_rate": 6.3634,
-      "ho_failure_rate": 0.0855,
-      "pingpong_rate": 0.1132,
-      "too_early_rate": 0.011,
-      "too_late_rate": 0.017,
-      "wrong_cell_rate": 0.059
+      "mean_reward": 16405.9471,
+      "ho_success_rate": 6.3599,
+      "ho_failure_rate": 0.0865,
+      "pingpong_rate": 0.1154,
+      "too_early_rate": 0.0111,
+      "too_late_rate": 0.0172,
+      "wrong_cell_rate": 0.0598
     },
     {
       "variant": "v2",
@@ -146,13 +146,13 @@
     {
       "variant": "v2",
       "scenario": "tower_failure",
-      "mean_reward": 17532.1678,
-      "ho_success_rate": 6.3634,
-      "ho_failure_rate": 0.0855,
-      "pingpong_rate": 0.1132,
-      "too_early_rate": 0.011,
-      "too_late_rate": 0.017,
-      "wrong_cell_rate": 0.059
+      "mean_reward": 17442.7805,
+      "ho_success_rate": 6.3599,
+      "ho_failure_rate": 0.0865,
+      "pingpong_rate": 0.1154,
+      "too_early_rate": 0.0111,
+      "too_late_rate": 0.0172,
+      "wrong_cell_rate": 0.0598
     },
     {
       "variant": "v3",
@@ -190,13 +190,13 @@
     {
       "variant": "v3",
       "scenario": "tower_failure",
-      "mean_reward": 16533.7827,
-      "ho_success_rate": 6.3634,
-      "ho_failure_rate": 0.0855,
-      "pingpong_rate": 0.1132,
-      "too_early_rate": 0.011,
-      "too_late_rate": 0.017,
-      "wrong_cell_rate": 0.059
+      "mean_reward": 16495.3082,
+      "ho_success_rate": 6.3599,
+      "ho_failure_rate": 0.0865,
+      "pingpong_rate": 0.1154,
+      "too_early_rate": 0.0111,
+      "too_late_rate": 0.0172,
+      "wrong_cell_rate": 0.0598
     }
   ],
   "best_per_scenario": {
@@ -220,8 +220,8 @@
     },
     "tower_failure": {
       "variant": "v0",
-      "ho_success_rate": 6.3634,
-      "mean_reward": 8412941.1,
+      "ho_success_rate": 6.3599,
+      "mean_reward": 8253684.6,
       "reason": "v0 achieves highest HO success rate (6.36%) under tower_failure conditions"
     }
   },
@@ -230,16 +230,16 @@
       "experiment": "v0_baseline",
       "reward_version": "v0",
       "scenario": "baseline",
-      "timestamp": "2026-06-05T02:00:30.179377+00:00",
+      "timestamp": "2026-06-04T16:40:24.499686+00:00",
       "config": {
-        "total_timesteps": 25000,
+        "total_timesteps": 50000,
         "eval_episodes": 10,
         "seed": 42,
         "algorithm": "PPO",
         "policy": "MlpPolicy"
       },
       "training": {
-        "time_s": 119.44,
+        "time_s": 1476.42,
         "episode_rewards": [
           9149215.0,
           9144979.0,
@@ -249,9 +249,17 @@
           9145910.0,
           9145738.0,
           9150516.0,
-          9142697.0
+          9142697.0,
+          9154533.0,
+          9151480.0,
+          9156813.0,
+          9155837.0,
+          9157035.0,
+          9160022.0,
+          9143772.0,
+          9150510.0
         ],
-        "checkpoint_path": "checkpoints/ppo_v0_baseline.zip"
+        "checkpoint_path": "checkpoints\\ppo_v0_baseline.zip"
       },
       "evaluation": {
         "mean_reward": 9145419.1,
@@ -366,22 +374,22 @@
           }
         ]
       },
-      "mlflow_run_id": "d4c277c27d054cc087a68608ab29e027"
+      "mlflow_run_id": "29689df77c284a62bb0ba3711af2381e"
     },
     {
       "experiment": "v0_rush_hour",
       "reward_version": "v0",
       "scenario": "rush_hour",
-      "timestamp": "2026-06-05T02:04:49.479164+00:00",
+      "timestamp": "2026-06-04T19:39:00.744667+00:00",
       "config": {
-        "total_timesteps": 25000,
+        "total_timesteps": 50000,
         "eval_episodes": 10,
         "seed": 42,
         "algorithm": "PPO",
         "policy": "MlpPolicy"
       },
       "training": {
-        "time_s": 135.69,
+        "time_s": 10069.53,
         "episode_rewards": [
           9149215.0,
           9144979.0,
@@ -391,9 +399,17 @@
           9145910.0,
           9145738.0,
           9150516.0,
-          9142697.0
+          9142697.0,
+          9154533.0,
+          9151480.0,
+          9156813.0,
+          9155837.0,
+          9157035.0,
+          9160022.0,
+          9143772.0,
+          9150510.0
         ],
-        "checkpoint_path": "checkpoints/ppo_v0_rush_hour.zip"
+        "checkpoint_path": "checkpoints\\ppo_v0_rush_hour.zip"
       },
       "evaluation": {
         "mean_reward": 9145419.1,
@@ -508,22 +524,22 @@
           }
         ]
       },
-      "mlflow_run_id": "2c8435ab430f46c196719800bdae8ee3"
+      "mlflow_run_id": "c66aa1a645894d2b9707b7071c087d1f"
     },
     {
       "experiment": "v0_rain_fade",
       "reward_version": "v0",
       "scenario": "rain_fade",
-      "timestamp": "2026-06-05T02:09:24.611127+00:00",
+      "timestamp": "2026-06-04T20:35:26.338921+00:00",
       "config": {
-        "total_timesteps": 25000,
+        "total_timesteps": 50000,
         "eval_episodes": 10,
         "seed": 42,
         "algorithm": "PPO",
         "policy": "MlpPolicy"
       },
       "training": {
-        "time_s": 137.22,
+        "time_s": 2090.95,
         "episode_rewards": [
           8518035.0,
           8515199.0,
@@ -533,9 +549,17 @@
           8514480.0,
           8510853.0,
           8519586.0,
-          8511412.0
+          8511412.0,
+          8522503.0,
+          8522110.0,
+          8527173.0,
+          8523942.0,
+          8525825.0,
+          8531057.0,
+          8513862.0,
+          8519665.0
         ],
-        "checkpoint_path": "checkpoints/ppo_v0_rain_fade.zip"
+        "checkpoint_path": "checkpoints\\ppo_v0_rain_fade.zip"
       },
       "evaluation": {
         "mean_reward": 8513459.1,
@@ -650,164 +674,172 @@
           }
         ]
       },
-      "mlflow_run_id": "363eb4de59214f9b958fa58ea001ded5"
+      "mlflow_run_id": "fe1b29c336394fb8883a96a9b30e4bfc"
     },
     {
       "experiment": "v0_tower_failure",
       "reward_version": "v0",
       "scenario": "tower_failure",
-      "timestamp": "2026-06-05T02:12:56.641836+00:00",
+      "timestamp": "2026-06-04T21:41:41.511007+00:00",
       "config": {
-        "total_timesteps": 25000,
+        "total_timesteps": 50000,
         "eval_episodes": 10,
         "seed": 42,
         "algorithm": "PPO",
         "policy": "MlpPolicy"
       },
       "training": {
-        "time_s": 116.21,
+        "time_s": 2723.85,
         "episode_rewards": [
-          8415571.0,
-          8411834.0,
-          8419417.0,
-          8410548.0,
-          8418687.0,
-          8418719.0,
-          8413619.0,
-          8415290.0,
-          8412625.0
+          8252012.0,
+          8250425.0,
+          8256679.0,
+          8247572.0,
+          8261271.0,
+          8249054.0,
+          8254001.0,
+          8256385.0,
+          8262086.0,
+          8257953.0,
+          8265012.0,
+          8259818.0,
+          8265505.0,
+          8256657.0,
+          8259153.0,
+          8251896.0,
+          8263570.0
         ],
-        "checkpoint_path": "checkpoints/ppo_v0_tower_failure.zip"
+        "checkpoint_path": "checkpoints\\ppo_v0_tower_failure.zip"
       },
       "evaluation": {
-        "mean_reward": 8412941.1,
-        "std_reward": 5985.2691,
-        "ho_success_rate": 6.3634,
-        "ho_failure_rate": 0.0855,
-        "pingpong_rate": 0.1132,
-        "too_early_rate": 0.011,
-        "too_late_rate": 0.017,
-        "wrong_cell_rate": 0.059,
+        "mean_reward": 8253684.6,
+        "std_reward": 6747.3601,
+        "ho_success_rate": 6.3599,
+        "ho_failure_rate": 0.0865,
+        "pingpong_rate": 0.1154,
+        "too_early_rate": 0.0111,
+        "too_late_rate": 0.0172,
+        "wrong_cell_rate": 0.0598,
         "n_episodes": 10,
         "per_episode": [
           {
             "episode": 0,
-            "reward": 8415571.0,
-            "ho_success_rate": 6.3654,
-            "ho_failure_rate": 0.0856,
-            "pingpong_rate": 0.113,
-            "too_early_rate": 0.0111,
-            "too_late_rate": 0.017,
-            "wrong_cell_rate": 0.0591
+            "reward": 8252012.0,
+            "ho_success_rate": 6.3586,
+            "ho_failure_rate": 0.0866,
+            "pingpong_rate": 0.1153,
+            "too_early_rate": 0.0113,
+            "too_late_rate": 0.0174,
+            "wrong_cell_rate": 0.0598
           },
           {
             "episode": 1,
-            "reward": 8418091.0,
-            "ho_success_rate": 6.363,
-            "ho_failure_rate": 0.0855,
-            "pingpong_rate": 0.1131,
-            "too_early_rate": 0.011,
-            "too_late_rate": 0.017,
-            "wrong_cell_rate": 0.0591
+            "reward": 8250702.0,
+            "ho_success_rate": 6.3585,
+            "ho_failure_rate": 0.0867,
+            "pingpong_rate": 0.1154,
+            "too_early_rate": 0.0111,
+            "too_late_rate": 0.0173,
+            "wrong_cell_rate": 0.06
           },
           {
             "episode": 2,
-            "reward": 8413420.0,
-            "ho_success_rate": 6.3625,
-            "ho_failure_rate": 0.0855,
-            "pingpong_rate": 0.1131,
-            "too_early_rate": 0.0111,
-            "too_late_rate": 0.017,
-            "wrong_cell_rate": 0.0591
+            "reward": 8255673.0,
+            "ho_success_rate": 6.3632,
+            "ho_failure_rate": 0.0865,
+            "pingpong_rate": 0.1158,
+            "too_early_rate": 0.0112,
+            "too_late_rate": 0.0173,
+            "wrong_cell_rate": 0.0599
           },
           {
             "episode": 3,
-            "reward": 8416472.0,
-            "ho_success_rate": 6.3598,
-            "ho_failure_rate": 0.0857,
-            "pingpong_rate": 0.1136,
-            "too_early_rate": 0.011,
-            "too_late_rate": 0.0169,
-            "wrong_cell_rate": 0.059
+            "reward": 8263219.0,
+            "ho_success_rate": 6.3585,
+            "ho_failure_rate": 0.0866,
+            "pingpong_rate": 0.1154,
+            "too_early_rate": 0.0112,
+            "too_late_rate": 0.0173,
+            "wrong_cell_rate": 0.06
           },
           {
             "episode": 4,
-            "reward": 8419996.0,
-            "ho_success_rate": 6.3632,
-            "ho_failure_rate": 0.0855,
-            "pingpong_rate": 0.113,
-            "too_early_rate": 0.011,
-            "too_late_rate": 0.017,
-            "wrong_cell_rate": 0.0591
+            "reward": 8259826.0,
+            "ho_success_rate": 6.3614,
+            "ho_failure_rate": 0.0864,
+            "pingpong_rate": 0.1154,
+            "too_early_rate": 0.0112,
+            "too_late_rate": 0.0172,
+            "wrong_cell_rate": 0.0598
           },
           {
             "episode": 5,
-            "reward": 8403132.0,
-            "ho_success_rate": 6.3643,
-            "ho_failure_rate": 0.0853,
-            "pingpong_rate": 0.1132,
-            "too_early_rate": 0.0109,
-            "too_late_rate": 0.0169,
-            "wrong_cell_rate": 0.059
+            "reward": 8243360.0,
+            "ho_success_rate": 6.3609,
+            "ho_failure_rate": 0.0866,
+            "pingpong_rate": 0.1154,
+            "too_early_rate": 0.0112,
+            "too_late_rate": 0.0173,
+            "wrong_cell_rate": 0.0598
           },
           {
             "episode": 6,
-            "reward": 8410260.0,
-            "ho_success_rate": 6.3637,
-            "ho_failure_rate": 0.0857,
-            "pingpong_rate": 0.1133,
+            "reward": 8256146.0,
+            "ho_success_rate": 6.3624,
+            "ho_failure_rate": 0.0865,
+            "pingpong_rate": 0.1156,
             "too_early_rate": 0.0111,
             "too_late_rate": 0.0172,
-            "wrong_cell_rate": 0.0592
+            "wrong_cell_rate": 0.0598
           },
           {
             "episode": 7,
-            "reward": 8404529.0,
-            "ho_success_rate": 6.3658,
-            "ho_failure_rate": 0.0851,
-            "pingpong_rate": 0.1132,
-            "too_early_rate": 0.0109,
-            "too_late_rate": 0.0168,
-            "wrong_cell_rate": 0.0588
+            "reward": 8241858.0,
+            "ho_success_rate": 6.3575,
+            "ho_failure_rate": 0.0866,
+            "pingpong_rate": 0.1151,
+            "too_early_rate": 0.0112,
+            "too_late_rate": 0.0173,
+            "wrong_cell_rate": 0.06
           },
           {
             "episode": 8,
-            "reward": 8420529.0,
-            "ho_success_rate": 6.3631,
-            "ho_failure_rate": 0.0855,
-            "pingpong_rate": 0.1132,
+            "reward": 8261277.0,
+            "ho_success_rate": 6.3614,
+            "ho_failure_rate": 0.0864,
+            "pingpong_rate": 0.1159,
             "too_early_rate": 0.011,
-            "too_late_rate": 0.017,
-            "wrong_cell_rate": 0.0589
+            "too_late_rate": 0.0172,
+            "wrong_cell_rate": 0.0597
           },
           {
             "episode": 9,
-            "reward": 8407411.0,
-            "ho_success_rate": 6.3633,
-            "ho_failure_rate": 0.0855,
-            "pingpong_rate": 0.1135,
+            "reward": 8252773.0,
+            "ho_success_rate": 6.3568,
+            "ho_failure_rate": 0.0862,
+            "pingpong_rate": 0.1151,
             "too_early_rate": 0.0109,
             "too_late_rate": 0.017,
-            "wrong_cell_rate": 0.059
+            "wrong_cell_rate": 0.0594
           }
         ]
       },
-      "mlflow_run_id": "a5caf87ce27c4f169d6088d0987541d3"
+      "mlflow_run_id": "39f521122f3748b2b9dfd61e121e3315"
     },
     {
       "experiment": "v1_baseline",
       "reward_version": "v1",
       "scenario": "baseline",
-      "timestamp": "2026-06-05T02:17:07.375481+00:00",
+      "timestamp": "2026-06-04T22:27:57.334461+00:00",
       "config": {
-        "total_timesteps": 25000,
+        "total_timesteps": 50000,
         "eval_episodes": 10,
         "seed": 42,
         "algorithm": "PPO",
         "policy": "MlpPolicy"
       },
       "training": {
-        "time_s": 132.14,
+        "time_s": 2227.58,
         "episode_rewards": [
           205568.075,
           205624.0009,
@@ -817,9 +849,17 @@
           205595.5857,
           205325.0428,
           205563.7882,
-          205432.0392
+          205432.0392,
+          205556.9147,
+          205590.4133,
+          205622.2171,
+          205536.7703,
+          205556.484,
+          205536.3862,
+          205510.0065,
+          205545.0477
         ],
-        "checkpoint_path": "checkpoints/ppo_v1_baseline.zip"
+        "checkpoint_path": "checkpoints\\ppo_v1_baseline.zip"
       },
       "evaluation": {
         "mean_reward": 205475.0537,
@@ -934,22 +974,22 @@
           }
         ]
       },
-      "mlflow_run_id": "2732e6e122fe4201b32c429e83df7dcc"
+      "mlflow_run_id": "d66f2643bc81461f923f49718fa65b2b"
     },
     {
       "experiment": "v1_rush_hour",
       "reward_version": "v1",
       "scenario": "rush_hour",
-      "timestamp": "2026-06-05T02:20:55.137387+00:00",
+      "timestamp": "2026-06-05T10:02:16.912226+00:00",
       "config": {
-        "total_timesteps": 25000,
+        "total_timesteps": 50000,
         "eval_episodes": 10,
         "seed": 42,
         "algorithm": "PPO",
         "policy": "MlpPolicy"
       },
       "training": {
-        "time_s": 124.17,
+        "time_s": 40761.04,
         "episode_rewards": [
           34261.3458,
           34270.6668,
@@ -959,9 +999,17 @@
           34265.931,
           34220.8405,
           34260.6314,
-          34238.6732
+          34238.6732,
+          34259.4858,
+          34265.0689,
+          34270.3695,
+          34256.1284,
+          34259.414,
+          34256.0643,
+          34251.6677,
+          34257.5079
         ],
-        "checkpoint_path": "checkpoints/ppo_v1_rush_hour.zip"
+        "checkpoint_path": "checkpoints\\ppo_v1_rush_hour.zip"
       },
       "evaluation": {
         "mean_reward": 34245.8423,
@@ -1076,22 +1124,22 @@
           }
         ]
       },
-      "mlflow_run_id": "ca53bc1c7209460dac10ad8c90687b6e"
+      "mlflow_run_id": "58f1ae8378934d439a6e536456254554"
     },
     {
       "experiment": "v1_rain_fade",
       "reward_version": "v1",
       "scenario": "rain_fade",
-      "timestamp": "2026-06-05T02:24:29.844194+00:00",
+      "timestamp": "2026-06-05T10:54:12.523697+00:00",
       "config": {
-        "total_timesteps": 25000,
+        "total_timesteps": 50000,
         "eval_episodes": 10,
         "seed": 42,
         "algorithm": "PPO",
         "policy": "MlpPolicy"
       },
       "training": {
-        "time_s": 110.65,
+        "time_s": 2188.42,
         "episode_rewards": [
           191395.6035,
           191473.4299,
@@ -1101,9 +1149,17 @@
           191412.9015,
           191081.8846,
           191398.1538,
-          191255.7411
+          191255.7411,
+          191375.0818,
+          191459.3514,
+          191491.8812,
+          191361.7159,
+          191395.3986,
+          191430.7538,
+          191361.9926,
+          191384.0473
         ],
-        "checkpoint_path": "checkpoints/ppo_v1_rain_fade.zip"
+        "checkpoint_path": "checkpoints\\ppo_v1_rain_fade.zip"
       },
       "evaluation": {
         "mean_reward": 191286.2743,
@@ -1218,164 +1274,172 @@
           }
         ]
       },
-      "mlflow_run_id": "1d8a29bd26db44c288a5fbdf57b45c98"
+      "mlflow_run_id": "910c8f531c0e417fa0f04b24b1a54591"
     },
     {
       "experiment": "v1_tower_failure",
       "reward_version": "v1",
       "scenario": "tower_failure",
-      "timestamp": "2026-06-05T02:27:49.712565+00:00",
+      "timestamp": "2026-06-05T11:45:08.837684+00:00",
       "config": {
-        "total_timesteps": 25000,
+        "total_timesteps": 50000,
         "eval_episodes": 10,
         "seed": 42,
         "algorithm": "PPO",
         "policy": "MlpPolicy"
       },
       "training": {
-        "time_s": 103.38,
+        "time_s": 2145.46,
         "episode_rewards": [
-          16448.9214,
-          16441.9836,
-          16441.2778,
-          16452.3218,
-          16442.7588,
-          16462.0689,
-          16453.0327,
-          16437.5404,
-          16440.8381
+          16402.0016,
+          16395.9596,
+          16412.3485,
+          16406.2266,
+          16393.1455,
+          16400.4421,
+          16405.2752,
+          16399.1632,
+          16420.7107,
+          16414.5797,
+          16403.196,
+          16407.7599,
+          16403.162,
+          16399.7721,
+          16403.9631,
+          16398.2699,
+          16407.4923
         ],
-        "checkpoint_path": "checkpoints/ppo_v1_tower_failure.zip"
+        "checkpoint_path": "checkpoints\\ppo_v1_tower_failure.zip"
       },
       "evaluation": {
-        "mean_reward": 16443.6484,
-        "std_reward": 6.847,
-        "ho_success_rate": 6.3634,
-        "ho_failure_rate": 0.0855,
-        "pingpong_rate": 0.1132,
-        "too_early_rate": 0.011,
-        "too_late_rate": 0.017,
-        "wrong_cell_rate": 0.059,
+        "mean_reward": 16405.9471,
+        "std_reward": 5.2154,
+        "ho_success_rate": 6.3599,
+        "ho_failure_rate": 0.0865,
+        "pingpong_rate": 0.1154,
+        "too_early_rate": 0.0111,
+        "too_late_rate": 0.0172,
+        "wrong_cell_rate": 0.0598,
         "n_episodes": 10,
         "per_episode": [
           {
             "episode": 0,
-            "reward": 16448.9214,
-            "ho_success_rate": 6.3654,
-            "ho_failure_rate": 0.0856,
-            "pingpong_rate": 0.113,
-            "too_early_rate": 0.0111,
-            "too_late_rate": 0.017,
-            "wrong_cell_rate": 0.0591
+            "reward": 16402.0016,
+            "ho_success_rate": 6.3586,
+            "ho_failure_rate": 0.0866,
+            "pingpong_rate": 0.1153,
+            "too_early_rate": 0.0113,
+            "too_late_rate": 0.0174,
+            "wrong_cell_rate": 0.0598
           },
           {
             "episode": 1,
-            "reward": 16443.1114,
-            "ho_success_rate": 6.363,
-            "ho_failure_rate": 0.0855,
-            "pingpong_rate": 0.1131,
-            "too_early_rate": 0.011,
-            "too_late_rate": 0.017,
-            "wrong_cell_rate": 0.0591
+            "reward": 16399.952,
+            "ho_success_rate": 6.3585,
+            "ho_failure_rate": 0.0867,
+            "pingpong_rate": 0.1154,
+            "too_early_rate": 0.0111,
+            "too_late_rate": 0.0173,
+            "wrong_cell_rate": 0.06
           },
           {
             "episode": 2,
-            "reward": 16441.8446,
-            "ho_success_rate": 6.3625,
-            "ho_failure_rate": 0.0855,
-            "pingpong_rate": 0.1131,
-            "too_early_rate": 0.0111,
-            "too_late_rate": 0.017,
-            "wrong_cell_rate": 0.0591
+            "reward": 16412.7351,
+            "ho_success_rate": 6.3632,
+            "ho_failure_rate": 0.0865,
+            "pingpong_rate": 0.1158,
+            "too_early_rate": 0.0112,
+            "too_late_rate": 0.0173,
+            "wrong_cell_rate": 0.0599
           },
           {
             "episode": 3,
-            "reward": 16428.1948,
-            "ho_success_rate": 6.3598,
-            "ho_failure_rate": 0.0857,
-            "pingpong_rate": 0.1136,
-            "too_early_rate": 0.011,
-            "too_late_rate": 0.0169,
-            "wrong_cell_rate": 0.059
+            "reward": 16400.6299,
+            "ho_success_rate": 6.3585,
+            "ho_failure_rate": 0.0866,
+            "pingpong_rate": 0.1154,
+            "too_early_rate": 0.0112,
+            "too_late_rate": 0.0173,
+            "wrong_cell_rate": 0.06
           },
           {
             "episode": 4,
-            "reward": 16443.4106,
-            "ho_success_rate": 6.3632,
-            "ho_failure_rate": 0.0855,
-            "pingpong_rate": 0.113,
-            "too_early_rate": 0.011,
-            "too_late_rate": 0.017,
-            "wrong_cell_rate": 0.0591
+            "reward": 16411.9773,
+            "ho_success_rate": 6.3614,
+            "ho_failure_rate": 0.0864,
+            "pingpong_rate": 0.1154,
+            "too_early_rate": 0.0112,
+            "too_late_rate": 0.0172,
+            "wrong_cell_rate": 0.0598
           },
           {
             "episode": 5,
-            "reward": 16448.3534,
-            "ho_success_rate": 6.3643,
-            "ho_failure_rate": 0.0853,
-            "pingpong_rate": 0.1132,
-            "too_early_rate": 0.0109,
-            "too_late_rate": 0.0169,
-            "wrong_cell_rate": 0.059
+            "reward": 16407.9963,
+            "ho_success_rate": 6.3609,
+            "ho_failure_rate": 0.0866,
+            "pingpong_rate": 0.1154,
+            "too_early_rate": 0.0112,
+            "too_late_rate": 0.0173,
+            "wrong_cell_rate": 0.0598
           },
           {
             "episode": 6,
-            "reward": 16441.2538,
-            "ho_success_rate": 6.3637,
-            "ho_failure_rate": 0.0857,
-            "pingpong_rate": 0.1133,
+            "reward": 16413.1543,
+            "ho_success_rate": 6.3624,
+            "ho_failure_rate": 0.0865,
+            "pingpong_rate": 0.1156,
             "too_early_rate": 0.0111,
             "too_late_rate": 0.0172,
-            "wrong_cell_rate": 0.0592
+            "wrong_cell_rate": 0.0598
           },
           {
             "episode": 7,
-            "reward": 16456.5837,
-            "ho_success_rate": 6.3658,
-            "ho_failure_rate": 0.0851,
-            "pingpong_rate": 0.1132,
-            "too_early_rate": 0.0109,
-            "too_late_rate": 0.0168,
-            "wrong_cell_rate": 0.0588
+            "reward": 16399.4676,
+            "ho_success_rate": 6.3575,
+            "ho_failure_rate": 0.0866,
+            "pingpong_rate": 0.1151,
+            "too_early_rate": 0.0112,
+            "too_late_rate": 0.0173,
+            "wrong_cell_rate": 0.06
           },
           {
             "episode": 8,
-            "reward": 16442.7979,
-            "ho_success_rate": 6.3631,
-            "ho_failure_rate": 0.0855,
-            "pingpong_rate": 0.1132,
+            "reward": 16408.1867,
+            "ho_success_rate": 6.3614,
+            "ho_failure_rate": 0.0864,
+            "pingpong_rate": 0.1159,
             "too_early_rate": 0.011,
-            "too_late_rate": 0.017,
-            "wrong_cell_rate": 0.0589
+            "too_late_rate": 0.0172,
+            "wrong_cell_rate": 0.0597
           },
           {
             "episode": 9,
-            "reward": 16442.0121,
-            "ho_success_rate": 6.3633,
-            "ho_failure_rate": 0.0855,
-            "pingpong_rate": 0.1135,
+            "reward": 16403.3705,
+            "ho_success_rate": 6.3568,
+            "ho_failure_rate": 0.0862,
+            "pingpong_rate": 0.1151,
             "too_early_rate": 0.0109,
             "too_late_rate": 0.017,
-            "wrong_cell_rate": 0.059
+            "wrong_cell_rate": 0.0594
           }
         ]
       },
-      "mlflow_run_id": "0e5f9462514f405cad9f7ecb150e058d"
+      "mlflow_run_id": "5561598e64394cc3bf81bca4bd388c16"
     },
     {
       "experiment": "v2_baseline",
       "reward_version": "v2",
       "scenario": "baseline",
-      "timestamp": "2026-06-05T02:31:24.821377+00:00",
+      "timestamp": "2026-06-05T12:39:05.950224+00:00",
       "config": {
-        "total_timesteps": 25000,
+        "total_timesteps": 50000,
         "eval_episodes": 10,
         "seed": 42,
         "algorithm": "PPO",
         "policy": "MlpPolicy"
       },
       "training": {
-        "time_s": 113.28,
+        "time_s": 2280.55,
         "episode_rewards": [
           210613.8177,
           210578.1858,
@@ -1385,9 +1449,17 @@
           210569.26,
           210445.3506,
           210571.0317,
-          210554.1451
+          210554.1451,
+          210601.0793,
+          210634.3478,
+          210636.7992,
+          210575.9152,
+          210610.1529,
+          210634.5939,
+          210600.1514,
+          210552.9363
         ],
-        "checkpoint_path": "checkpoints/ppo_v2_baseline.zip"
+        "checkpoint_path": "checkpoints\\ppo_v2_baseline.zip"
       },
       "evaluation": {
         "mean_reward": 210579.0769,
@@ -1502,22 +1574,22 @@
           }
         ]
       },
-      "mlflow_run_id": "e3a3fc80956243a19d8382d5533c0350"
+      "mlflow_run_id": "8ced60a21a8c4f87b88f867f0330ad11"
     },
     {
       "experiment": "v2_rush_hour",
       "reward_version": "v2",
       "scenario": "rush_hour",
-      "timestamp": "2026-06-05T02:38:40.069337+00:00",
+      "timestamp": "2026-06-05T13:36:24.510955+00:00",
       "config": {
-        "total_timesteps": 25000,
+        "total_timesteps": 50000,
         "eval_episodes": 10,
         "seed": 42,
         "algorithm": "PPO",
         "policy": "MlpPolicy"
       },
       "training": {
-        "time_s": 347.93,
+        "time_s": 2513.33,
         "episode_rewards": [
           35102.3025,
           35096.3638,
@@ -1527,9 +1599,17 @@
           35094.8761,
           35074.2246,
           35095.1715,
-          35092.357
+          35092.357,
+          35100.1794,
+          35105.7242,
+          35106.1327,
+          35095.9853,
+          35101.6916,
+          35105.7652,
+          35100.0247,
+          35092.1556
         ],
-        "checkpoint_path": "checkpoints/ppo_v2_rush_hour.zip"
+        "checkpoint_path": "checkpoints\\ppo_v2_rush_hour.zip"
       },
       "evaluation": {
         "mean_reward": 35096.5123,
@@ -1644,22 +1724,22 @@
           }
         ]
       },
-      "mlflow_run_id": "cc9e57bbd1974eb1af19e084fe0998f0"
+      "mlflow_run_id": "6adcd724b6dc4094b8c5df538cd8625a"
     },
     {
       "experiment": "v2_rain_fade",
       "reward_version": "v2",
       "scenario": "rain_fade",
-      "timestamp": "2026-06-05T02:42:14.847164+00:00",
+      "timestamp": "2026-06-05T14:30:27.706006+00:00",
       "config": {
-        "total_timesteps": 25000,
+        "total_timesteps": 50000,
         "eval_episodes": 10,
         "seed": 42,
         "algorithm": "PPO",
         "policy": "MlpPolicy"
       },
       "training": {
-        "time_s": 109.7,
+        "time_s": 2295.47,
         "episode_rewards": [
           202994.9145,
           202970.009,
@@ -1669,9 +1749,17 @@
           202933.9365,
           202762.6066,
           202947.0626,
-          202935.6842
+          202935.6842,
+          202943.4589,
+          203040.0025,
+          203029.5911,
+          202928.7221,
+          202975.017,
+          203039.9482,
+          202992.4147,
+          202927.2558
         ],
-        "checkpoint_path": "checkpoints/ppo_v2_rain_fade.zip"
+        "checkpoint_path": "checkpoints\\ppo_v2_rain_fade.zip"
       },
       "evaluation": {
         "mean_reward": 202943.0596,
@@ -1786,164 +1874,172 @@
           }
         ]
       },
-      "mlflow_run_id": "b2fb6a4edbdb409492e04fc3be5e1f26"
+      "mlflow_run_id": "81efd9c6e3f34f3ab3ee9f2ad08cf8b1"
     },
     {
       "experiment": "v2_tower_failure",
       "reward_version": "v2",
       "scenario": "tower_failure",
-      "timestamp": "2026-06-05T02:45:48.945563+00:00",
+      "timestamp": "2026-06-05T15:21:34.661783+00:00",
       "config": {
-        "total_timesteps": 25000,
+        "total_timesteps": 50000,
         "eval_episodes": 10,
         "seed": 42,
         "algorithm": "PPO",
         "policy": "MlpPolicy"
       },
       "training": {
-        "time_s": 111.12,
+        "time_s": 2253.99,
         "episode_rewards": [
-          17528.9686,
-          17528.4111,
-          17519.6393,
-          17539.6684,
-          17528.5896,
-          17532.8694,
-          17538.8009,
-          17528.8383,
-          17529.4319
+          17433.9218,
+          17434.9563,
+          17450.2841,
+          17437.7341,
+          17433.6506,
+          17443.824,
+          17444.4513,
+          17436.7281,
+          17458.6941,
+          17450.3906,
+          17445.449,
+          17444.941,
+          17438.6516,
+          17438.5437,
+          17438.6284,
+          17436.4366,
+          17444.1893
         ],
-        "checkpoint_path": "checkpoints/ppo_v2_tower_failure.zip"
+        "checkpoint_path": "checkpoints\\ppo_v2_tower_failure.zip"
       },
       "evaluation": {
-        "mean_reward": 17532.1678,
-        "std_reward": 5.7401,
-        "ho_success_rate": 6.3634,
-        "ho_failure_rate": 0.0855,
-        "pingpong_rate": 0.1132,
-        "too_early_rate": 0.011,
-        "too_late_rate": 0.017,
-        "wrong_cell_rate": 0.059,
+        "mean_reward": 17442.7805,
+        "std_reward": 5.6459,
+        "ho_success_rate": 6.3599,
+        "ho_failure_rate": 0.0865,
+        "pingpong_rate": 0.1154,
+        "too_early_rate": 0.0111,
+        "too_late_rate": 0.0172,
+        "wrong_cell_rate": 0.0598,
         "n_episodes": 10,
         "per_episode": [
           {
             "episode": 0,
-            "reward": 17528.9686,
-            "ho_success_rate": 6.3654,
-            "ho_failure_rate": 0.0856,
-            "pingpong_rate": 0.113,
-            "too_early_rate": 0.0111,
-            "too_late_rate": 0.017,
-            "wrong_cell_rate": 0.0591
+            "reward": 17433.9218,
+            "ho_success_rate": 6.3586,
+            "ho_failure_rate": 0.0866,
+            "pingpong_rate": 0.1153,
+            "too_early_rate": 0.0113,
+            "too_late_rate": 0.0174,
+            "wrong_cell_rate": 0.0598
           },
           {
             "episode": 1,
-            "reward": 17531.8323,
-            "ho_success_rate": 6.363,
-            "ho_failure_rate": 0.0855,
-            "pingpong_rate": 0.1131,
-            "too_early_rate": 0.011,
-            "too_late_rate": 0.017,
-            "wrong_cell_rate": 0.0591
+            "reward": 17435.8357,
+            "ho_success_rate": 6.3585,
+            "ho_failure_rate": 0.0867,
+            "pingpong_rate": 0.1154,
+            "too_early_rate": 0.0111,
+            "too_late_rate": 0.0173,
+            "wrong_cell_rate": 0.06
           },
           {
             "episode": 2,
-            "reward": 17535.0642,
-            "ho_success_rate": 6.3625,
-            "ho_failure_rate": 0.0855,
-            "pingpong_rate": 0.1131,
-            "too_early_rate": 0.0111,
-            "too_late_rate": 0.017,
-            "wrong_cell_rate": 0.0591
+            "reward": 17446.1312,
+            "ho_success_rate": 6.3632,
+            "ho_failure_rate": 0.0865,
+            "pingpong_rate": 0.1158,
+            "too_early_rate": 0.0112,
+            "too_late_rate": 0.0173,
+            "wrong_cell_rate": 0.0599
           },
           {
             "episode": 3,
-            "reward": 17518.0597,
-            "ho_success_rate": 6.3598,
-            "ho_failure_rate": 0.0857,
-            "pingpong_rate": 0.1136,
-            "too_early_rate": 0.011,
-            "too_late_rate": 0.0169,
-            "wrong_cell_rate": 0.059
+            "reward": 17439.3701,
+            "ho_success_rate": 6.3585,
+            "ho_failure_rate": 0.0866,
+            "pingpong_rate": 0.1154,
+            "too_early_rate": 0.0112,
+            "too_late_rate": 0.0173,
+            "wrong_cell_rate": 0.06
           },
           {
             "episode": 4,
-            "reward": 17527.936,
-            "ho_success_rate": 6.3632,
-            "ho_failure_rate": 0.0855,
-            "pingpong_rate": 0.113,
-            "too_early_rate": 0.011,
-            "too_late_rate": 0.017,
-            "wrong_cell_rate": 0.0591
+            "reward": 17452.6963,
+            "ho_success_rate": 6.3614,
+            "ho_failure_rate": 0.0864,
+            "pingpong_rate": 0.1154,
+            "too_early_rate": 0.0112,
+            "too_late_rate": 0.0172,
+            "wrong_cell_rate": 0.0598
           },
           {
             "episode": 5,
-            "reward": 17535.8071,
-            "ho_success_rate": 6.3643,
-            "ho_failure_rate": 0.0853,
-            "pingpong_rate": 0.1132,
-            "too_early_rate": 0.0109,
-            "too_late_rate": 0.0169,
-            "wrong_cell_rate": 0.059
+            "reward": 17441.1205,
+            "ho_success_rate": 6.3609,
+            "ho_failure_rate": 0.0866,
+            "pingpong_rate": 0.1154,
+            "too_early_rate": 0.0112,
+            "too_late_rate": 0.0173,
+            "wrong_cell_rate": 0.0598
           },
           {
             "episode": 6,
-            "reward": 17534.2363,
-            "ho_success_rate": 6.3637,
-            "ho_failure_rate": 0.0857,
-            "pingpong_rate": 0.1133,
+            "reward": 17445.3313,
+            "ho_success_rate": 6.3624,
+            "ho_failure_rate": 0.0865,
+            "pingpong_rate": 0.1156,
             "too_early_rate": 0.0111,
             "too_late_rate": 0.0172,
-            "wrong_cell_rate": 0.0592
+            "wrong_cell_rate": 0.0598
           },
           {
             "episode": 7,
-            "reward": 17539.7028,
-            "ho_success_rate": 6.3658,
-            "ho_failure_rate": 0.0851,
-            "pingpong_rate": 0.1132,
-            "too_early_rate": 0.0109,
-            "too_late_rate": 0.0168,
-            "wrong_cell_rate": 0.0588
+            "reward": 17443.8751,
+            "ho_success_rate": 6.3575,
+            "ho_failure_rate": 0.0866,
+            "pingpong_rate": 0.1151,
+            "too_early_rate": 0.0112,
+            "too_late_rate": 0.0173,
+            "wrong_cell_rate": 0.06
           },
           {
             "episode": 8,
-            "reward": 17533.7992,
-            "ho_success_rate": 6.3631,
-            "ho_failure_rate": 0.0855,
-            "pingpong_rate": 0.1132,
+            "reward": 17439.6346,
+            "ho_success_rate": 6.3614,
+            "ho_failure_rate": 0.0864,
+            "pingpong_rate": 0.1159,
             "too_early_rate": 0.011,
-            "too_late_rate": 0.017,
-            "wrong_cell_rate": 0.0589
+            "too_late_rate": 0.0172,
+            "wrong_cell_rate": 0.0597
           },
           {
             "episode": 9,
-            "reward": 17536.2718,
-            "ho_success_rate": 6.3633,
-            "ho_failure_rate": 0.0855,
-            "pingpong_rate": 0.1135,
+            "reward": 17449.8884,
+            "ho_success_rate": 6.3568,
+            "ho_failure_rate": 0.0862,
+            "pingpong_rate": 0.1151,
             "too_early_rate": 0.0109,
             "too_late_rate": 0.017,
-            "wrong_cell_rate": 0.059
+            "wrong_cell_rate": 0.0594
           }
         ]
       },
-      "mlflow_run_id": "e3fd5eff30b54c3386b9699b1deb815b"
+      "mlflow_run_id": "afe9d003488b47149901119bd73b49da"
     },
     {
       "experiment": "v3_baseline",
       "reward_version": "v3",
       "scenario": "baseline",
-      "timestamp": "2026-06-05T02:49:57.714532+00:00",
+      "timestamp": "2026-06-05T16:13:52.531332+00:00",
       "config": {
-        "total_timesteps": 25000,
+        "total_timesteps": 50000,
         "eval_episodes": 10,
         "seed": 42,
         "algorithm": "PPO",
         "policy": "MlpPolicy"
       },
       "training": {
-        "time_s": 130.82,
+        "time_s": 2252.27,
         "episode_rewards": [
           206822.9325,
           206863.5213,
@@ -1953,9 +2049,17 @@
           206884.9506,
           206595.6592,
           206810.2782,
-          206665.3459
+          206665.3459,
+          206748.255,
+          206841.0809,
+          206821.2575,
+          206790.7366,
+          206837.5211,
+          206798.8436,
+          206770.1052,
+          206799.028
         ],
-        "checkpoint_path": "checkpoints/ppo_v3_baseline.zip"
+        "checkpoint_path": "checkpoints\\ppo_v3_baseline.zip"
       },
       "evaluation": {
         "mean_reward": 206751.9193,
@@ -2070,22 +2174,22 @@
           }
         ]
       },
-      "mlflow_run_id": "8e04d84b79774e11bc6981ededba00fe"
+      "mlflow_run_id": "60825b168d244fd8ab917f90fbbd4fbf"
     },
     {
       "experiment": "v3_rush_hour",
       "reward_version": "v3",
       "scenario": "rush_hour",
-      "timestamp": "2026-06-05T02:54:19.986208+00:00",
+      "timestamp": "2026-06-05T17:08:38.208455+00:00",
       "config": {
-        "total_timesteps": 25000,
+        "total_timesteps": 50000,
         "eval_episodes": 10,
         "seed": 42,
         "algorithm": "PPO",
         "policy": "MlpPolicy"
       },
       "training": {
-        "time_s": 133.9,
+        "time_s": 2332.06,
         "episode_rewards": [
           34470.4887,
           34477.2535,
@@ -2095,9 +2199,17 @@
           34480.8251,
           34432.6099,
           34468.3797,
-          34444.2243
+          34444.2243,
+          34458.0425,
+          34473.5135,
+          34470.2096,
+          34465.1228,
+          34472.9202,
+          34466.4739,
+          34461.6842,
+          34466.5047
         ],
-        "checkpoint_path": "checkpoints/ppo_v3_rush_hour.zip"
+        "checkpoint_path": "checkpoints\\ppo_v3_rush_hour.zip"
       },
       "evaluation": {
         "mean_reward": 34458.6532,
@@ -2212,22 +2324,22 @@
           }
         ]
       },
-      "mlflow_run_id": "9c1b6bdde2c14dca9f451dbf22012a1e"
+      "mlflow_run_id": "b8c5c3a226d342eeaf00a889fc969ee6"
     },
     {
       "experiment": "v3_rain_fade",
       "reward_version": "v3",
       "scenario": "rain_fade",
-      "timestamp": "2026-06-05T02:58:32.507016+00:00",
+      "timestamp": "2026-06-05T18:01:46.376360+00:00",
       "config": {
-        "total_timesteps": 25000,
+        "total_timesteps": 50000,
         "eval_episodes": 10,
         "seed": 42,
         "algorithm": "PPO",
         "policy": "MlpPolicy"
       },
       "training": {
-        "time_s": 125.44,
+        "time_s": 2225.23,
         "episode_rewards": [
           206822.9325,
           206863.5213,
@@ -2237,9 +2349,17 @@
           206884.9506,
           206595.6592,
           206810.2782,
-          206665.3459
+          206665.3459,
+          206748.255,
+          206841.0809,
+          206821.2575,
+          206790.7366,
+          206837.5211,
+          206798.8436,
+          206770.1052,
+          206799.028
         ],
-        "checkpoint_path": "checkpoints/ppo_v3_rain_fade.zip"
+        "checkpoint_path": "checkpoints\\ppo_v3_rain_fade.zip"
       },
       "evaluation": {
         "mean_reward": 206751.9193,
@@ -2354,149 +2474,157 @@
           }
         ]
       },
-      "mlflow_run_id": "2984b9f3e0da474bb4742497fd29732e"
+      "mlflow_run_id": "1ba0d89808804d118424614ba0515ee9"
     },
     {
       "experiment": "v3_tower_failure",
       "reward_version": "v3",
       "scenario": "tower_failure",
-      "timestamp": "2026-06-05T03:02:05.409216+00:00",
+      "timestamp": "2026-06-05T18:52:44.908914+00:00",
       "config": {
-        "total_timesteps": 25000,
+        "total_timesteps": 50000,
         "eval_episodes": 10,
         "seed": 42,
         "algorithm": "PPO",
         "policy": "MlpPolicy"
       },
       "training": {
-        "time_s": 110.74,
+        "time_s": 2143.08,
         "episode_rewards": [
-          16539.4318,
-          16531.3909,
-          16529.6726,
-          16544.1768,
-          16531.1936,
-          16552.6199,
-          16540.6493,
-          16528.7734,
-          16528.8413
+          16490.1018,
+          16481.6453,
+          16500.1205,
+          16494.1262,
+          16479.7266,
+          16487.8494,
+          16495.8555,
+          16490.8506,
+          16509.4973,
+          16505.6901,
+          16487.6891,
+          16497.6877,
+          16491.8394,
+          16493.2392,
+          16494.0226,
+          16484.7859,
+          16496.1098
         ],
-        "checkpoint_path": "checkpoints/ppo_v3_tower_failure.zip"
+        "checkpoint_path": "checkpoints\\ppo_v3_tower_failure.zip"
       },
       "evaluation": {
-        "mean_reward": 16533.7827,
-        "std_reward": 6.4142,
-        "ho_success_rate": 6.3634,
-        "ho_failure_rate": 0.0855,
-        "pingpong_rate": 0.1132,
-        "too_early_rate": 0.011,
-        "too_late_rate": 0.017,
-        "wrong_cell_rate": 0.059,
+        "mean_reward": 16495.3082,
+        "std_reward": 6.2052,
+        "ho_success_rate": 6.3599,
+        "ho_failure_rate": 0.0865,
+        "pingpong_rate": 0.1154,
+        "too_early_rate": 0.0111,
+        "too_late_rate": 0.0172,
+        "wrong_cell_rate": 0.0598,
         "n_episodes": 10,
         "per_episode": [
           {
             "episode": 0,
-            "reward": 16539.4318,
-            "ho_success_rate": 6.3654,
-            "ho_failure_rate": 0.0856,
-            "pingpong_rate": 0.113,
-            "too_early_rate": 0.0111,
-            "too_late_rate": 0.017,
-            "wrong_cell_rate": 0.0591
+            "reward": 16490.1018,
+            "ho_success_rate": 6.3586,
+            "ho_failure_rate": 0.0866,
+            "pingpong_rate": 0.1153,
+            "too_early_rate": 0.0113,
+            "too_late_rate": 0.0174,
+            "wrong_cell_rate": 0.0598
           },
           {
             "episode": 1,
-            "reward": 16532.8334,
-            "ho_success_rate": 6.363,
-            "ho_failure_rate": 0.0855,
-            "pingpong_rate": 0.1131,
-            "too_early_rate": 0.011,
-            "too_late_rate": 0.017,
-            "wrong_cell_rate": 0.0591
+            "reward": 16489.2852,
+            "ho_success_rate": 6.3585,
+            "ho_failure_rate": 0.0867,
+            "pingpong_rate": 0.1154,
+            "too_early_rate": 0.0111,
+            "too_late_rate": 0.0173,
+            "wrong_cell_rate": 0.06
           },
           {
             "episode": 2,
-            "reward": 16529.0917,
-            "ho_success_rate": 6.3625,
-            "ho_failure_rate": 0.0855,
-            "pingpong_rate": 0.1131,
-            "too_early_rate": 0.0111,
-            "too_late_rate": 0.017,
-            "wrong_cell_rate": 0.0591
+            "reward": 16499.851,
+            "ho_success_rate": 6.3632,
+            "ho_failure_rate": 0.0865,
+            "pingpong_rate": 0.1158,
+            "too_early_rate": 0.0112,
+            "too_late_rate": 0.0173,
+            "wrong_cell_rate": 0.0599
           },
           {
             "episode": 3,
-            "reward": 16522.3985,
-            "ho_success_rate": 6.3598,
-            "ho_failure_rate": 0.0857,
-            "pingpong_rate": 0.1136,
-            "too_early_rate": 0.011,
-            "too_late_rate": 0.0169,
-            "wrong_cell_rate": 0.059
+            "reward": 16486.1917,
+            "ho_success_rate": 6.3585,
+            "ho_failure_rate": 0.0866,
+            "pingpong_rate": 0.1154,
+            "too_early_rate": 0.0112,
+            "too_late_rate": 0.0173,
+            "wrong_cell_rate": 0.06
           },
           {
             "episode": 4,
-            "reward": 16532.8906,
-            "ho_success_rate": 6.3632,
-            "ho_failure_rate": 0.0855,
-            "pingpong_rate": 0.113,
-            "too_early_rate": 0.011,
-            "too_late_rate": 0.017,
-            "wrong_cell_rate": 0.0591
+            "reward": 16499.6948,
+            "ho_success_rate": 6.3614,
+            "ho_failure_rate": 0.0864,
+            "pingpong_rate": 0.1154,
+            "too_early_rate": 0.0112,
+            "too_late_rate": 0.0172,
+            "wrong_cell_rate": 0.0598
           },
           {
             "episode": 5,
-            "reward": 16538.0376,
-            "ho_success_rate": 6.3643,
-            "ho_failure_rate": 0.0853,
-            "pingpong_rate": 0.1132,
-            "too_early_rate": 0.0109,
-            "too_late_rate": 0.0169,
-            "wrong_cell_rate": 0.059
+            "reward": 16498.8108,
+            "ho_success_rate": 6.3609,
+            "ho_failure_rate": 0.0866,
+            "pingpong_rate": 0.1154,
+            "too_early_rate": 0.0112,
+            "too_late_rate": 0.0173,
+            "wrong_cell_rate": 0.0598
           },
           {
             "episode": 6,
-            "reward": 16528.8324,
-            "ho_success_rate": 6.3637,
-            "ho_failure_rate": 0.0857,
-            "pingpong_rate": 0.1133,
+            "reward": 16503.7363,
+            "ho_success_rate": 6.3624,
+            "ho_failure_rate": 0.0865,
+            "pingpong_rate": 0.1156,
             "too_early_rate": 0.0111,
             "too_late_rate": 0.0172,
-            "wrong_cell_rate": 0.0592
+            "wrong_cell_rate": 0.0598
           },
           {
             "episode": 7,
-            "reward": 16547.1987,
-            "ho_success_rate": 6.3658,
-            "ho_failure_rate": 0.0851,
-            "pingpong_rate": 0.1132,
-            "too_early_rate": 0.0109,
-            "too_late_rate": 0.0168,
-            "wrong_cell_rate": 0.0588
+            "reward": 16486.3959,
+            "ho_success_rate": 6.3575,
+            "ho_failure_rate": 0.0866,
+            "pingpong_rate": 0.1151,
+            "too_early_rate": 0.0112,
+            "too_late_rate": 0.0173,
+            "wrong_cell_rate": 0.06
           },
           {
             "episode": 8,
-            "reward": 16534.8792,
-            "ho_success_rate": 6.3631,
-            "ho_failure_rate": 0.0855,
-            "pingpong_rate": 0.1132,
+            "reward": 16500.0903,
+            "ho_success_rate": 6.3614,
+            "ho_failure_rate": 0.0864,
+            "pingpong_rate": 0.1159,
             "too_early_rate": 0.011,
-            "too_late_rate": 0.017,
-            "wrong_cell_rate": 0.0589
+            "too_late_rate": 0.0172,
+            "wrong_cell_rate": 0.0597
           },
           {
             "episode": 9,
-            "reward": 16532.2329,
-            "ho_success_rate": 6.3633,
-            "ho_failure_rate": 0.0855,
-            "pingpong_rate": 0.1135,
+            "reward": 16498.9242,
+            "ho_success_rate": 6.3568,
+            "ho_failure_rate": 0.0862,
+            "pingpong_rate": 0.1151,
             "too_early_rate": 0.0109,
             "too_late_rate": 0.017,
-            "wrong_cell_rate": 0.059
+            "wrong_cell_rate": 0.0594
           }
         ]
       },
-      "mlflow_run_id": "6ba43beff59c4c3fbfc948bafb770eb2"
+      "mlflow_run_id": "3fd7965473e347fc8550a59949aaff3f"
     }
   ]
 }

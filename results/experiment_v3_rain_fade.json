@@ -2,16 +2,16 @@
   "experiment": "v3_rain_fade",
   "reward_version": "v3",
   "scenario": "rain_fade",
-  "timestamp": "2026-06-05T02:58:32.507016+00:00",
+  "timestamp": "2026-06-05T18:01:46.376360+00:00",
   "config": {
-    "total_timesteps": 25000,
+    "total_timesteps": 50000,
     "eval_episodes": 10,
     "seed": 42,
     "algorithm": "PPO",
     "policy": "MlpPolicy"
   },
   "training": {
-    "time_s": 125.44,
+    "time_s": 2225.23,
     "episode_rewards": [
       206822.9325,
       206863.5213,
@@ -21,9 +21,17 @@
       206884.9506,
       206595.6592,
       206810.2782,
-      206665.3459
+      206665.3459,
+      206748.255,
+      206841.0809,
+      206821.2575,
+      206790.7366,
+      206837.5211,
+      206798.8436,
+      206770.1052,
+      206799.028
     ],
-    "checkpoint_path": "checkpoints/ppo_v3_rain_fade.zip"
+    "checkpoint_path": "checkpoints\\ppo_v3_rain_fade.zip"
   },
   "evaluation": {
     "mean_reward": 206751.9193,
@@ -138,5 +146,5 @@
       }
     ]
   },
-  "mlflow_run_id": "2984b9f3e0da474bb4742497fd29732e"
+  "mlflow_run_id": "1ba0d89808804d118424614ba0515ee9"
 }
