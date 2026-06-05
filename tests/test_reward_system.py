@@ -68,7 +68,7 @@ class TestRewardVariantInit:
 
     def test_default_version_from_yaml(self):
         env = MROEnv(pm_data_path=PM_PATH, kpi_path=KPI_PATH)
-        assert env.reward_version == "v0"  # default in mro_default.yaml
+        assert env.reward_version == "v2"  # default in mro_default.yaml (changed v0→v2 Jun 5)
 
     def test_override_version_at_init(self):
         for version in ("v0", "v1", "v2", "v3"):
