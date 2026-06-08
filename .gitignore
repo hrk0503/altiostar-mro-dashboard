@@ -17,22 +17,26 @@ venv/
 mlruns/
 mlartifacts/
 *.parquet
-<<<<<<< HEAD
-data/synthetic/*.csv
-.coverage
-htmlcov/
-data/generate_pm_relation.py
-=======
-!data/synthetic/*.csv
+# Large PM data (relation-level) — regenerate via scripts/
 data/synthetic/pm_data_relation_level.csv
+data/synthetic/pm_data_april2026.csv
 data/pm_data_relation_level.csv
-.coverage
-htmlcov/
-checkpoints/
 data/pm_data_april2026.csv
+
+# Multi-geo datasets (regenerate via scripts/generate_multi_geo_data.py)
+data/berlin_lte/
+data/seoul_5g/
+
+# Old top-level data files
 data/cluster_kpi_summary.csv
 data/neighbor_relations.csv
 data/site_database.csv
+data/generate_pm_relation.py
 data/processed/
 
->>>>>>> origin/feature/shourya-mro-env
+# Build/test artifacts
+.coverage
+htmlcov/
+checkpoints/
+mlflow.db
+.claude/

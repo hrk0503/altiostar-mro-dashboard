@@ -1,0 +1,23 @@
+{
+  "timestamp": "2026-06-09",
+  "purpose": "Validate pipeline is geography-agnostic",
+  "datasets": {
+    "berlin_lte": {
+      "cells": 60,
+      "relations": 624,
+      "train_time_s": 5.8,
+      "mean_reward": 126757.0
+    },
+    "seoul_5g": {
+      "cells": 45,
+      "relations": 505,
+      "train_time_s": 4.3,
+      "mean_reward": 145120.6
+    }
+  },
+  "tokyo_baseline": {
+    "cells": 75,
+    "relations": 763,
+    "mean_reward_25k": 210579.0
+  }
+}
