@@ -133,6 +133,16 @@ def train_ppo(
         verbose=0,
         seed=seed,
         device="cpu",
+        # ── Tuned for 763-dim continuous action space (CIO deltas) ──
+        # Default SB3 params (ent_coef=0, net_arch=[64,64]) produced
+        # zero learning — agent matched random baseline at 79.25%.
+        ent_coef=0.01,       # entropy bonus → drives exploration
+        n_steps=4096,        # 2x default → better advantage estimates
+        batch_size=256,      # 4x default → stabler gradients on 6867-dim obs
+        learning_rate=3e-4,  # SB3 default, explicitly set for clarity
+        policy_kwargs=dict(
+            net_arch=dict(pi=[256, 256], vf=[256, 256]),
+        ),
     )
     model.learn(total_timesteps=total_timesteps, callback=callback)
     model.save(str(checkpoint_path))
