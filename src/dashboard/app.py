@@ -764,15 +764,59 @@ if st.session_state.show_quick_export:
 # PAGE: DASHBOARD
 # ══════════════════════════════════════════════════════════════════════
 if page == "Dashboard":
+    # ── Scenario selector ────────────────────────────────────────────
+    sc_col, _ = st.columns([1, 3])
+    with sc_col:
+        dash_scenario = st.selectbox(
+            "Scenario",
+            ["baseline", "rush_hour", "rain_fade", "tower_failure"],
+            format_func=lambda s: f"{s.replace('_', ' ').title()} — {SC_META[s]['l']}",
+            key="dash_scenario",
+        )
+    sc_color = SC_META[dash_scenario]["c"]
+    sc_label = SC_META[dash_scenario]["l"]
+
+    # Filter experiment data for selected scenario
+    cdf_sc = cdf[cdf["Scenario"] == dash_scenario] if len(cdf) > 0 else cdf
+
+    # Recompute KPIs for selected scenario using scenario-modulated cell data
+    cm_sc = cm.copy()
+    if dash_scenario == "tower_failure":
+        fi = cm_sc["enodeb_id"].unique()[0]
+        cm_sc.loc[cm_sc["enodeb_id"] == fi, "ho_sr"] = 0
+        cm_sc.loc[cm_sc["enodeb_id"] == fi, "ho_fr"] = 100
+    elif dash_scenario == "rush_hour":
+        cm_sc["prb"] = np.clip(cm_sc["prb"] * 2.0, 0, 100)
+        cm_sc["ho_sr"] = np.clip(cm_sc["ho_sr"] - 1.5, 0, 100)
+        cm_sc["ho_fr"] = np.clip(cm_sc["ho_fr"] + 1.5, 0, 100)
+    elif dash_scenario == "rain_fade":
+        rng_sc = np.random.default_rng(42)
+        cm_sc["ho_sr"] = np.clip(cm_sc["ho_sr"] - rng_sc.uniform(0, 3, len(cm_sc)), 0, 100)
+        cm_sc["ho_fr"] = np.clip(cm_sc["ho_fr"] + rng_sc.uniform(0, 3, len(cm_sc)), 0, 100)
+
+    cm_sc["prob"] = cm_sc["ho_sr"] < 96
+    sc_avg_sr   = cm_sc["ho_sr"].mean()
+    sc_best_sr  = cm_sc["ho_sr"].max()
+    sc_worst_sr = cm_sc["ho_sr"].min()
+    sc_avg_fr   = cm_sc["ho_fr"].mean()
+    sc_avg_prb  = cm_sc["prb"].mean()
+
+    # Scenario badge
+    st.markdown(
+        f'<div style="margin-bottom:8px;">'
+        f'<span class="badge" style="background:{sc_color}22;color:{sc_color};border:1px solid {sc_color}55;">'
+        f'● {sc_label}</span></div>',
+        unsafe_allow_html=True)
+
     # KPI cards row
     k1, k2, k3, k4, k5, k6 = st.columns(6)
     kpis = [
-        (k1, PRIMARY, "Cluster Avg", f"{avg_sr:.2f}%", "HO Success Rate"),
-        (k2, GREEN, "Best Cell", f"{best_sr:.2f}%", "Peak performance"),
-        (k3, RED, "Worst Cell", f"{worst_sr:.2f}%", "Needs attention"),
-        (k4, AMBER, "Failure Rate", f"{avg_fr:.2f}%", "Avg HO failure"),
-        (k5, PURPLE, "PRB Usage", f"{avg_prb:.1f}%", "DL utilization"),
-        (k6, BLUE, "Experiments", f"{len(ed['experiments'])}", "Completed runs"),
+        (k1, PRIMARY, "Cluster Avg", f"{sc_avg_sr:.2f}%", "HO Success Rate"),
+        (k2, GREEN, "Best Cell", f"{sc_best_sr:.2f}%", "Peak performance"),
+        (k3, RED, "Worst Cell", f"{sc_worst_sr:.2f}%", "Needs attention"),
+        (k4, AMBER, "Failure Rate", f"{sc_avg_fr:.2f}%", "Avg HO failure"),
+        (k5, PURPLE, "PRB Usage", f"{sc_avg_prb:.1f}%", "DL utilization"),
+        (k6, BLUE, "Experiments", f"{len(cdf_sc)}", f"{dash_scenario} runs"),
     ]
     for col, color, label, value, sub in kpis:
         with col:
