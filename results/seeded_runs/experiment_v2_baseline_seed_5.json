@@ -1,17 +1,17 @@
 {
-  "experiment": "v2_baseline_seed_1",
+  "experiment": "v2_baseline_seed_5",
   "reward_version": "v2",
   "scenario": "baseline",
-  "timestamp": "2026-06-09T13:41:22+00:00",
+  "timestamp": "2026-06-09T15:09:26+00:00",
   "config": {
     "total_timesteps": 50000,
     "eval_episodes": 5,
-    "seed": 1,
+    "seed": 5,
     "algorithm": "PPO",
     "policy": "MlpPolicy"
   },
   "training": {
-    "time_s": 1117.5,
+    "time_s": 1115.0,
     "episode_rewards": [
       210402.2312,
       210375.3672,
@@ -32,7 +32,7 @@
       210490.03,
       210451.93
     ],
-    "checkpoint_path": "checkpoints/seeded_runs/ppo_v2_baseline_seed_1.zip"
+    "checkpoint_path": "checkpoints/seeded_runs/ppo_v2_baseline_seed_5.zip"
   },
   "evaluation": {
     "mean_reward": 210585.8552,
@@ -97,5 +97,5 @@
       }
     ]
   },
-  "mlflow_run_id": "bba019f82e194997a358a2d4a106b9cd"
+  "mlflow_run_id": "a805aa5d69e6461da75fc14a40fb19b7"
 }
