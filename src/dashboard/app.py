@@ -502,7 +502,6 @@ center_lon = cm["longitude"].mean()
 # SIDEBAR
 # ══════════════════════════════════════════════════════════════════════
 with st.sidebar:
-    # Logo — colored crane icon + text, centered in sidebar header
     crane_tag = f'<img src="data:image/png;base64,{CRANE_B64}" style="height:34px; width:34px; object-fit:contain;" />' if CRANE_B64 else ''
     st.markdown(
         f'<div style="display:flex; align-items:center; justify-content:center; gap:10px; '
@@ -526,7 +525,6 @@ with st.sidebar:
 
     st.divider()
 
-    # Stats
     st.markdown(
         f'<div style="padding:4px 14px; font-size:.75rem; line-height:2.2;">'
         f'<div style="display:flex; justify-content:space-between;">'
@@ -541,7 +539,6 @@ with st.sidebar:
 
     st.divider()
 
-    # Target gauge
     gap = max(0, 99 - avg_sr)
     pct = min(avg_sr / 99 * 100, 100)
     st.markdown(
@@ -565,13 +562,11 @@ def sec(title):
 
 
 # ══════════════════════════════════════════════════════════════════════
-# TOP BAR — page title + feature nav + live clock
+# TOP BAR
 # ══════════════════════════════════════════════════════════════════════
-# Time calculation (for export timestamps)
 now_utc = datetime.now(timezone.utc)
 now_jst = now_utc + timedelta(hours=9)
 
-# Crane icon injected into Streamlit's top header bar, centered
 crane_src = f'data:image/png;base64,{CRANE_B64}' if CRANE_B64 else ''
 if crane_src:
     st.markdown(f"""
@@ -605,7 +600,6 @@ with tc2:
         f'<span class="topnav-chip" id="chip-health">💊 Health Check</span>'
         f'<span class="topnav-chip" id="chip-export">📤 Quick Export</span>'
         f'</div>', unsafe_allow_html=True)
-    # Real-time clock — JS ticking, auto-detects user timezone
     import streamlit.components.v1 as components
     components.html(f"""
     <div id="live-clock" style="
@@ -621,13 +615,11 @@ with tc2:
     <script>
     function updateClock() {{
         const now = new Date();
-        // Local time with timezone name
         const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
         const localShort = localTz.split('/').pop().replace('_', ' ');
         const localTime = now.toLocaleTimeString('en-GB', {{hour:'2-digit', minute:'2-digit', second:'2-digit'}});
         document.getElementById('clock-local').innerHTML =
             '📍 ' + localTime + ' ' + localShort;
-        // JST (Rakuten Japan)
         const jstTime = now.toLocaleTimeString('en-GB', {{
             hour:'2-digit', minute:'2-digit', second:'2-digit', timeZone:'Asia/Tokyo'
         }});
@@ -639,7 +631,6 @@ with tc2:
     </script>
     """, height=34)
 
-# Quick action panels (expand below top bar when activated)
 if "show_anomaly" not in st.session_state:
     st.session_state.show_anomaly = False
 if "show_health" not in st.session_state:
@@ -658,7 +649,6 @@ with qa3:
     if st.button("📤 Quick Export All", use_container_width=True, key="btn_export"):
         st.session_state.show_quick_export = not st.session_state.show_quick_export
 
-# Anomaly Scan panel
 if st.session_state.show_anomaly:
     with st.container():
         st.markdown(f'<div class="section-title">🔍 Anomaly Scan Results</div>', unsafe_allow_html=True)
@@ -690,7 +680,6 @@ if st.session_state.show_anomaly:
                     f'<div class="kpi-value" style="color:{PURPLE};">{avg_anom:.2f}%</div>'
                     f'<div class="kpi-sub">Across {len(anomalies)} flagged cells</div>'
                     f'</div>', unsafe_allow_html=True)
-            # Anomaly table
             for _, r in anomalies.iterrows():
                 severity = "HIGH" if r["ho_sr"] < 95 else "MEDIUM"
                 scls = "badge-red" if severity == "HIGH" else "badge-amber"
@@ -703,12 +692,10 @@ if st.session_state.show_anomaly:
                     f'<span style="flex:1;text-align:right;"><span class="badge {scls}">{severity}</span></span>'
                     f'</div>', unsafe_allow_html=True)
 
-# Health Check panel
 if st.session_state.show_health:
     with st.container():
         st.markdown(f'<div class="section-title">💊 Network Health Report</div>', unsafe_allow_html=True)
         hc1, hc2, hc3, hc4, hc5 = st.columns(5)
-        # Compute health metrics
         cells_online = 75
         avg_rsrp = cm["rsrp"].mean()
         avg_sinr = cm["sinr"].mean()
@@ -737,7 +724,6 @@ if st.session_state.show_health:
             f'Network Health Score: {score}/{len(checks)} checks passing'
             f'</div>', unsafe_allow_html=True)
 
-# Quick Export panel
 if st.session_state.show_quick_export:
     with st.container():
         st.markdown(f'<div class="section-title">📤 Quick Export</div>', unsafe_allow_html=True)
@@ -829,6 +815,90 @@ if page == "Dashboard":
 
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
+    # ── Before/After KPI overlay (Baseline vs Selected Scenario) ─────
+    if dash_scenario != "baseline":
+        sec(f"Before / After — Baseline vs {dash_scenario.replace('_', ' ').title()}")
+
+        # Baseline KPIs (unmodified cm)
+        _base_avg_sr  = cm["ho_sr"].mean()
+        _base_avg_fr  = cm["ho_fr"].mean()
+        _base_avg_prb = cm["prb"].mean()
+
+        _delta_sr  = sc_avg_sr  - _base_avg_sr
+        _delta_fr  = sc_avg_fr  - _base_avg_fr
+        _delta_prb = sc_avg_prb - _base_avg_prb
+
+        # Green = improvement, Red = degradation (lower failure/PRB = better)
+        _dc_sr  = GREEN if _delta_sr  >= 0 else RED
+        _dc_fr  = GREEN if _delta_fr  <= 0 else RED
+        _dc_prb = GREEN if _delta_prb <= 0 else RED
+
+        ov1, ov2, ov3, ov4, ov5, ov6 = st.columns(6)
+        for col, color, label, value, sub in [
+            (ov1, TEXT_MUTED, "Baseline HO Success",    f"{_base_avg_sr:.2f}%", "Reference"),
+            (ov2, sc_color,   f"{sc_label} HO Success", f"{sc_avg_sr:.2f}%",    "Scenario value"),
+            (ov3, _dc_sr,     "Success Δ",              f"{_delta_sr:+.2f}%",   "vs baseline"),
+            (ov4, TEXT_MUTED, "Baseline Failure",       f"{_base_avg_fr:.2f}%", "Reference"),
+            (ov5, sc_color,   f"{sc_label} Failure",    f"{sc_avg_fr:.2f}%",    "Scenario value"),
+            (ov6, _dc_fr,     "Failure Δ",              f"{_delta_fr:+.2f}%",   "vs baseline"),
+        ]:
+            with col:
+                st.markdown(
+                    f'<div class="kpi" style="border-top:3px solid {color};">'
+                    f'<div class="kpi-label"><span class="kpi-icon" style="background:{color};"></span>{label}</div>'
+                    f'<div class="kpi-value" style="color:{color};">{value}</div>'
+                    f'<div class="kpi-sub">{sub}</div>'
+                    f'</div>', unsafe_allow_html=True)
+
+        st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+
+        # Grouped bar: Baseline (faded) vs Scenario (solid), one pair per variant
+        if len(cdf) > 0:
+            _cdf_base = cdf[cdf["Scenario"] == "baseline"]
+            _cdf_sc   = cdf[cdf["Scenario"] == dash_scenario]
+            _shared_v = sorted(set(_cdf_base["Variant"].tolist()) & set(_cdf_sc["Variant"].tolist()))
+            if _shared_v and len(_cdf_sc) > 0:
+                _fig_ov = go.Figure()
+                for v in _shared_v:
+                    _vb = _cdf_base[_cdf_base["Variant"] == v]
+                    _vs = _cdf_sc[_cdf_sc["Variant"] == v]
+                    if len(_vb) == 0 or len(_vs) == 0:
+                        continue
+                    _vbv = _vb.iloc[0]["HO Success %"]
+                    _vsv = _vs.iloc[0]["HO Success %"]
+                    _vc  = V_COLORS.get(v, PRIMARY)
+                    _r, _g, _b = int(_vc[1:3], 16), int(_vc[3:5], 16), int(_vc[5:7], 16)
+                    _fig_ov.add_trace(go.Bar(
+                        x=[f"{v} Baseline", f"{v} {sc_label}"],
+                        y=[_vbv, _vsv],
+                        name=f"{v} — {V_NAMES.get(v, v)}",
+                        marker_color=[f"rgba({_r},{_g},{_b},.35)", _vc],
+                        text=[f"{_vbv:.2f}%", f"{_vsv:.2f}%"],
+                        textposition="outside",
+                        textfont=dict(size=11, family="JetBrains Mono"),
+                        width=0.52,
+                    ))
+                _fig_ov.add_hline(y=99, line_dash="dot", line_color=RED, opacity=.5,
+                    annotation_text="99% Target", annotation_font_color=RED, annotation_font_size=11)
+                _fig_ov.add_hline(y=_base_avg_sr, line_dash="dash", line_color=TEXT_MUTED, opacity=.55,
+                    annotation_text=f"Cluster avg baseline {_base_avg_sr:.2f}%",
+                    annotation_font_color=TEXT_MUTED, annotation_font_size=10,
+                    annotation_position="bottom right")
+                _fig_ov.update_layout(
+                    barmode="group", height=370, template=PLT,
+                    paper_bgcolor=CARD, plot_bgcolor="#FAFBFC",
+                    font=dict(color=TEXT, size=12, family="Inter"),
+                    legend=dict(orientation="h", y=-.2, font_size=11),
+                    margin=dict(t=36, b=80, l=60, r=20),
+                    yaxis_title="HO Success Rate (%)",
+                    yaxis=dict(range=[max(0, _base_avg_sr - 10), 102]),
+                    title=dict(
+                        text=f"Baseline (faded) vs {sc_label} (solid) — HO Success per Variant",
+                        font=dict(size=12, color=TEXT_SEC), x=0.01,
+                    ),
+                )
+                st.plotly_chart(_fig_ov, use_container_width=True)
+
     # Two columns: donut + cell table
     d1, d2 = st.columns([1, 2])
 
@@ -865,7 +935,6 @@ if page == "Dashboard":
         )
         st.plotly_chart(fig_donut, use_container_width=True)
 
-        # Legend with counts
         for label, count, color, badge_cls in [
             ("Healthy", healthy, GREEN, "badge-green"),
             ("Warning", warning, AMBER, "badge-amber"),
@@ -880,7 +949,6 @@ if page == "Dashboard":
     with d2:
         sec("Cell Status")
 
-        # Tabs for All / Problem / Healthy
         tab1, tab2, tab3 = st.tabs(["All Cells", "Problem Cells", "Top Performers"])
 
         with tab1:
@@ -951,7 +1019,7 @@ if page == "Dashboard":
                     f'<span style="flex:1;text-align:right"><span class="badge {bcls}">{blbl}</span></span>'
                     f'</div>', unsafe_allow_html=True)
 
-    # Experiment results bar chart (if data exists)
+    # Experiment results bar chart (scenario-filtered)
     if len(cdf) > 0:
         sec("Experiment Results — HO Success Rate")
         fb = go.Figure()
@@ -967,7 +1035,12 @@ if page == "Dashboard":
             ))
         fb.add_hline(y=99, line_dash="dot", line_color=RED, opacity=.5,
             annotation_text="99% Target", annotation_font_color=RED, annotation_font_size=11)
-        # Random baseline reference
+        # Highlight the currently-selected scenario with a vertical annotation
+        if dash_scenario != "baseline":
+            fb.add_vrect(
+                x0=-0.5, x1=3.5,  # plotly uses categorical, highlight by annotation
+                annotation_text="", fillcolor="rgba(0,0,0,0)",
+            )
         _bl_path = ROOT / "results" / "random_baseline.json"
         if _bl_path.exists():
             try:
@@ -989,7 +1062,7 @@ if page == "Dashboard":
         )
         st.plotly_chart(fb, use_container_width=True)
 
-    # Phase 2 summary — high-level progress snapshot
+    # Phase 2 summary
     if len(cdf) > 0:
         sec("Phase 2 Progress")
         _n_variants = len(cdf["Variant"].unique())
@@ -1034,7 +1107,6 @@ if page == "Dashboard":
 # PAGE: CELL MAP
 # ══════════════════════════════════════════════════════════════════════
 elif page == "Cell Map":
-    # Filters
     f1, f2, f3 = st.columns([1, 1, 2])
     with f1:
         show_prob = st.toggle("Problem cells only", value=False)
@@ -1058,7 +1130,6 @@ elif page == "Cell Map":
 
         fm = go.Figure()
 
-        # Relation lines
         if show_rels:
             rm = rels[rels["distance_m"] > 0].merge(
                 site_db[["cell_id", "latitude", "longitude"]], left_on="serving_cell", right_on="cell_id"
@@ -1074,7 +1145,6 @@ elif page == "Cell Map":
                     line=dict(width=.5, color="rgba(0,150,170,.1)"),
                     hoverinfo="skip", showlegend=False))
 
-        # Problem glow
         pr = md[md["prob"]]
         if len(pr) > 0:
             fm.add_trace(go.Scattermapbox(
@@ -1082,7 +1152,6 @@ elif page == "Cell Map":
                 marker=dict(size=pr["bub"] + 14, color="rgba(239,68,68,.12)"),
                 hoverinfo="skip", showlegend=False))
 
-        # Cell markers
         fm.add_trace(go.Scattermapbox(
             lat=md["latitude"], lon=md["longitude"], mode="markers",
             marker=dict(
@@ -1120,7 +1189,6 @@ elif page == "Cell Map":
             f'Sector {cd["sector"]} · Az {cd["azimuth_deg"]}° · {cd["frequency_band"]}<br>'
             f'</div></div>', unsafe_allow_html=True)
 
-        # Cell KPIs
         metrics = [
             ("HO Success", f"{cd['ho_sr']:.2f}%", health_color(cd["ho_sr"])),
             ("HO Failure", f"{cd['ho_fr']:.2f}%", RED if cd["ho_fr"] > 4 else TEXT_SEC),
@@ -1136,7 +1204,6 @@ elif page == "Cell Map":
                 f'<span style="font-weight:600;color:{color};font-family:JetBrains Mono,monospace;">{val}</span>'
                 f'</div>', unsafe_allow_html=True)
 
-        # Neighbor count
         cr = rels[rels["serving_cell"] == pk]
         if len(cr) > 0:
             st.markdown(f'<div style="font-size:.78rem;color:{TEXT_MUTED};margin-top:8px;padding:0 16px;">{len(cr)} neighbor relations</div>', unsafe_allow_html=True)
@@ -1152,7 +1219,6 @@ elif page == "Experiments":
     if len(cdf) == 0:
         st.warning("No data. Run `python3 run_experiment.py --sweep-all`")
     else:
-        # Filters
         f1, f2 = st.columns(2)
         av = sorted(cdf["Variant"].unique())
         asc = sorted(cdf["Scenario"].unique())
@@ -1162,7 +1228,6 @@ elif page == "Experiments":
             sel_s = st.multiselect("Scenarios", asc, default=asc)
         filt = cdf[cdf["Variant"].isin(sel_v) & cdf["Scenario"].isin(sel_s)]
 
-        # Variant KPI cards
         sec("Variant Performance (Baseline)")
         vc = st.columns(len(sel_v)) if sel_v else [st.container()]
         for i, v in enumerate(sel_v):
@@ -1181,7 +1246,6 @@ elif page == "Experiments":
                         f'Reward: <b style="font-family:JetBrains Mono,monospace;">{r["Mean Reward"]:,.0f}</b>'
                         f'</div></div>', unsafe_allow_html=True)
 
-        # Bar chart
         sec("HO Success Rate — All Variants x Scenarios")
         fb = go.Figure()
         for v in sel_v:
@@ -1196,7 +1260,6 @@ elif page == "Experiments":
             ))
         fb.add_hline(y=99, line_dash="dot", line_color=RED, opacity=.5,
             annotation_text="99% Target", annotation_font_color=RED, annotation_font_size=11)
-        # Random baseline reference on experiments chart too
         _ebl_path = ROOT / "results" / "random_baseline.json"
         if _ebl_path.exists():
             try:
@@ -1218,7 +1281,6 @@ elif page == "Experiments":
         )
         st.plotly_chart(fb, use_container_width=True)
 
-        # Training Convergence Curves
         _has_curves = any(
             e.get("training", {}).get("episode_rewards")
             for e in ed["experiments"]
@@ -1237,7 +1299,6 @@ elif page == "Experiments":
                         continue
                     rewards = e.get("training", {}).get("episode_rewards", [])
                     if rewards:
-                        # Smooth with rolling average
                         arr = np.array(rewards, dtype=float)
                         win = max(1, len(arr) // 20)
                         smooth = np.convolve(arr, np.ones(win)/win, mode="valid")
@@ -1278,7 +1339,6 @@ elif page == "Experiments":
                         f'<span style="font-size:.78rem;color:{TEXT_SEC};">{ts:,} steps · {n_eps} eps · {tt}s</span>'
                         f'</div>', unsafe_allow_html=True)
 
-        # Before/After: Random Baseline vs Best Trained
         _baseline_path = ROOT / "results" / "random_baseline.json"
         _has_baseline = _baseline_path.exists()
         if _has_baseline and len(filt) > 0:
@@ -1330,7 +1390,6 @@ elif page == "Experiments":
                         f'<div class="kpi-sub">Client requirement: 99-99.5%</div>'
                         f'</div>', unsafe_allow_html=True)
 
-        # Radar + Heatmap
         r1, r2 = st.columns(2)
         with r1:
             sec("Multi-Metric Fingerprint")
@@ -1386,7 +1445,6 @@ elif page == "Experiments":
                 )
                 st.plotly_chart(fh, use_container_width=True)
 
-        # Failure breakdown donuts
         sec("Failure Mode Breakdown")
         pc = st.columns(min(len(sel_v), 4))
         for i, v in enumerate(sel_v[:4]):
@@ -1435,7 +1493,6 @@ elif page == "Network":
 
     ft = go.Figure()
 
-    # Edges
     ir = rels[rels["distance_m"] > 0]
     ex, ey = [], []
     for _, rr in ir.iterrows():
@@ -1450,7 +1507,6 @@ elif page == "Network":
         line=dict(width=.4, color="rgba(0,150,170,.08)"),
         hoverinfo="skip", showlegend=False))
 
-    # Nodes
     ns = np.clip(td["ue"] * 1.3, 12, 48)
     ft.add_trace(go.Scatter(
         x=td["x"], y=td["y"], mode="markers+text",
@@ -1469,7 +1525,6 @@ elif page == "Network":
         showlegend=False,
     ))
 
-    # Problem highlight
     pt = td[td["ho_sr"] < 96]
     if len(pt) > 0:
         ft.add_trace(go.Scatter(
@@ -1486,7 +1541,6 @@ elif page == "Network":
     )
     st.plotly_chart(ft, use_container_width=True)
 
-    # Legend
     l1, l2, l3, l4 = st.columns(4)
     for col, label, color, badge_cls in [
         (l1, "Healthy (>= 99%)", GREEN, "badge-green"),
@@ -1526,7 +1580,6 @@ elif page == "Simulation":
                 f'<span class="badge {bcls}">{v}</span>'
                 f'</div>', unsafe_allow_html=True)
 
-        # Best variant for scenario
         if len(cdf) > 0:
             scd = cdf[cdf["Scenario"] == ss]
             if len(scd) > 0:
@@ -1540,7 +1593,6 @@ elif page == "Simulation":
                     f'<div style="font-size:.88rem;font-weight:600;font-family:JetBrains Mono,monospace;">{best["HO Success %"]:.2f}%</div>'
                     f'</div>', unsafe_allow_html=True)
 
-                # Progress bars for all variants
                 for _, rr in scd.iterrows():
                     pct = rr["HO Success %"]
                     vcl = V_COLORS.get(rr["Variant"], PRIMARY)
@@ -1570,21 +1622,18 @@ elif page == "Simulation":
             alv = float(np.mean(lsr))
             plv = int(np.sum(lsr < 96))
 
-            # Live header
             st.markdown(
                 f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
                 f'<span class="badge badge-blue"><span class="live-dot" style="margin-right:4px;"></span>LIVE — Step {step}</span>'
                 f'<span style="font-size:.78rem;color:{TEXT_MUTED};font-family:JetBrains Mono,monospace;">{time.strftime("%H:%M:%S")}</span>'
                 f'</div>', unsafe_allow_html=True)
 
-            # KPI row
             lc1, lc2, lc3, lc4 = st.columns(4)
             lc1.metric("Cluster", f"{alv:.2f}%")
             lc2.metric("Reward", f"{lr:,.0f}")
             lc3.metric("Problems", f"{plv}")
             lc4.metric("CIO", f"{cio:+d} dB")
 
-            # Live map
             sdf = cm.copy()
             sdf["lsr"] = lsr
             fs = go.Figure()
@@ -1611,7 +1660,6 @@ elif page == "Simulation":
             )
             st.plotly_chart(fs, use_container_width=True, key=f"s{step}")
 
-            # Agent log
             sec("Agent Log")
             lines = []
             for s in range(max(0, step - 6), step + 1):
@@ -1635,7 +1683,6 @@ elif page == "Reports":
         st.warning("No data.")
         st.stop()
 
-    # Filters
     f1, f2 = st.columns(2)
     av = sorted(cdf["Variant"].unique())
     asc = sorted(cdf["Scenario"].unique())
@@ -1707,7 +1754,7 @@ elif page == "Reports":
 
     with tab_gate:
         sec("Gate G3 Checklist")
-        _n_tests = 221  # updated on push
+        _n_tests = 221
         _has_sweep = (ROOT / "results" / "sweep_results.json").exists()
         _has_baseline = (ROOT / "results" / "random_baseline.json").exists()
         chks = [
