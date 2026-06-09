@@ -317,12 +317,14 @@ def run_single_experiment(
     timesteps: int = DEFAULT_TIMESTEPS,
     eval_episodes: int = DEFAULT_EVAL_EPISODES,
     seed: int = DEFAULT_SEED,
+    run_name: str | None = None,
 ) -> Dict[str, Any]:
     """Run one complete experiment: build -> train -> evaluate -> log -> save.
 
     Returns the full result dict.
     """
-    run_name = f"{variant}_{scenario}"
+    if run_name is None:
+        run_name = f"{variant}_{scenario}"
     logger.info("=" * 60)
     logger.info("EXPERIMENT: variant=%s, scenario=%s", variant, scenario)
     logger.info("=" * 60)
