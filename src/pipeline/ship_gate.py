@@ -30,144 +30,175 @@ except ImportError:
     RESET = ""
     BOLD = ""
 
+# ── Defaults (in percentage units, e.g. 99.0 means 99%) ──────────────────────
+DEFAULT_HO_SUCCESS_MIN = 99.0
+DEFAULT_PING_PONG_MAX = 5.0
+
+
+# ── Core gate logic ───────────────────────────────────────────────────────────
 
 def check_gate_conditions(
     ho_success_rate: float,
     pingpong_rate: float,
-    ho_success_min: float = 99.0,
-    ping_pong_max: float = 5.0,
+    ho_success_min: float = DEFAULT_HO_SUCCESS_MIN,
+    ping_pong_max: float = DEFAULT_PING_PONG_MAX,
 ) -> tuple[bool, list[str]]:
-    """Check if metrics satisfy the gate conditions.
+    """Check whether KPI values pass the ship gate.
+
+    Both thresholds are STRICT:
+      - ho_success_rate must be STRICTLY > ho_success_min
+      - pingpong_rate   must be STRICTLY < ping_pong_max
 
     Returns
     -------
-    tuple[bool, list[str]]
-        - passed: True if all conditions are satisfied, else False.
-        - reasons: List of failure descriptions if any.
+    passed  : True if all conditions met
+    reasons : list of failure messages (empty when passed)
     """
-    reasons = []
-    # ho_success_rate must be > ho_success_min (specifically > 99%)
-    if ho_success_rate <= ho_success_min:
+    reasons: list[str] = []
+
+    if not ho_success_rate > ho_success_min:
         reasons.append(
-            f"Handover Success Rate {ho_success_rate:.4f}% is not strictly greater than "
-            f"required minimum {ho_success_min}%"
+            f"Handover Success Rate {ho_success_rate:.4f}% "
+            f"is not > {ho_success_min:.4f}% (got {ho_success_rate:.4f}%)"
         )
 
-    # pingpong_rate must be < ping_pong_max (specifically < 5%)
-    if pingpong_rate >= ping_pong_max:
+    if not pingpong_rate < ping_pong_max:
         reasons.append(
-            f"Ping-Pong Rate {pingpong_rate:.4f}% is not strictly less than "
-            f"required maximum {ping_pong_max}%"
+            f"Ping-Pong Rate {pingpong_rate:.4f}% "
+            f"is not < {ping_pong_max:.4f}% (got {pingpong_rate:.4f}%)"
         )
 
     return len(reasons) == 0, reasons
 
 
-def load_thresholds_from_config(config_path: Path | str) -> tuple[float, float]:
-    """Load ho_success_min and ping_pong_max from a YAML configuration file.
+# ── Config loader ─────────────────────────────────────────────────────────────
 
-    If the thresholds are defined as fractions (e.g. 0.99 or 0.05), they are
-    converted to percentages (e.g. 99.0% and 5.0%).
+def load_thresholds_from_config(
+    config_path: Path | str,
+) -> tuple[float, float]:
+    """Load HO success and ping-pong thresholds from a YAML config file.
+
+    Expects structure:
+        ship_gate:
+          ho_success_rate_min: 0.99   # fraction OR percentage
+          ping_pong_rate_max:  0.05
+
+    Values <= 1.0 are treated as fractions and multiplied by 100.
+    Values >  1.0 are treated as already in percentage units.
+
+    Missing ship_gate section → defaults (99.0, 5.0).
+    Missing individual key   → its default.
     """
-    with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
+    try:
+        text = Path(config_path).read_text()
+        cfg = yaml.safe_load(text) or {}
+    except Exception:
+        return DEFAULT_HO_SUCCESS_MIN, DEFAULT_PING_PONG_MAX
 
-    gate_config = config.get("ship_gate", {})
-    success_val = gate_config.get("ho_success_rate_min", 0.99)
-    pingpong_val = gate_config.get("ping_pong_rate_max", 0.05)
+    gate = cfg.get("ship_gate", {}) or {}
 
-    # Convert from fraction (<= 1.0) to percentage (<= 100.0)
-    success_min = success_val * 100.0 if success_val <= 1.0 else success_val
-    ping_pong_max = pingpong_val * 100.0 if pingpong_val <= 1.0 else pingpong_val
+    raw_ho = gate.get("ho_success_rate_min", None)
+    raw_pp = gate.get("ping_pong_rate_max", None)
 
-    return success_min, ping_pong_max
+    def _to_pct(value: float | None, default: float) -> float:
+        if value is None:
+            return default
+        # fraction format (<=1.0) → multiply by 100
+        if value <= 1.0:
+            return float(value) * 100.0
+        return float(value)
+
+    ho_success = _to_pct(raw_ho, DEFAULT_HO_SUCCESS_MIN)
+    ping_pong  = _to_pct(raw_pp, DEFAULT_PING_PONG_MAX)
+
+    return ho_success, ping_pong
+
+
+# ── JSON results checker ──────────────────────────────────────────────────────
+
+def _check_single(
+    eval_block: dict[str, Any] | None,
+    experiment_name: str = "",
+    ho_success_min: float = DEFAULT_HO_SUCCESS_MIN,
+    ping_pong_max: float = DEFAULT_PING_PONG_MAX,
+) -> dict:
+    """Check a single evaluation block."""
+    if eval_block is None:
+        return {
+            "experiment": experiment_name,
+            "passed": False,
+            "reasons": ["No evaluation block found"],
+        }
+
+    ho  = eval_block.get("ho_success_rate",  0.0)   # missing → 0 → FAIL
+    pp  = eval_block.get("pingpong_rate",  100.0)    # missing → 100 → FAIL
+
+    passed, reasons = check_gate_conditions(ho, pp, ho_success_min, ping_pong_max)
+    return {
+        "experiment": experiment_name,
+        "passed": passed,
+        "reasons": reasons,
+        "ho_success_rate": ho,
+        "pingpong_rate": pp,
+    }
 
 
 def check_results_json(
-    json_path: Path | str,
-    ho_success_min: float = 99.0,
-    ping_pong_max: float = 5.0,
-) -> dict[str, Any]:
-    """Check if the evaluation metrics in a results JSON meet the gate conditions."""
+    results_path: Path | str,
+    ho_success_min: float = DEFAULT_HO_SUCCESS_MIN,
+    ping_pong_max: float = DEFAULT_PING_PONG_MAX,
+) -> dict:
+    """Check a results JSON file against gate conditions.
+
+    Handles:
+      - Single experiment:  { "experiment": "...", "evaluation": {...} }
+      - Sweep:              { "experiments": [ {...}, ... ] }
+      - Missing file        → passed=False
+      - Malformed JSON      → passed=False
+      - Experiment with "error" key → that run fails
+
+    Returns a report dict with at minimum { "passed": bool }.
+    """
+    path = Path(results_path)
+
+    # ── file not found ────────────────────────────────────────────────────────
+    if not path.exists():
+        return {"passed": False, "reasons": [f"File not found: {path}"]}
+
+    # ── parse JSON ────────────────────────────────────────────────────────────
     try:
-        with open(json_path, "r") as f:
-            data = json.load(f)
-    except Exception as e:
-        return {
-            "passed": False,
-            "error": f"Failed to read/parse JSON file: {e}",
-            "ho_success_rate": 0.0,
-            "pingpong_rate": 100.0,
-            "reasons": [f"File read error: {e}"],
-        }
+        data = json.loads(path.read_text())
+    except Exception as exc:
+        return {"passed": False, "error": str(exc), "reasons": [f"JSON parse error: {exc}"]}
 
-    # Handle compiled sweep (e.g. sweep_results.json)
-    if isinstance(data, dict) and "experiments" in data:
-        experiments = data["experiments"]
-        all_passed = True
-        runs_report = []
-        for item in experiments:
-            if "error" in item:
-                all_passed = False
-                runs_report.append({
-                    "experiment": item.get("experiment", "unknown"),
+    if not isinstance(data, dict):
+        return {"passed": False, "reasons": ["JSON root is not an object"]}
+
+    # ── sweep format ─────────────────────────────────────────────────────────
+    if "experiments" in data:
+        runs = []
+        for exp in data["experiments"]:
+            name = exp.get("experiment", "unknown")
+            if "error" in exp:
+                runs.append({
+                    "experiment": name,
                     "passed": False,
-                    "reasons": [f"Experiment failed with error: {item['error']}"],
-                    "ho_success_rate": 0.0,
-                    "pingpong_rate": 100.0,
+                    "reasons": [f"Training error: {exp['error']}"],
                 })
-                continue
+            else:
+                runs.append(_check_single(exp.get("evaluation"), name, ho_success_min, ping_pong_max))
 
-            run_eval = item.get("evaluation", {})
-            success = run_eval.get("ho_success_rate", 0.0)
-            ping_pong = run_eval.get("pingpong_rate", 100.0)
-            passed, reasons = check_gate_conditions(
-                success, ping_pong, ho_success_min, ping_pong_max
-            )
-            if not passed:
-                all_passed = False
-            runs_report.append({
-                "experiment": item.get("experiment", "unknown"),
-                "passed": passed,
-                "reasons": reasons,
-                "ho_success_rate": success,
-                "pingpong_rate": ping_pong,
-            })
-        return {
-            "passed": all_passed,
-            "is_sweep": True,
-            "runs": runs_report,
-            "ho_success_min": ho_success_min,
-            "ping_pong_max": ping_pong_max,
-        }
+        overall = all(r["passed"] for r in runs)
+        return {"passed": overall, "runs": runs, "is_sweep": True}
 
-    # Handle single experiment result JSON
-    eval_section = data.get("evaluation")
-    if not eval_section:
-        return {
-            "passed": False,
-            "error": "Missing 'evaluation' section in JSON",
-            "ho_success_rate": 0.0,
-            "pingpong_rate": 100.0,
-            "reasons": ["Missing evaluation metrics section"],
-        }
+    # ── single experiment format ──────────────────────────────────────────────
+    if not data:
+        return {"passed": False, "reasons": ["Empty JSON object"]}
 
-    success = eval_section.get("ho_success_rate", 0.0)
-    ping_pong = eval_section.get("pingpong_rate", 100.0)
-    passed, reasons = check_gate_conditions(
-        success, ping_pong, ho_success_min, ping_pong_max
-    )
-
-    return {
-        "passed": passed,
-        "is_sweep": False,
-        "experiment": data.get("experiment", "unknown"),
-        "ho_success_rate": success,
-        "pingpong_rate": ping_pong,
-        "ho_success_min": ho_success_min,
-        "ping_pong_max": ping_pong_max,
-        "reasons": reasons,
-    }
+    name   = data.get("experiment", "")
+    report = _check_single(data.get("evaluation"), name, ho_success_min, ping_pong_max)
+    report["is_sweep"] = False
+    return report
 
 
 def main() -> None:
@@ -186,14 +217,14 @@ def main() -> None:
     parser.add_argument(
         "--ho-success-min",
         type=float,
-        default=99.0,
-        help="Minimum Handover Success Rate threshold (default: 99.0%%)",
+        default=DEFAULT_HO_SUCCESS_MIN,
+        help="Minimum Handover Success Rate threshold (default: 99.0%)",
     )
     parser.add_argument(
         "--ping-pong-max",
         type=float,
-        default=5.0,
-        help="Maximum Ping-Pong Rate threshold (default: 5.0%%)",
+        default=DEFAULT_PING_PONG_MAX,
+        help="Maximum Ping-Pong Rate threshold (default: 5.0%)",
     )
     parser.add_argument(
         "--config",
@@ -250,7 +281,7 @@ def main() -> None:
         report = check_results_json(file, ho_success_min, ping_pong_max)
         if report.get("is_sweep"):
             print(f"{BOLD}Sweep File: {file.name}{RESET}")
-            for run in report["runs"]:
+            for run in report.get("runs", []):
                 exp_name = run["experiment"]
                 if run["passed"]:
                     print(
@@ -263,20 +294,20 @@ def main() -> None:
                         f"  [{RED}FAIL{RESET}] {exp_name} "
                         f"(HO Success: {run['ho_success_rate']:.2f}%, Ping-Pong: {run['pingpong_rate']:.2f}%)"
                     )
-                    for reason in run["reasons"]:
+                    for reason in run.get("reasons", []):
                         print(f"    - {reason}")
         else:
             exp_name = report.get("experiment", file.name)
             if report["passed"]:
                 print(
                     f"[{GREEN}PASS{RESET}] {exp_name} "
-                    f"(HO Success: {report['ho_success_rate']:.2f}%, Ping-Pong: {report['pingpong_rate']:.2f}%)"
+                    f"(HO Success: {report.get('ho_success_rate', 0.0):.2f}%, Ping-Pong: {report.get('pingpong_rate', 100.0):.2f}%)"
                 )
             else:
                 all_passed = False
                 print(
                     f"[{RED}FAIL{RESET}] {exp_name} "
-                    f"(HO Success: {report['ho_success_rate']:.2f}%, Ping-Pong: {report['pingpong_rate']:.2f}%)"
+                    f"(HO Success: {report.get('ho_success_rate', 0.0):.2f}%, Ping-Pong: {report.get('pingpong_rate', 100.0):.2f}%)"
                 )
                 for reason in report.get("reasons", []):
                     print(f"  - {reason}")
