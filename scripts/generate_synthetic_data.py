@@ -51,7 +51,7 @@ for i in range(NUM_SITES):
             "frequency_mhz": {1: 2100, 3: 1800, 41: 2500}[band],
         })
 
-with open("data/site_database.csv", "w", newline="") as f:
+with open("data/synthetic/site_database.csv", "w", newline="") as f:
     w = csv.DictWriter(f, fieldnames=sites[0].keys())
     w.writeheader()
     w.writerows(sites)
@@ -77,7 +77,7 @@ for cell in sites:
             "ping_pong_rate": round(random.uniform(0.01, 0.08), 4),
         })
 
-with open("data/neighbor_relations.csv", "w", newline="") as f:
+with open("data/synthetic/neighbor_relations.csv", "w", newline="") as f:
     w = csv.DictWriter(f, fieldnames=neighbors[0].keys())
     w.writeheader()
     w.writerows(neighbors)
@@ -89,7 +89,7 @@ start_date = datetime(2026, 4, 1)
 pm_rows = []
 problem_cells = random.sample([c["cell_id"] for c in sites], 6)
 
-with open("data/pm_data_april2026.csv", "w", newline="") as f:
+with open("data/synthetic/pm_data_april2026.csv", "w", newline="") as f:
     fields = ["cell_id", "timestamp", "rsrp_dbm", "rsrq_db", "sinr_db",
               "prb_utilization_pct", "active_ue_count", "rrc_connected_ue",
               "ho_attempt", "ho_success", "ho_failure", "ho_ping_pong",
@@ -165,7 +165,7 @@ for cell in sites:
         "problem_flag": is_problem,
     })
 
-with open("data/cluster_kpi_summary.csv", "w", newline="") as f:
+with open("data/synthetic/cluster_kpi_summary.csv", "w", newline="") as f:
     w = csv.DictWriter(f, fieldnames=summaries[0].keys())
     w.writeheader()
     w.writerows(summaries)

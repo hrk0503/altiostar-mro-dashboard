@@ -46,6 +46,13 @@ pip install -r requirements.txt
 uv pip install -r requirements.txt
 ```
 
+### Step 4: Generate Synthetic PM Data (Relation-Level)
+Before training relation-level policies, you must generate the relation-level PM dataset from the base cell-level PM data and neighbor relations:
+```bash
+python scripts/generate_relation_pm.py
+```
+This distributes Serving-Cell level handover counters across neighbor relations according to realistic configuration skews, producing `data/synthetic/pm_data_relation_level.csv`.
+
 ---
 
 ## 2. Pipeline Configuration
@@ -128,7 +135,37 @@ altiostar-tokyo-mro/
 
 ---
 
-## 5. Dashboard Visualization & Local QA
+## 5. MRO Ship Gate Validator
+
+After generating evaluation results, verify that the trained model meets production ship gate thresholds (Minimum Handover Success Rate and Maximum Ping-Pong Rate):
+
+```bash
+# Validate against default thresholds (HO Success > 99.0%, Ping-Pong < 5.0%)
+python src/pipeline/ship_gate.py --results results/experiment_v2_baseline.json
+
+# Validate against custom thresholds (e.g. for rapid validation of low-timestep agents)
+python src/pipeline/ship_gate.py --results results/experiment_v2_baseline.json --ho-success-min 75.0 --ping-pong-max 5.0
+```
+
+The script returns:
+- Exit code `0` if all gate criteria are satisfied (prints `[PASS]`).
+- Exit code `1` if any criteria fail (prints `[FAIL]` along with the failure reasons).
+
+---
+
+## 6. ONNX Model Export
+
+Export the trained PyTorch policy network to ONNX format for deployment or inference outside Stable-Baselines3:
+
+```bash
+python src/pipeline/export_onnx.py --model checkpoints/ppo_v2_baseline.zip
+```
+
+This exports the policy net (extracting features and mapping observations to continuous action CIO deltas) to `checkpoints/ppo_v2_baseline.onnx`, and verifies that wrapper predictions match SB3 deterministic predictions exactly.
+
+---
+
+## 7. Dashboard Visualization & Local QA
 
 You can run the Streamlit dashboard application locally to inspect and compare results:
 
@@ -137,14 +174,14 @@ streamlit run src/dashboard/app.py
 ```
 
 - **Authentication**: When prompted, enter the security password `Winniio-2019`.
-- **Viewing Results**: The dashboard dynamically loads files from the [results/](file:///results/) directory. Simply copying new JSON result files here will automatically refresh the metrics tables and plots.
+- **Viewing Results**: The dashboard dynamically loads files from the [results/](file:///results/) directory. Simply copying new JSON result files here will automatically refresh the metrics tables and plots. Any newly created JSON output is immediately integrated into the dropdowns and charts.
 
 ---
 
-## 6. Running Tests
+## 8. Running Tests
 
 To verify that the environment, scenarios, and pipelines are fully functional and pass regression checks:
 ```bash
 pytest -v
 ```
-All 49+ tests should report green (`passed`).
+All 53+ tests (including ship gate unit tests) should report green (`passed`).
