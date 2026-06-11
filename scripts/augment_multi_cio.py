@@ -59,7 +59,7 @@ def compute_failure_scale(cio: int, optimal_cio: float) -> float:
     """
     dev = abs(cio - optimal_cio)
     if dev < 0.5:
-        return 0.1   # optimal → 90% failure reduction
+        return 0.02   # optimal → 98% failure reduction
     elif dev < 1.5:
         return 0.35   # close to optimal → 65% reduction
     elif dev < 2.5:
@@ -103,8 +103,8 @@ def modulate_row(
 
     # If original failures are 0, create some based on attempts
     base_fail_rate = orig_fail / att if att > 0 else 0.05
-    if base_fail_rate < 0.02:
-        base_fail_rate = 0.02  # minimum base rate for modulation
+    if base_fail_rate < 0.005:
+        base_fail_rate = 0.005  # minimum base rate for modulation
 
     # New failure count
     new_fail_rate = min(base_fail_rate * fail_scale, 0.95)
