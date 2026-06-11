@@ -1,4 +1,4 @@
-"""AltioStar MRO — Phase 2 Dashboard.
+"""AltioStar MRO — Dashboard.
 
 Tailwind-inspired clean UI: dark sidebar, flat KPI cards,
 colored badges, clean tables, donut charts.
@@ -52,7 +52,7 @@ else:
     )
 
 # ── Password gate (persists via URL query param) ─────────────────────
-DASHBOARD_PASSWORD = "Winniio-2019"
+DASHBOARD_PASSWORD = st.secrets["DASHBOARD_PASSWORD"]
 _AUTH_KEY = "_a"
 _AUTH_VAL = "w2019"
 
@@ -83,7 +83,7 @@ if not _is_authed:
             'AltioStar MRO Dashboard</span></div>'
             '<div style="text-align:center; margin-bottom:24px;">'
             '<span style="font-size:.82rem; color:#64748B;">'
-            'Rakuten Japan 5G · Phase 2</span></div>',
+            'Rakuten Japan 5G</span></div>',
             unsafe_allow_html=True)
         pwd = st.text_input("Password", type="password", placeholder="Enter dashboard password")
         login_btn = st.button("Sign In", use_container_width=True, type="primary")
@@ -420,13 +420,13 @@ RDIR = ROOT / "results"
 DDIR = ROOT / "data" / "synthetic"
 
 # ── Data loaders ─────────────────────────────────────────────────────
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=600)
 def ld_site(): return pd.read_csv(DDIR / "site_database.csv")
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=600)
 def ld_pm():   return pd.read_csv(DDIR / "pm_data_april2026.csv")
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=600)
 def ld_rel():  return pd.read_csv(DDIR / "neighbor_relations.csv")
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=600)
 def ld_exp():
     exps = []
     for f in sorted(RDIR.glob("experiment_*.json")):
@@ -945,9 +945,9 @@ if page == "Dashboard":
         )
         st.plotly_chart(fb, use_container_width=True)
 
-    # Phase 2 summary — high-level progress snapshot
+    # summary — high-level progress snapshot
     if len(cdf) > 0:
-        sec("Phase 2 Progress")
+        sec("Experiment Progress")
         _n_variants = len(cdf["Variant"].unique())
         _n_scenarios = len(cdf["Scenario"].unique())
         _n_exps = len(ed["experiments"])
@@ -1606,6 +1606,7 @@ elif page == "Reports":
 
     with tab_delta:
         sec("KPI Delta — vs v0 Baseline")
+        st.warning("⚠️ V0 uses raw handover count reward (~9M scale) vs rate-based v1–v3 (~210K). Reward delta vs V0 is not meaningful — compare HO success % only.")
         base = filt[(filt["Variant"] == "v0") & (filt["Scenario"] == "baseline")]
         if len(base) > 0:
             b = base.iloc[0]
@@ -1711,5 +1712,5 @@ elif page == "Reports":
 st.markdown(f'<div style="height:1px;background:{BORDER};margin:20px 0 12px 0;"></div>', unsafe_allow_html=True)
 st.markdown(
     f'<div style="text-align:center;font-size:.72rem;color:{TEXT_MUTED};padding-bottom:16px;">'
-    f'WINNIIO AltioStar MRO · Phase 2 · Rakuten Japan 5G · 75 Cells · 763 Relations · 99% Target'
+    f'WINNIIO AltioStar MRO · Rakuten Japan 5G · 75 Cells · 763 Relations · 99% Target'
     f'</div>', unsafe_allow_html=True)
