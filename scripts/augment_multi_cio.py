@@ -146,9 +146,10 @@ def modulate_row(
     # Ping-pong scales similarly but with a floor
     new_ping = max(0, min(round(max(orig_ping, 1) * fail_scale * 0.8), new_succ))
 
-    # Add noise (±1) for realism
-    noise = int(RNG.integers(-1, 2))
-    new_succ = max(0, min(new_succ + noise, att))
+    # Add noise (±1) for realism only if attempts are large enough
+    if att > 20:
+        noise = int(RNG.integers(-1, 2))
+        new_succ = max(0, min(new_succ + noise, att))
     new_fail = att - new_succ
 
     row["ho_successes"] = str(new_succ)
