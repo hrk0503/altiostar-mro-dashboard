@@ -1298,10 +1298,10 @@ elif page == "Experiments":
                     r = vd.iloc[0]
                     vals = [
                         r["HO Success %"],
-                        max(0, 100 - r["HO Failure %"] * 100),
-                        max(0, 100 - r["Ping-Pong %"] * 100),
-                        max(0, 100 - r["Too Early %"] * 1000),
-                        max(0, 100 - r["Wrong Cell %"] * 1000),
+                        max(80, 100 - r["HO Failure %"] * 100),
+                        max(80, 100 - r["Ping-Pong %"] * 100),
+                        max(80, 100 - r["Too Early %"] * 100),    # *1000 → *100
+                        max(80, 100 - r["Wrong Cell %"] * 100),   # *1000 → *100
                     ]
                     fr.add_trace(go.Scatterpolar(
                         r=vals + [vals[0]], theta=cats + [cats[0]],
@@ -1311,7 +1311,7 @@ elif page == "Experiments":
             fr.update_layout(
                 polar=dict(
                     bgcolor="#FAFBFC",
-                    radialaxis=dict(visible=True, range=[80, 100], gridcolor=BORDER),
+                    radialaxis=dict(visible=True, range=[75, 100], gridcolor=BORDER),
                     angularaxis=dict(gridcolor=BORDER),
                 ),
                 height=440, template=PLT, paper_bgcolor=CARD,

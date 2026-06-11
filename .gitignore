@@ -41,3 +41,5 @@ checkpoints/
 mlflow.db
 .claude/
 data/synthetic/pm_data_relation_level_single_cio.csv
+src/dashboard/.streamlit/config.toml
+src/dashboard/.streamlit/secrets.toml
