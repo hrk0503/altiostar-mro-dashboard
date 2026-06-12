@@ -59,7 +59,7 @@ def compute_failure_scale(cio: int, optimal_cio: float) -> float:
     """
     dev = abs(cio - optimal_cio)
     if dev < 0.5:
-        return 0.1   # optimal → 90% failure reduction
+        return 0.02   # optimal → 98% failure reduction
     elif dev < 1.5:
         return 0.35   # close to optimal → 65% reduction
     elif dev < 2.5:
@@ -103,8 +103,8 @@ def modulate_row(
 
     # If original failures are 0, create some based on attempts
     base_fail_rate = orig_fail / att if att > 0 else 0.05
-    if base_fail_rate < 0.02:
-        base_fail_rate = 0.02  # minimum base rate for modulation
+    if base_fail_rate < 0.005:
+        base_fail_rate = 0.005  # minimum base rate for modulation
 
     # New failure count
     new_fail_rate = min(base_fail_rate * fail_scale, 0.95)
@@ -146,9 +146,10 @@ def modulate_row(
     # Ping-pong scales similarly but with a floor
     new_ping = max(0, min(round(max(orig_ping, 1) * fail_scale * 0.8), new_succ))
 
-    # Add noise (±1) for realism
-    noise = int(RNG.integers(-1, 2))
-    new_succ = max(0, min(new_succ + noise, att))
+    # Add noise (±1) for realism only if attempts are large enough
+    if att > 20:
+        noise = int(RNG.integers(-1, 2))
+        new_succ = max(0, min(new_succ + noise, att))
     new_fail = att - new_succ
 
     row["ho_successes"] = str(new_succ)

@@ -399,6 +399,7 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
                 + ho_failure_intra * w["ho_failure"]
                 + self.ho_pingpong_count * w["ping_pong"]
             )
+
         return float(reward)
 
     def _apply_scenario_to_relation_state(self, state: np.ndarray, relation_idx: int) -> np.ndarray:
@@ -688,6 +689,12 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
                     + total_failures * w["ho_failure"]
                     + total_ping_pongs * w["ping_pong"]
                 )
+
+            # Apply boundary penalties for HOSR < 95% and Ping-Pong > 5%
+            if success_rate < 95.0:
+                reward -= 100.0 * (95.0 - success_rate)
+            if pingpong_rate > 5.0:
+                reward -= 50.0 * (pingpong_rate - 5.0)
 
             self.episode_history.append({
                 "ho_attempts_intra": total_attempts,

@@ -47,21 +47,29 @@ def find_optimal_cios(env: MROEnv) -> dict:
         initial_cio = float(env.current_state[i][8])
 
         best_cio = initial_cio
+        best_score = -9999999.0
         best_success_rate = 0.0
 
         for cio_val in all_cios:
             cio_info = cio_groups[cio_val]
             attempts = cio_info["ho_attempts"].astype(float)
             successes = cio_info["ho_successes"].astype(float)
+            failures = cio_info["ho_failures"].astype(float)
+            ping_pong = cio_info["ping_pong"].astype(float)
 
-            # Average success rate across all data points at this CIO
+            # Average rates across all data points at this CIO
             safe_att = np.maximum(attempts, 1.0)
-            success_rates = successes / safe_att * 100.0
-            mean_success = float(np.mean(success_rates))
+            mean_success = float(np.mean(successes / safe_att * 100.0))
+            mean_failure = float(np.mean(failures / safe_att * 100.0))
+            mean_pingpong = float(np.mean(ping_pong / safe_att * 100.0))
 
-            if mean_success > best_success_rate:
-                best_success_rate = mean_success
+            # Balanced score: penalize failures and ping-pongs heavily
+            score = mean_success * 1.0 - mean_failure * 15.0 - mean_pingpong * 8.0
+
+            if score > best_score:
+                best_score = score
                 best_cio = float(cio_val)
+                best_success_rate = mean_success
 
         optimal_cio_values[i] = best_cio
 
