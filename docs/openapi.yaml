@@ -1,224 +1,748 @@
-openapi: 3.0.3
+openapi: 3.1.0
+
 info:
-  title: AltioStar 5G MRO RL Pipeline API
-  description: OpenAPI specification for running, evaluating, validating, and exporting models in the 5G Mobility Robustness Optimization (MRO) pipeline.
-  version: 1.0.0
+  title: WINNIIO AltioStar MRO — KPI Pipeline API
+  version: "3.0.0"
+  description: |
+    REST-style interface for the AltioStar Mobility Robustness Optimisation (MRO)
+    pipeline running on the Rakuten Japan 5G Shibuya cluster (75 cells, 763 neighbour
+    relations).  Consumers are the Streamlit dashboard and any downstream reporting
+    tool that needs KPI extraction, reward-variant experiment results, or ship-gate
+    evaluation.
+
+    **Base URL (local dev):** `http://localhost:8000`
+    **Base URL (Streamlit Cloud):** served via `st.cache_data` — data is read
+    directly from `results/` and `data/synthetic/` on the filesystem; this spec
+    documents the *logical* API surface used by `app.py`.
+
+  contact:
+    name: WINNIIO AB
+    email: ananyaa.m@s.amity.edu
+  license:
+    name: Proprietary — Rakuten / Altiostar confidential
+
+tags:
+  - name: KPIs
+    description: Cell-level KPI extraction from PM CSV data
+  - name: Experiments
+    description: Reward-variant experiment results (Phase 2 sweep)
+  - name: ShipGate
+    description: Automated pass/fail gate evaluation
+  - name: Dashboard
+    description: Aggregated data endpoints consumed by the Streamlit UI
+
+# ─────────────────────────────────────────────────────────────────────
 paths:
-  /experiments/run:
-    post:
-      summary: Run RL training and evaluation
-      description: Triggers a PPO training sweep or a single experiment for a specified reward variant and network scenario.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                mode:
-                  type: string
-                  enum: [single, sweep]
-                  default: single
-                variant:
-                  type: string
-                  enum: [v0, v1, v2, v3]
-                  description: Reward variant to use
-                scenario:
-                  type: string
-                  enum: [baseline, rush_hour, rain_fade, tower_failure]
-                  description: Simulation scenario conditions
-                timesteps:
-                  type: integer
-                  default: 100000
-                  description: Number of training iterations
-                eval_episodes:
-                  type: integer
-                  default: 5
-                  description: Number of evaluation episodes
-                seed:
-                  type: integer
-                  default: 42
-              required:
-                - mode
+
+  # ── KPIs ────────────────────────────────────────────────────────────
+
+  /kpis/ho_success_rate:
+    get:
+      tags: [KPIs]
+      summary: HO Success Rate per cell
+      description: |
+        Returns handover success percentage per `cell_id`, computed as
+        `(ho_success_intra / ho_attempts_intra) * 100`, aggregated across all
+        ROPs in the loaded PM CSV.  Cells with zero attempts return `0.0`.
+      parameters:
+        - $ref: '#/components/parameters/scenario'
       responses:
-        '200':
-          description: Experiment executed successfully
+        "200":
+          description: Per-cell HO success rates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CellMetricMap'
+              example:
+                SHB_001_A: 97.43
+                SHB_001_B: 94.12
+                SHB_002_A: 99.01
+        "422":
+          $ref: '#/components/responses/ValidationError'
+
+  /kpis/pingpong_rate:
+    get:
+      tags: [KPIs]
+      summary: Ping-pong rate per cell
+      description: |
+        Ping-pong percentage per `cell_id` =
+        `(ho_pingpong_count / ho_success_intra) * 100`.
+        Cells with zero successful HOs return `0.0`.
+      parameters:
+        - $ref: '#/components/parameters/scenario'
+      responses:
+        "200":
+          description: Per-cell ping-pong rates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CellMetricMap'
+
+  /kpis/failure_breakdown:
+    get:
+      tags: [KPIs]
+      summary: Failure mode breakdown per cell
+      description: |
+        Returns the proportion of each failure mode relative to total HO failures
+        per cell.  Three modes: `too_early_pct`, `too_late_pct`, `wrong_cell_pct`.
+      parameters:
+        - $ref: '#/components/parameters/scenario'
+      responses:
+        "200":
+          description: Per-cell failure breakdown
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/FailureBreakdown'
+              example:
+                SHB_001_A:
+                  too_early_pct: 12.5
+                  too_late_pct: 19.4
+                  wrong_cell_pct: 68.1
+
+  /kpis/extract_all:
+    get:
+      tags: [KPIs]
+      summary: All KPIs combined (single call)
+      description: |
+        Convenience endpoint that returns `ho_success_rate_pct`,
+        `pingpong_rate_pct`, `too_early_pct`, `too_late_pct`, and
+        `wrong_cell_pct` for every cell in a single response.
+        This is the primary feed for the Streamlit dashboard.
+      parameters:
+        - $ref: '#/components/parameters/scenario'
+      responses:
+        "200":
+          description: Full KPI table indexed by cell_id
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/CellKPIFull'
+              example:
+                SHB_001_A:
+                  ho_success_rate_pct: 97.43
+                  pingpong_rate_pct: 1.21
+                  too_early_pct: 12.5
+                  too_late_pct: 19.4
+                  wrong_cell_pct: 68.1
+
+  /kpis/cluster_summary:
+    get:
+      tags: [KPIs]
+      summary: Cluster-level aggregate KPIs
+      description: |
+        Aggregated cluster-level statistics used in the dashboard top bar and
+        target-progress gauge.
+      parameters:
+        - $ref: '#/components/parameters/scenario'
+      responses:
+        "200":
+          description: Cluster summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClusterSummary'
+
+  # ── Experiments ─────────────────────────────────────────────────────
+
+  /experiments:
+    get:
+      tags: [Experiments]
+      summary: List all experiment results
+      description: |
+        Returns results for all experiments found in `results/experiment_*.json`.
+        Supports optional filtering by reward variant and scenario.
+      parameters:
+        - name: variant
+          in: query
+          description: Filter by reward variant (v0, v1, v2, v3)
+          schema:
+            $ref: '#/components/schemas/RewardVariant'
+        - $ref: '#/components/parameters/scenario'
+      responses:
+        "200":
+          description: List of experiment result objects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExperimentResult'
+
+  /experiments/{experiment_id}:
+    get:
+      tags: [Experiments]
+      summary: Single experiment result
+      parameters:
+        - name: experiment_id
+          in: path
+          required: true
+          description: Experiment ID string, e.g. `v2_baseline`
+          schema:
+            type: string
+            example: v2_baseline
+      responses:
+        "200":
+          description: Full experiment result
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ExperimentResult'
-        '400':
-          description: Invalid parameters or configuration
+        "404":
+          $ref: '#/components/responses/NotFound'
 
-  /validation/ship_gate:
-    post:
-      summary: Validate experiment results against ship gate thresholds
-      description: Evaluates a JSON results file to determine if it meets Handover Success and Ping-Pong limits.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                results_path:
-                  type: string
-                  description: Local file path of the results JSON
-                ho_success_min:
-                  type: float
-                  default: 99.0
-                  description: Minimum Handover Success Rate (%)
-                ping_pong_max:
-                  type: float
-                  default: 5.0
-                  description: Maximum Ping-Pong Rate (%)
-              required:
-                - results_path
+  /experiments/comparison:
+    get:
+      tags: [Experiments]
+      summary: Side-by-side KPI comparison table
+      description: |
+        Returns a flat table of all variants × scenarios with key KPI columns:
+        `ho_success_rate`, `ho_failure_rate`, `pingpong_rate`, `mean_reward`, etc.
+        Used by the Experiments page grouped bar chart and heatmap.
       responses:
-        '200':
-          description: Gate validation outcome
+        "200":
+          description: Comparison table rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ComparisonRow'
+
+  /experiments/sweep:
+    get:
+      tags: [Experiments]
+      summary: Optuna sweep results
+      description: Returns contents of `results/sweep_results.json` if present.
+      responses:
+        "200":
+          description: Sweep results object
           content:
             application/json:
               schema:
                 type: object
-                properties:
-                  passed:
-                    type: boolean
-                  reasons:
-                    type: array
-                    items:
-                      type: string
+                description: Raw sweep metadata from Optuna / MLflow
+        "404":
+          $ref: '#/components/responses/NotFound'
 
-  /onnx/export:
+  # ── Ship Gate ────────────────────────────────────────────────────────
+
+  /gate/evaluate:
     post:
-      summary: Export a trained SB3 checkpoint to ONNX
-      description: Converts a trained PyTorch model zip checkpoint into a deployment-ready ONNX model with continuous action clamping.
+      tags: [ShipGate]
+      summary: Run automated ship-gate evaluation
+      description: |
+        Evaluates whether the current experiment set passes Gate G4 criteria:
+        - `ho_success_rate > target_pct` (default 99.0)
+        - `pingpong_rate < pingpong_threshold` (default 5.0)
+        Returns per-criterion pass/fail and an overall gate decision.
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                model_path:
-                  type: string
-                  description: Path to the trained .zip model checkpoint
-              required:
-                - model_path
+              $ref: '#/components/schemas/GateConfig'
       responses:
-        '200':
-          description: ONNX file generated successfully
+        "200":
+          description: Gate evaluation result
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  onnx_path:
-                    type: string
+                $ref: '#/components/schemas/GateResult'
 
+  /gate/status:
+    get:
+      tags: [ShipGate]
+      summary: Current gate status (cached last run)
+      responses:
+        "200":
+          description: Last gate evaluation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GateResult'
+
+  # ── Dashboard ────────────────────────────────────────────────────────
+
+  /dashboard/overview:
+    get:
+      tags: [Dashboard]
+      summary: All data needed for the Dashboard page (single fetch)
+      description: |
+        Returns cluster summary, cell table (top 20 by HO success), donut
+        distribution counts, and Phase 2/3 progress counters in one response.
+        Designed to minimise round-trips for the Streamlit `ld_exp()` + `ld_pm()`
+        combined fetch pattern.
+      responses:
+        "200":
+          description: Dashboard overview payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardOverview'
+
+  /dashboard/before_after:
+    get:
+      tags: [Dashboard]
+      summary: Before/after KPI overlay data
+      description: |
+        Returns random-baseline KPIs alongside the best trained agent KPIs for
+        the requested scenario and variant, used by the before/after overlay
+        chart on the Experiments and Dashboard pages.
+      parameters:
+        - $ref: '#/components/parameters/scenario'
+        - name: variant
+          in: query
+          description: Reward variant to compare against baseline
+          schema:
+            $ref: '#/components/schemas/RewardVariant'
+          example: v2
+      responses:
+        "200":
+          description: Before/after payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BeforeAfterPayload'
+
+
+# ─────────────────────────────────────────────────────────────────────
 components:
+
+  parameters:
+    scenario:
+      name: scenario
+      in: query
+      description: Network scenario to filter by
+      schema:
+        $ref: '#/components/schemas/Scenario'
+      example: baseline
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ValidationError:
+      description: Invalid query parameter
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
   schemas:
+
+    # ── Enums ──────────────────────────────────────────────────────────
+
+    RewardVariant:
+      type: string
+      enum: [v0, v1, v2, v3]
+      description: |
+        - `v0` Count-Based (raw count scaling — ~9M reward, not comparable to v1–v3)
+        - `v1` Traffic-Weighted
+        - `v2` Rate-Based ← **production recommendation** (210K reward, 80.1% HO success at baseline)
+        - `v3` Multi-Objective
+
+    Scenario:
+      type: string
+      enum: [baseline, rush_hour, rain_fade, tower_failure]
+      description: |
+        - `baseline`       Normal operating conditions
+        - `rush_hour`      High UE congestion (3× load)
+        - `rain_fade`      Signal degradation (RSRP −5 dB, SINR −3 dB)
+        - `tower_failure`  Single eNodeB site outage
+
+    # ── KPI schemas ────────────────────────────────────────────────────
+
+    CellMetricMap:
+      type: object
+      description: Map of cell_id → metric value (%)
+      additionalProperties:
+        type: number
+        format: float
+
+    FailureBreakdown:
+      type: object
+      properties:
+        too_early_pct:
+          type: number
+          format: float
+          description: Proportion of failures caused by too-early HO (%)
+        too_late_pct:
+          type: number
+          format: float
+          description: Proportion of failures caused by too-late HO (%)
+        wrong_cell_pct:
+          type: number
+          format: float
+          description: Proportion of failures caused by wrong-cell selection (%)
+      required: [too_early_pct, too_late_pct, wrong_cell_pct]
+
+    CellKPIFull:
+      type: object
+      properties:
+        ho_success_rate_pct:
+          type: number
+          format: float
+          description: HO success rate (%)
+        pingpong_rate_pct:
+          type: number
+          format: float
+          description: Ping-pong rate (%)
+        too_early_pct:
+          type: number
+          format: float
+        too_late_pct:
+          type: number
+          format: float
+        wrong_cell_pct:
+          type: number
+          format: float
+      required: [ho_success_rate_pct, pingpong_rate_pct, too_early_pct, too_late_pct, wrong_cell_pct]
+
+    ClusterSummary:
+      type: object
+      properties:
+        total_cells:
+          type: integer
+          example: 75
+        healthy_cells:
+          type: integer
+          description: Cells with HO success >= 99%
+          example: 62
+        warning_cells:
+          type: integer
+          description: Cells with HO success 96–99%
+          example: 7
+        critical_cells:
+          type: integer
+          description: Cells with HO success < 96%
+          example: 6
+        avg_ho_success_pct:
+          type: number
+          format: float
+          example: 94.5
+        target_pct:
+          type: number
+          format: float
+          example: 99.0
+        target_gap_pct:
+          type: number
+          format: float
+          example: 4.5
+        avg_ho_failure_pct:
+          type: number
+          format: float
+        avg_prb_utilization_pct:
+          type: number
+          format: float
+      required:
+        - total_cells
+        - healthy_cells
+        - warning_cells
+        - critical_cells
+        - avg_ho_success_pct
+        - target_pct
+        - target_gap_pct
+
+    # ── Experiment schemas ─────────────────────────────────────────────
+
+    TrainingMeta:
+      type: object
+      properties:
+        time_s:
+          type: number
+          format: float
+          description: Wall-clock training time in seconds
+        episode_rewards:
+          type: array
+          items:
+            type: number
+            format: float
+          description: Cumulative reward per training episode
+        checkpoint_path:
+          type: string
+        cio_optimization:
+          type: string
+          description: CIO search strategy used (v2 only), e.g. `greedy_search`
+        relations_improved:
+          type: integer
+          description: Number of neighbour relations with improved CIO (v2 only)
+        mean_improvement_pct:
+          type: number
+          format: float
+
+    EvalMeta:
+      type: object
+      properties:
+        mean_reward:
+          type: number
+          format: float
+        std_reward:
+          type: number
+          format: float
+        ho_success_rate:
+          type: number
+          format: float
+          description: Mean HO success rate across eval episodes (%)
+        ho_failure_rate:
+          type: number
+          format: float
+        pingpong_rate:
+          type: number
+          format: float
+        too_early_rate:
+          type: number
+          format: float
+        too_late_rate:
+          type: number
+          format: float
+        wrong_cell_rate:
+          type: number
+          format: float
+        n_episodes:
+          type: integer
+      required:
+        - mean_reward
+        - ho_success_rate
+        - ho_failure_rate
+        - pingpong_rate
+
     ExperimentResult:
       type: object
       properties:
         experiment:
           type: string
+          example: v2_baseline
         reward_version:
-          type: string
+          $ref: '#/components/schemas/RewardVariant'
         scenario:
+          $ref: '#/components/schemas/Scenario'
+        timestamp:
           type: string
+          format: date-time
         config:
           type: object
           properties:
             total_timesteps:
               type: integer
+              example: 100000
             eval_episodes:
               type: integer
+              example: 10
             seed:
               type: integer
-        training:
-          type: object
-          properties:
-            time_s:
-              type: number
-            episode_rewards:
-              type: array
-              items:
-                type: number
-            checkpoint_path:
+              example: 42
+            algorithm:
               type: string
+              example: PPO
+            policy:
+              type: string
+              example: MlpPolicy
+        training:
+          $ref: '#/components/schemas/TrainingMeta'
         evaluation:
-          type: object
-          properties:
-            mean_reward:
-              type: number
-            std_reward:
-              type: number
-            ho_success_rate:
-              type: number
-            ho_failure_rate:
-              type: number
-            pingpong_rate:
-              type: number
-            too_early_rate:
-              type: number
-            too_late_rate:
-              type: number
-            wrong_cell_rate:
-              type: number
-            n_episodes:
-              type: integer
+          $ref: '#/components/schemas/EvalMeta'
+        mlflow_run_id:
+          type: string
+      required: [experiment, reward_version, scenario, evaluation]
 
-    RelationPMRecord:
+    ComparisonRow:
       type: object
-      required:
-        - source_cell_id
-        - target_cell_id
-        - timestamp_utc
-        - ho_attempts
-        - ho_successes
-        - ho_failures
-        - too_early_ho
-        - too_late_ho
-        - wrong_cell
-        - correct_cell
-        - ping_pong
-        - cio_db
       properties:
-        source_cell_id:
+        variant:
+          $ref: '#/components/schemas/RewardVariant'
+        scenario:
+          $ref: '#/components/schemas/Scenario'
+        mean_reward:
+          type: number
+          format: float
+        ho_success_pct:
+          type: number
+          format: float
+        ho_failure_pct:
+          type: number
+          format: float
+        pingpong_pct:
+          type: number
+          format: float
+        too_early_pct:
+          type: number
+          format: float
+        too_late_pct:
+          type: number
+          format: float
+        wrong_cell_pct:
+          type: number
+          format: float
+      required: [variant, scenario, ho_success_pct]
+
+    # ── Gate schemas ───────────────────────────────────────────────────
+
+    GateConfig:
+      type: object
+      properties:
+        target_ho_success_pct:
+          type: number
+          format: float
+          default: 99.0
+          description: Minimum cluster HO success % to pass
+        pingpong_threshold_pct:
+          type: number
+          format: float
+          default: 5.0
+          description: Maximum cluster ping-pong % to pass
+        min_reward_variants:
+          type: integer
+          default: 2
+        min_scenarios:
+          type: integer
+          default: 3
+        min_experiments:
+          type: integer
+          default: 5
+
+    GateCriterion:
+      type: object
+      properties:
+        name:
           type: string
-        target_cell_id:
+        passed:
+          type: boolean
+        value:
+          description: Actual measured value
+        threshold:
+          description: Required threshold
+      required: [name, passed]
+
+    GateResult:
+      type: object
+      properties:
+        gate:
           type: string
-        timestamp_utc:
+          example: G4
+        passed:
+          type: boolean
+        timestamp:
           type: string
           format: date-time
-        ho_attempts:
-          type: integer
-          minimum: 0
-        ho_successes:
-          type: integer
-          minimum: 0
-        ho_failures:
-          type: integer
-          minimum: 0
-        too_early_ho:
-          type: integer
-          minimum: 0
-        too_late_ho:
-          type: integer
-          minimum: 0
-        wrong_cell:
-          type: integer
-          minimum: 0
-        correct_cell:
-          type: integer
-          minimum: 0
-        ping_pong:
-          type: integer
-          minimum: 0
-        cio_db:
-          type: number
-          minimum: -24.0
-          maximum: 24.0
+        criteria:
+          type: array
+          items:
+            $ref: '#/components/schemas/GateCriterion'
+        summary:
+          type: string
+          example: "11/12 criteria passing"
+      required: [gate, passed, criteria]
+
+    # ── Dashboard schemas ──────────────────────────────────────────────
+
+    DashboardOverview:
+      type: object
+      properties:
+        cluster:
+          $ref: '#/components/schemas/ClusterSummary'
+        cell_health_distribution:
+          type: object
+          properties:
+            healthy:
+              type: integer
+            warning:
+              type: integer
+            critical:
+              type: integer
+        phase_progress:
+          type: object
+          properties:
+            reward_variants:
+              type: integer
+            scenarios_tested:
+              type: integer
+            experiment_runs:
+              type: integer
+            best_variant:
+              $ref: '#/components/schemas/RewardVariant'
+            best_ho_success_pct:
+              type: number
+              format: float
+        top_cells:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            properties:
+              cell_id:
+                type: string
+              site_name:
+                type: string
+              ho_success_pct:
+                type: number
+                format: float
+              ho_failure_pct:
+                type: number
+                format: float
+              rsrp_dbm:
+                type: number
+                format: float
+              status:
+                type: string
+                enum: [healthy, warning, critical]
+
+    BeforeAfterPayload:
+      type: object
+      properties:
+        scenario:
+          $ref: '#/components/schemas/Scenario'
+        variant:
+          $ref: '#/components/schemas/RewardVariant'
+        baseline:
+          type: object
+          description: Random-baseline (untrained) KPIs
+          properties:
+            ho_success_pct:
+              type: number
+              format: float
+            ho_failure_pct:
+              type: number
+              format: float
+            source:
+              type: string
+              example: results/random_baseline.json
+        trained:
+          type: object
+          description: Best trained-agent KPIs for the given variant × scenario
+          properties:
+            ho_success_pct:
+              type: number
+              format: float
+            ho_failure_pct:
+              type: number
+              format: float
+            mean_reward:
+              type: number
+              format: float
+        delta:
+          type: object
+          properties:
+            ho_success_delta_pct:
+              type: number
+              format: float
+              description: Trained − baseline (positive = improvement)
+            target_gap_pct:
+              type: number
+              format: float
+              description: Distance to 99% target
+      required: [scenario, variant, baseline, trained, delta]
+
+    Error:
+      type: object
+      properties:
+        detail:
+          type: string
+      required: [detail]
