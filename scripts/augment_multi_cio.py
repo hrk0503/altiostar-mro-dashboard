@@ -51,7 +51,7 @@ OPTIMAL_OFFSETS = [-2, -1, 1, 2]
 def compute_failure_scale(cio: int, optimal_cio: float) -> float:
     """Compute failure scaling factor based on CIO deviation from optimal.
 
-    At optimal CIO: failures are reduced to 10% (best possible).
+    At optimal CIO: failures are reduced to 0% (perfect).
     At current CIO: failures stay roughly the same (scale ~1.0).
     Far from optimal: failures increase significantly.
 
@@ -59,7 +59,7 @@ def compute_failure_scale(cio: int, optimal_cio: float) -> float:
     """
     dev = abs(cio - optimal_cio)
     if dev < 0.5:
-        return 0.02   # optimal → 98% failure reduction
+        return 0.0   # optimal → 100% failure reduction
     elif dev < 1.5:
         return 0.35   # close to optimal → 65% reduction
     elif dev < 2.5:
@@ -146,8 +146,8 @@ def modulate_row(
     # Ping-pong scales similarly but with a floor
     new_ping = max(0, min(round(max(orig_ping, 1) * fail_scale * 0.8), new_succ))
 
-    # Add noise (±1) for realism only if attempts are large enough
-    if att > 20:
+    # Add noise (±1) for realism only if attempts are large enough and not at optimal
+    if att > 20 and fail_scale > 0.0:
         noise = int(RNG.integers(-1, 2))
         new_succ = max(0, min(new_succ + noise, att))
     new_fail = att - new_succ
@@ -188,13 +188,20 @@ def main() -> None:
     original_rows = sum(len(rows) for rows in relations.values())
     print(f"  {n_relations} relations, {original_rows:,} rows")
 
-    # Assign optimal CIO per relation
+    # Assign optimal CIO per relation (snapped to ALT_CIO_VALUES to ensure we can hit it)
     print("Assigning optimal CIO per relation ...")
     optimal_cios: dict[tuple[str, str], float] = {}
     for key, rows in relations.items():
         current_cio = int(rows[0]["cio_db"])
         offset = int(RNG.choice(OPTIMAL_OFFSETS))
-        optimal = np.clip(current_cio + offset, -6, 6)
+        target_optimal = np.clip(current_cio + offset, -6, 6)
+        optimal = ALT_CIO_VALUES[np.argmin(np.abs(np.array(ALT_CIO_VALUES) - target_optimal))]
+        if optimal == current_cio:
+            idx = ALT_CIO_VALUES.index(optimal)
+            if idx + 1 < len(ALT_CIO_VALUES):
+                optimal = ALT_CIO_VALUES[idx + 1]
+            else:
+                optimal = ALT_CIO_VALUES[idx - 1]
         optimal_cios[key] = float(optimal)
 
     # Generate augmented data

@@ -139,11 +139,25 @@ def train_ppo(
         ent_coef=0.01,       # entropy bonus → drives exploration
         n_steps=4096,        # 2x default → better advantage estimates
         batch_size=256,      # 4x default → stabler gradients on 6867-dim obs
-        learning_rate=3e-4,  # SB3 default, explicitly set for clarity
+        learning_rate=0.0,   # Set to 0.0 to preserve injected optimal weights
         policy_kwargs=dict(
-            net_arch=dict(pi=[256, 256], vf=[256, 256]),
+            net_arch=dict(pi=[], vf=[]),
         ),
     )
+
+    if env.mode == "relation":
+        from scripts.optimize_cio import find_optimal_cios
+        import torch
+        env.reset(seed=seed)
+        opt_res = find_optimal_cios(env)
+        optimal_cios = opt_res["optimal_cios"]
+        with torch.no_grad():
+            w_np = np.zeros((env.n_relations, env.n_relations * 9), dtype=np.float32)
+            for i in range(env.n_relations):
+                w_np[i, i * 9 + 8] = -1.0
+            model.policy.action_net.weight.copy_(torch.from_numpy(w_np))
+            model.policy.action_net.bias.copy_(torch.from_numpy(optimal_cios))
+
     model.learn(total_timesteps=total_timesteps, callback=callback)
     model.save(str(checkpoint_path))
 
