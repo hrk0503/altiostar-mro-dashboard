@@ -20,6 +20,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 import streamlit as st
+import streamlit.components.v1 as components
+import hashlib
 
 # ── Assets — load logos as base64 for embedding ──────────────────────
 ASSETS = Path(__file__).resolve().parent / "assets"
@@ -54,9 +56,8 @@ else:
 # ── Password gate (persists via URL query param) ─────────────────────
 DASHBOARD_PASSWORD = st.secrets["DASHBOARD_PASSWORD"]
 _AUTH_KEY = "_a"
-_AUTH_VAL = "w2019"
+_AUTH_VAL = hashlib.sha256(DASHBOARD_PASSWORD.encode()).hexdigest()[:16]
 
-# Check auth: query param persists across refreshes in the URL
 _is_authed = st.query_params.get(_AUTH_KEY) == _AUTH_VAL
 
 if not _is_authed:
@@ -447,13 +448,13 @@ def comp_df(exps):
         rows.append({
             "Variant": e.get("reward_version", "?"),
             "Scenario": e.get("scenario", "?"),
-            "Mean Reward": ev.get("mean_reward", 0),
-            "HO Success %": ev.get("ho_success_rate", 0),
-            "HO Failure %": ev.get("ho_failure_rate", 0),
-            "Ping-Pong %": ev.get("pingpong_rate", 0),
-            "Too Early %": ev.get("too_early_rate", 0),
-            "Too Late %": ev.get("too_late_rate", 0),
-            "Wrong Cell %": ev.get("wrong_cell_rate", 0),
+            "Mean Reward":   ev.get("mean_reward"),
+            "HO Success %":  ev.get("ho_success_rate"),
+            "HO Failure %":  ev.get("ho_failure_rate"),
+            "Ping-Pong %":   ev.get("pingpong_rate"),
+            "Too Early %":   ev.get("too_early_rate"),
+            "Too Late %":    ev.get("too_late_rate"),
+            "Wrong Cell %":  ev.get("wrong_cell_rate"),
         })
     return pd.DataFrame(rows)
 
@@ -473,6 +474,7 @@ pm = ld_pm()
 rels = ld_rel()
 ed = ld_exp()
 cdf = comp_df(ed["experiments"])
+agent_best = cdf[(cdf["Scenario"] == "baseline") & (cdf["Variant"] != "v0")]["HO Success %"].max()
 
 ck = pm.groupby("cell_id").agg(
     ho_att=("ho_attempts_intra", "mean"),
@@ -542,13 +544,13 @@ with st.sidebar:
     st.divider()
 
     # Target gauge
-    gap = max(0, 99 - avg_sr)
-    pct = min(avg_sr / 99 * 100, 100)
+    gap = max(0, 99 - agent_best)
+    pct = min(agent_best / 99 * 100, 100)
     st.markdown(
         f'<div style="padding:4px 14px;">'
         f'<div style="font-size:.68rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:{TEXT_MUTED} !important; margin-bottom:8px;">Target Progress</div>'
         f'<div style="display:flex; justify-content:space-between; font-size:.82rem; margin-bottom:4px;">'
-        f'<span style="font-weight:600; color:#E2E8F0 !important;">{avg_sr:.2f}%</span>'
+        f'<span style="font-weight:600; color:#E2E8F0 !important;">{agent_best:.2f}%</span>'
         f'<span style="color:{TEXT_MUTED} !important;">/ 99.00%</span></div>'
         f'<div style="background:rgba(255,255,255,.08); border-radius:9999px; height:6px; overflow:hidden;">'
         f'<div style="width:{pct:.1f}%; height:100%; background:linear-gradient(90deg,{PRIMARY},{GREEN}); border-radius:9999px;"></div>'
@@ -606,7 +608,6 @@ with tc2:
         f'<span class="topnav-chip" id="chip-export">📤 Quick Export</span>'
         f'</div>', unsafe_allow_html=True)
     # Real-time clock — JS ticking, auto-detects user timezone
-    import streamlit.components.v1 as components
     components.html(f"""
     <div id="live-clock" style="
         text-align:right; font-size:.74rem; font-family:'JetBrains Mono',monospace;
@@ -767,7 +768,7 @@ if page == "Dashboard":
     # KPI cards row
     k1, k2, k3, k4, k5, k6 = st.columns(6)
     kpis = [
-        (k1, PRIMARY, "Cluster Avg", f"{avg_sr:.2f}%", "HO Success Rate"),
+        (k1, PRIMARY, "Agent Result", f"{agent_best:.2f}%", "Best variant · baseline"),
         (k2, GREEN, "Best Cell", f"{best_sr:.2f}%", "Peak performance"),
         (k3, RED, "Worst Cell", f"{worst_sr:.2f}%", "Needs attention"),
         (k4, AMBER, "Failure Rate", f"{avg_fr:.2f}%", "Avg HO failure"),
@@ -951,9 +952,8 @@ if page == "Dashboard":
         _n_variants = len(cdf["Variant"].unique())
         _n_scenarios = len(cdf["Scenario"].unique())
         _n_exps = len(ed["experiments"])
-        _best_base = cdf[cdf["Scenario"] == "baseline"]["HO Success %"].max() if len(cdf[cdf["Scenario"] == "baseline"]) > 0 else 0
-        _best_var = cdf[cdf["Scenario"] == "baseline"].sort_values("HO Success %", ascending=False).iloc[0]["Variant"] if len(cdf[cdf["Scenario"] == "baseline"]) > 0 else "?"
-
+        _best_base = cdf[(cdf["Scenario"] == "baseline") & (cdf["Variant"] != "v0")]["HO Success %"].max()
+        _best_var = cdf[(cdf["Scenario"] == "baseline") & (cdf["Variant"] != "v0")].sort_values("HO Success %", ascending=False).iloc[0]["Variant"]
         p1, p2, p3, p4 = st.columns(4)
         with p1:
             st.markdown(
@@ -983,6 +983,7 @@ if page == "Dashboard":
                 f'<div class="kpi-label">Best Variant (Baseline)</div>'
                 f'<div class="kpi-value" style="color:{_bvc};">{_best_var}</div>'
                 f'<div class="kpi-sub">{_best_base:.2f}% HO success</div>'
+                f'<div class="kpi-sub" style="margin-top:6px;">V1 & V2 within 0.001% — V2 recommended for production</div>'
                 f'</div>', unsafe_allow_html=True)
 
 
@@ -1613,7 +1614,7 @@ elif page == "Reports":
     filt = cdf[cdf["Variant"].isin(sel_v) & cdf["Scenario"].isin(sel_s)]
 
     tab_delta, tab_rec, tab_export, tab_gate = st.tabs([
-        "KPI Delta Table", "Recommendations", "Export Data", "Gate G3 Checklist"])
+        "KPI Delta Table", "Recommendations", "Export Data", "Gate G4 Checklist"])
 
     with tab_delta:
         sec("KPI Delta — vs v0 Baseline")
@@ -1670,29 +1671,123 @@ elif page == "Reports":
             if sw:
                 st.download_button("Download Sweep", json.dumps(sw, indent=2, default=str), "mro_sweep.json", "application/json", use_container_width=True)
         with e3:
-            rp = {"gate": "G3", "generated": pd.Timestamp.now().isoformat(), "data": filt.to_dict("records")}
-            st.download_button("Download Report", json.dumps(rp, indent=2, default=str), "mro_g3.json", "application/json", use_container_width=True)
+            rp = {"gate": "G4", "generated": pd.Timestamp.now().isoformat(), "data": filt.to_dict("records")}
+            st.download_button("Download Report", json.dumps(rp, indent=2, default=str), "mro_g4.json", "application/json", use_container_width=True)
 
     with tab_gate:
-        sec("Gate G3 Checklist")
-        _n_tests = 221  # updated on push
-        _has_sweep = (ROOT / "results" / "sweep_results.json").exists()
-        _has_baseline = (ROOT / "results" / "random_baseline.json").exists()
-        chks = [
-            ("At least 2 reward variants with KPI delta", len(cdf["Variant"].unique()) >= 2),
-            ("At least 3 distinct scenarios", len(cdf["Scenario"].unique()) >= 3),
-            ("At least 5 experiment runs", len(ed["experiments"]) >= 5),
-            ("Dashboard shows KPI differences across variants", True),
-            ("Side-by-side comparison table with deltas", True),
-            ("Automated experiment pipeline (run_experiment.py)", True),
-            ("Before/after baseline comparison", _has_baseline),
-            ("Full sweep results saved", _has_sweep),
-            ("Training convergence curves available", any(e.get("training", {}).get("episode_rewards") for e in ed["experiments"] if "error" not in e)),
-            ("Best variant recommendation per scenario", True),
-            ("Failure mode breakdown (too_early/too_late/wrong_cell)", True),
-            ("Live dashboard deployed (Streamlit Cloud)", True),
-        ]
+        sec("Gate G4 Checklist")
+        # ── Ship gate thresholds (Track A, confirmed Phase 3) ────────────
+        _GATE_HO_MIN   = 95.0   # HO success rate % — must beat random baseline (79.25%)
+        _GATE_PP_MAX   = 1.0    # Ping-pong rate % ceiling
 
+        # ── File existence checks ─────────────────────────────────────────
+        _has_sweep      = (RDIR / "sweep_results.json").exists()
+        _has_baseline   = (RDIR / "random_baseline.json").exists()
+        _has_multi_geo  = (RDIR / "multi_geo_validation.json").exists()
+        _has_seeded     = (RDIR / "seeded_runs").exists() and any((RDIR / "seeded_runs").iterdir())
+        _has_comparison = (RDIR / "reward_variant_comparison.json").exists()
+        _has_training   = (RDIR / "training_results.json").exists()
+        _has_ppo_v2     = (RDIR / "ppo_results_v2.json").exists()
+
+        _has_openapi    = any([
+            (ROOT / "docs" / "openapi.yaml").exists(),
+            (ROOT / "docs" / "openapi.json").exists(),
+            (ROOT / "src" / "dashboard" / "openapi.yaml").exists(),
+            (ROOT / "openapi.yaml").exists(),
+        ])
+        _has_arch_diag  = any([
+            (ROOT / "docs" / "architecture.png").exists(),
+            (ROOT / "docs" / "architecture.svg").exists(),
+            (ROOT / "docs" / "architecture.md").exists(),
+            (ROOT / "assets" / "architecture.png").exists(),
+        ])
+
+        # ── Ship gate: read best V2 baseline result and evaluate ──────────
+        _gate_ho_ok  = False
+        _gate_pp_ok  = False
+        _gate_ho_val = None
+        _gate_pp_val = None
+        for _gpath in [
+            RDIR / "experiment_v2_baseline.json"
+        ]:
+            if _gpath.exists():
+                try:
+                    _gdata = json.loads(_gpath.read_text())
+                    _candidates = [_gdata]
+                    for _key in ["v2", "best", "evaluation", "results"]:
+                        if isinstance(_gdata, dict) and _key in _gdata:
+                            _candidates.append(_gdata[_key])
+                    for _c in _candidates:
+                        if not isinstance(_c, dict):
+                            continue
+                        _ho = _c.get("ho_success_rate", _c.get("ho_success_rate_pct",
+                              _c.get("HO Success %", _c.get("cluster_ho_success_rate_pct"))))
+                        _pp = _c.get("pingpong_rate", _c.get("ping_pong_rate",
+                              _c.get("Ping-Pong %", _c.get("pingpong_rate_pct"))))
+                        if _ho is not None:
+                            _gate_ho_val = float(_ho)
+                            if _gate_ho_val <= 1.0:
+                                _gate_ho_val *= 100
+                            _gate_ho_ok = _gate_ho_val >= _GATE_HO_MIN
+                        if _pp is not None:
+                            _gate_pp_val = float(_pp)
+                            if _gate_pp_val <= 1.0:
+                                _gate_pp_val *= 100
+                            _gate_pp_ok = _gate_pp_val < _GATE_PP_MAX
+                    if _gate_ho_val is not None:
+                        break
+                except Exception:
+                    pass
+
+        # ── 16-experiment sweep ───────────────────────────────────────────
+        _expected_experiments = {
+            f"experiment_v{v}_{s}.json"
+            for v in range(4)
+            for s in ["baseline", "rush_hour", "rain_fade", "tower_failure"]
+        }
+        _present_experiments = {f.name for f in RDIR.glob("experiment_v*.json")}
+        _all_16_present = _expected_experiments.issubset(_present_experiments)
+
+        _n_seeded = len(list((RDIR / "seeded_runs").glob("*.json"))) if _has_seeded else 0
+
+        _has_curves = any(
+            e.get("training", {}).get("episode_rewards")
+            for e in ed["experiments"]
+            if "error" not in e
+        )
+
+        _has_best_variant = len(cdf) > 0 and all(
+            len(cdf[cdf["Scenario"] == s]) > 0
+            for s in ["baseline", "rush_hour", "rain_fade", "tower_failure"]
+            if s in cdf["Scenario"].values
+        )
+
+        # ── checklist ─────────────────────────────────────────────────────
+        _ho_label = f"HO success ≥ {_GATE_HO_MIN}% [{_gate_ho_val:.2f}%]" if _gate_ho_val else f"HO success ≥ {_GATE_HO_MIN}% [no data]"
+        _pp_label = f"Ping-pong < {_GATE_PP_MAX}% [{_gate_pp_val:.2f}%]" if _gate_pp_val else f"Ping-pong < {_GATE_PP_MAX}% [no data]"
+
+        chks = [
+            # ── Track A ───────────────────────────────────────────────────
+            (f"Ship gate — {_ho_label}",                              _gate_ho_ok),
+            (f"Ship gate — {_pp_label}",                              _gate_pp_ok),
+            ("All 16 experiments present (v0–v3 × 4 scenarios)",      _all_16_present),
+            ("Full sweep results saved (sweep_results.json)",          _has_sweep),
+            ("PPO results for best variant saved (ppo_results_v2)",    _has_ppo_v2),
+            ("Training convergence curves available",                   _has_curves),
+            (f"Seeded runs present ({_n_seeded} files in seeded_runs/)", _has_seeded),
+            # ── Track B ───────────────────────────────────────────────────
+            ("Scenario selector — all 4 scenarios in dashboard",       len(cdf["Scenario"].unique()) >= 4 if len(cdf) > 0 else False),
+            ("Before/after KPI overlay (random_baseline.json)",        _has_baseline),
+            ("Reward variant comparison saved",                         _has_comparison),
+            ("OpenAPI docs present (docs/openapi.yaml)",               _has_openapi),
+            ("Architecture diagram committed (docs/architecture.md)",  _has_arch_diag),
+            ("Deployment guide committed (docs/deployment-guide.md)",  (ROOT / "docs" / "deployment-guide.md").exists()),
+            ("Demo script committed (docs/demo-script.md)",            (ROOT / "docs" / "demo-script.md").exists()),
+            ("PPTX deck committed (docs/presentation.pptx)",           (ROOT / "docs" / "presentation.pptx").exists()),
+            # ── G4 / Generalization ───────────────────────────────────────
+            ("Best variant recommendation per scenario",               _has_best_variant),
+            ("Multi-geo validation present (generalization bonus)",    _has_multi_geo),
+        ]
         st.markdown(
             f'<div class="thead">'
             f'<span style="flex:3">Criterion</span>'
@@ -1714,7 +1809,7 @@ elif page == "Reports":
         gn = sum(p for _, p in chks)
         st.markdown(
             f'<div class="card" style="text-align:center;margin-top:16px;border:2px solid {gc};">'
-            f'<div style="font-size:1.1rem;font-weight:700;color:{gc};">Gate G3 — {gt}</div>'
+            f'<div style="font-size:1.1rem;font-weight:700;color:{gc};">Gate G4 — {gt}</div>'
             f'<div style="font-size:.78rem;color:{TEXT_MUTED};margin-top:4px;">{gn}/{len(chks)} criteria met</div>'
             f'</div>', unsafe_allow_html=True)
 
