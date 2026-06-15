@@ -1350,14 +1350,25 @@ elif page == "Experiments":
                 vd = filt[(filt["Variant"] == v) & (filt["Scenario"] == "baseline")]
                 if len(vd) > 0:
                     row = vd.iloc[0]
-                    fp = go.Figure(data=[go.Pie(
-                        labels=["Too Early", "Too Late", "Wrong Cell"],
-                        values=[row["Too Early %"], row["Too Late %"], row["Wrong Cell %"]],
-                        hole=.55,
-                        marker_colors=[AMBER, ORANGE, RED],
-                        textinfo="label+percent",
-                        textfont_size=11,
-                    )])
+                    vals = [float(row["Too Early %"]), float(row["Too Late %"]), float(row["Wrong Cell %"])]
+                    if sum(vals) == 0:
+                        fp = go.Figure(data=[go.Pie(
+                            labels=["Success"],
+                            values=[100.0],
+                            hole=.55,
+                            marker_colors=[GREEN],
+                            textinfo="label",
+                            textfont_size=12,
+                        )])
+                    else:
+                        fp = go.Figure(data=[go.Pie(
+                            labels=["Too Early", "Too Late", "Wrong Cell"],
+                            values=vals,
+                            hole=.55,
+                            marker_colors=[AMBER, ORANGE, RED],
+                            textinfo="label+percent",
+                            textfont_size=11,
+                        )])
                     fp.update_layout(
                         title=dict(text=v, font=dict(size=14, color=V_COLORS.get(v, TEXT), family="JetBrains Mono")),
                         height=300, margin=dict(t=40, b=10, l=10, r=10),

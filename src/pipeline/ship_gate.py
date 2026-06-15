@@ -218,13 +218,13 @@ def main() -> None:
         "--ho-success-min",
         type=float,
         default=DEFAULT_HO_SUCCESS_MIN,
-        help="Minimum Handover Success Rate threshold (default: 99.0%)",
+        help="Minimum Handover Success Rate threshold (default: 99.0%%)",
     )
     parser.add_argument(
         "--ping-pong-max",
         type=float,
         default=DEFAULT_PING_PONG_MAX,
-        help="Maximum Ping-Pong Rate threshold (default: 5.0%)",
+        help="Maximum Ping-Pong Rate threshold (default: 5.0%%)",
     )
     parser.add_argument(
         "--config",

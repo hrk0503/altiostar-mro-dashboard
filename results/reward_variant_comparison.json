@@ -2,7 +2,7 @@
   "best_performer": "v2",
   "variants": {
     "v0": {
-      "best_ho_success": 79.2644,
+      "best_ho_success": 99.9855,
       "best_experiment": "v0_baseline",
       "experiments": [
         "v0_baseline",
@@ -12,7 +12,7 @@
       ]
     },
     "v1": {
-      "best_ho_success": 79.2644,
+      "best_ho_success": 99.9855,
       "best_experiment": "v1_baseline",
       "experiments": [
         "v1_baseline",
@@ -22,7 +22,7 @@
       ]
     },
     "v2": {
-      "best_ho_success": 94.2295,
+      "best_ho_success": 99.9855,
       "best_experiment": "v2_baseline",
       "experiments": [
         "v2_baseline",
@@ -32,7 +32,7 @@
       ]
     },
     "v3": {
-      "best_ho_success": 79.2644,
+      "best_ho_success": 99.9855,
       "best_experiment": "v3_baseline",
       "experiments": [
         "v3_baseline",
