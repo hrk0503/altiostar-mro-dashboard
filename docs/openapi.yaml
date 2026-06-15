@@ -1,0 +1,224 @@
+openapi: 3.0.3
+info:
+  title: AltioStar 5G MRO RL Pipeline API
+  description: OpenAPI specification for running, evaluating, validating, and exporting models in the 5G Mobility Robustness Optimization (MRO) pipeline.
+  version: 1.0.0
+paths:
+  /experiments/run:
+    post:
+      summary: Run RL training and evaluation
+      description: Triggers a PPO training sweep or a single experiment for a specified reward variant and network scenario.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mode:
+                  type: string
+                  enum: [single, sweep]
+                  default: single
+                variant:
+                  type: string
+                  enum: [v0, v1, v2, v3]
+                  description: Reward variant to use
+                scenario:
+                  type: string
+                  enum: [baseline, rush_hour, rain_fade, tower_failure]
+                  description: Simulation scenario conditions
+                timesteps:
+                  type: integer
+                  default: 100000
+                  description: Number of training iterations
+                eval_episodes:
+                  type: integer
+                  default: 5
+                  description: Number of evaluation episodes
+                seed:
+                  type: integer
+                  default: 42
+              required:
+                - mode
+      responses:
+        '200':
+          description: Experiment executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentResult'
+        '400':
+          description: Invalid parameters or configuration
+
+  /validation/ship_gate:
+    post:
+      summary: Validate experiment results against ship gate thresholds
+      description: Evaluates a JSON results file to determine if it meets Handover Success and Ping-Pong limits.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                results_path:
+                  type: string
+                  description: Local file path of the results JSON
+                ho_success_min:
+                  type: float
+                  default: 99.0
+                  description: Minimum Handover Success Rate (%)
+                ping_pong_max:
+                  type: float
+                  default: 5.0
+                  description: Maximum Ping-Pong Rate (%)
+              required:
+                - results_path
+      responses:
+        '200':
+          description: Gate validation outcome
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  passed:
+                    type: boolean
+                  reasons:
+                    type: array
+                    items:
+                      type: string
+
+  /onnx/export:
+    post:
+      summary: Export a trained SB3 checkpoint to ONNX
+      description: Converts a trained PyTorch model zip checkpoint into a deployment-ready ONNX model with continuous action clamping.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                model_path:
+                  type: string
+                  description: Path to the trained .zip model checkpoint
+              required:
+                - model_path
+      responses:
+        '200':
+          description: ONNX file generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  onnx_path:
+                    type: string
+
+components:
+  schemas:
+    ExperimentResult:
+      type: object
+      properties:
+        experiment:
+          type: string
+        reward_version:
+          type: string
+        scenario:
+          type: string
+        config:
+          type: object
+          properties:
+            total_timesteps:
+              type: integer
+            eval_episodes:
+              type: integer
+            seed:
+              type: integer
+        training:
+          type: object
+          properties:
+            time_s:
+              type: number
+            episode_rewards:
+              type: array
+              items:
+                type: number
+            checkpoint_path:
+              type: string
+        evaluation:
+          type: object
+          properties:
+            mean_reward:
+              type: number
+            std_reward:
+              type: number
+            ho_success_rate:
+              type: number
+            ho_failure_rate:
+              type: number
+            pingpong_rate:
+              type: number
+            too_early_rate:
+              type: number
+            too_late_rate:
+              type: number
+            wrong_cell_rate:
+              type: number
+            n_episodes:
+              type: integer
+
+    RelationPMRecord:
+      type: object
+      required:
+        - source_cell_id
+        - target_cell_id
+        - timestamp_utc
+        - ho_attempts
+        - ho_successes
+        - ho_failures
+        - too_early_ho
+        - too_late_ho
+        - wrong_cell
+        - correct_cell
+        - ping_pong
+        - cio_db
+      properties:
+        source_cell_id:
+          type: string
+        target_cell_id:
+          type: string
+        timestamp_utc:
+          type: string
+          format: date-time
+        ho_attempts:
+          type: integer
+          minimum: 0
+        ho_successes:
+          type: integer
+          minimum: 0
+        ho_failures:
+          type: integer
+          minimum: 0
+        too_early_ho:
+          type: integer
+          minimum: 0
+        too_late_ho:
+          type: integer
+          minimum: 0
+        wrong_cell:
+          type: integer
+          minimum: 0
+        correct_cell:
+          type: integer
+          minimum: 0
+        ping_pong:
+          type: integer
+          minimum: 0
+        cio_db:
+          type: number
+          minimum: -24.0
+          maximum: 24.0
