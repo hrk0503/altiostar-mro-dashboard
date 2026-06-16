@@ -46,4 +46,6 @@ src/dashboard/.streamlit/secrets.toml
 
 # Local presentation script
 docs/nicolas-presentation-script.md
+docs/presentation.pptx
+docs/screenshots/
 
