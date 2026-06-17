@@ -643,13 +643,20 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
             total_too_late = int(np.sum(next_state[:, 4]))
             total_wrong_cell = int(np.sum(next_state[:, 5]))
 
-            safe_attempts = max(total_attempts, 1)
-            success_rate = total_successes / safe_attempts * 100.0
-            failure_rate = total_failures / safe_attempts * 100.0
-            pingpong_rate = total_ping_pongs / safe_attempts * 100.0
-            too_early_rate = total_too_early / safe_attempts * 100.0
-            too_late_rate = total_too_late / safe_attempts * 100.0
-            wrong_cell_rate = total_wrong_cell / safe_attempts * 100.0
+            if total_attempts == 0:
+                success_rate = 100.0
+                failure_rate = 0.0
+                pingpong_rate = 0.0
+                too_early_rate = 0.0
+                too_late_rate = 0.0
+                wrong_cell_rate = 0.0
+            else:
+                success_rate = total_successes / total_attempts * 100.0
+                failure_rate = total_failures / total_attempts * 100.0
+                pingpong_rate = total_ping_pongs / total_attempts * 100.0
+                too_early_rate = total_too_early / total_attempts * 100.0
+                too_late_rate = total_too_late / total_attempts * 100.0
+                wrong_cell_rate = total_wrong_cell / total_attempts * 100.0
 
             # ── Reward variants ──
             w = self.reward_weights

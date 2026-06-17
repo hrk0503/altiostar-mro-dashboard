@@ -20,10 +20,11 @@ from stable_baselines3 import PPO
 class PPOPolicyOnnxWrapper(nn.Module):
     """Wrapper class to export SB3 PPO policies to ONNX."""
 
-    def __init__(self, policy: nn.Module) -> None:
+    def __init__(self, policy: nn.Module, action_space=None) -> None:
         super().__init__()
         self.policy = policy
         self.policy.eval()
+        self.action_space = action_space
 
     def forward(self, obs: torch.Tensor) -> torch.Tensor:
         # Extract features from raw observation
@@ -32,6 +33,13 @@ class PPOPolicyOnnxWrapper(nn.Module):
         latent_pi, _ = self.policy.mlp_extractor(features)
         # Bounded or unbounded raw actions from policy head
         mean_actions = self.policy.action_net(latent_pi)
+
+        # Clip actions if action_space has bounds
+        if self.action_space is not None and hasattr(self.action_space, "low") and hasattr(self.action_space, "high"):
+            low = torch.from_numpy(self.action_space.low).to(mean_actions.device)
+            high = torch.from_numpy(self.action_space.high).to(mean_actions.device)
+            mean_actions = torch.clamp(mean_actions, low, high)
+
         return mean_actions
 
 
@@ -60,7 +68,7 @@ def export_model(model_path: str | Path, output_path: str | Path) -> None:
     dummy_input = torch.randn(*obs_shape, dtype=torch.float32)
 
     # Instantiate wrapper
-    wrapper = PPOPolicyOnnxWrapper(policy)
+    wrapper = PPOPolicyOnnxWrapper(policy, action_space)
 
     # Perform evaluation comparison
     print("Verifying policy wrapper against SB3 prediction on dummy observation...")
