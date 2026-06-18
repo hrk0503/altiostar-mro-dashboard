@@ -22,6 +22,8 @@ import plotly.express as px
 import streamlit as st
 import streamlit.components.v1 as components
 import hashlib
+import io
+import traceback
 
 # ── Assets — load logos as base64 for embedding ──────────────────────
 ASSETS = Path(__file__).resolve().parent / "assets"
@@ -524,6 +526,7 @@ with st.sidebar:
         "Network",
         "Simulation",
         "Reports",
+        "Data Upload",
     ], label_visibility="collapsed")
 
     st.divider()
@@ -1812,6 +1815,278 @@ elif page == "Reports":
             f'<div style="font-size:1.1rem;font-weight:700;color:{gc};">Gate G4 — {gt}</div>'
             f'<div style="font-size:.78rem;color:{TEXT_MUTED};margin-top:4px;">{gn}/{len(chks)} criteria met</div>'
             f'</div>', unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════════════════════════════
+# PAGE: DATA UPLOAD
+# ══════════════════════════════════════════════════════════════════════
+elif page == "Data Upload":
+    from src.pipeline.schema_mapper import infer_schema, _SIGNATURES
+    from src.pipeline.models import (
+        SiteRecord, NeighborRelation, PMRecord,
+        RelationPMRecord, ClusterKPISummary,
+    )
+
+    _MODEL_MAP = {
+        "SiteRecord": SiteRecord,
+        "NeighborRelation": NeighborRelation,
+        "PMRecord": PMRecord,
+        "RelationPMRecord": RelationPMRecord,
+        "ClusterKPISummary": ClusterKPISummary,
+    }
+
+    _SCHEMA_DESCRIPTIONS = {
+        "SiteRecord": ("Site Database", "Cell tower locations, sectors, antennas, bands", "site_database.csv"),
+        "NeighborRelation": ("Neighbor Relations", "Cell-to-cell adjacency, CIO offsets, distances", "neighbor_relations.csv"),
+        "PMRecord": ("PM Counters", "15-min ROP performance measurements per cell", "pm_data_april2026.csv"),
+        "RelationPMRecord": ("Relation PM", "Per-relation handover counters per ROP", "relation-level data"),
+        "ClusterKPISummary": ("Cluster KPI", "Monthly aggregate KPIs per cell", "cluster_kpi_summary.csv"),
+    }
+
+    sec("Upload Operator CSV")
+
+    st.markdown(
+        f'<div class="card" style="border-left:3px solid {PRIMARY};">'
+        f'<div style="font-size:.88rem;font-weight:600;color:{TEXT};margin-bottom:6px;">How it works</div>'
+        f'<div style="font-size:.82rem;color:{TEXT_SEC};line-height:1.8;">'
+        f'1. Drop your CSV file below<br>'
+        f'2. Schema is auto-detected from column names<br>'
+        f'3. Every row is validated against Pydantic data contracts<br>'
+        f'4. Preview your data and fix any issues before loading'
+        f'</div></div>', unsafe_allow_html=True)
+
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+
+    # Accepted schemas reference
+    with st.expander("Accepted CSV Schemas", expanded=False):
+        for model_name, (label, desc, example) in _SCHEMA_DESCRIPTIONS.items():
+            sig_cols = ", ".join(sorted(_SIGNATURES[model_name]))
+            st.markdown(
+                f'<div class="trow">'
+                f'<span style="flex:2;font-weight:600;">{label}</span>'
+                f'<span style="flex:3;color:{TEXT_SEC};font-size:.8rem;">{desc}</span>'
+                f'<span style="flex:2;color:{TEXT_MUTED};font-size:.75rem;font-family:JetBrains Mono,monospace;">{example}</span>'
+                f'</div>', unsafe_allow_html=True)
+        st.markdown(
+            f'<div style="font-size:.75rem;color:{TEXT_MUTED};margin-top:8px;padding:0 16px;">'
+            f'Schema is matched by checking required column signatures. Extra columns are ignored.'
+            f'</div>', unsafe_allow_html=True)
+
+    # File uploader
+    uploaded = st.file_uploader(
+        "Drop a CSV file",
+        type=["csv"],
+        accept_multiple_files=False,
+        help="Supports: site_database, neighbor_relations, pm_data, relation_pm, cluster_kpi",
+    )
+
+    if uploaded is not None:
+        st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+
+        # Read the CSV
+        try:
+            raw_bytes = uploaded.read()
+            df = pd.read_csv(io.BytesIO(raw_bytes))
+        except Exception as e:
+            st.error(f"Failed to parse CSV: {e}")
+            st.stop()
+
+        file_size_kb = len(raw_bytes) / 1024
+        n_rows, n_cols = df.shape
+
+        # File info cards
+        fi1, fi2, fi3 = st.columns(3)
+        with fi1:
+            st.markdown(
+                f'<div class="kpi" style="border-left:3px solid {BLUE};">'
+                f'<div class="kpi-label">File</div>'
+                f'<div class="kpi-value" style="font-size:1rem;">{uploaded.name}</div>'
+                f'<div class="kpi-sub">{file_size_kb:.1f} KB</div>'
+                f'</div>', unsafe_allow_html=True)
+        with fi2:
+            st.markdown(
+                f'<div class="kpi" style="border-left:3px solid {PRIMARY};">'
+                f'<div class="kpi-label">Rows</div>'
+                f'<div class="kpi-value">{n_rows:,}</div>'
+                f'<div class="kpi-sub">{n_cols} columns detected</div>'
+                f'</div>', unsafe_allow_html=True)
+
+        # Schema detection
+        tmp_path = Path("/tmp/_upload_detect.csv")
+        tmp_path.write_bytes(raw_bytes)
+        match = infer_schema(tmp_path)
+        tmp_path.unlink(missing_ok=True)
+
+        with fi3:
+            if match.matched_model:
+                label, desc, _ = _SCHEMA_DESCRIPTIONS[match.matched_model]
+                st.markdown(
+                    f'<div class="kpi" style="border-left:3px solid {GREEN};">'
+                    f'<div class="kpi-label">Schema Detected</div>'
+                    f'<div class="kpi-value" style="font-size:1rem;color:{GREEN};">{label}</div>'
+                    f'<div class="kpi-sub">{desc}</div>'
+                    f'</div>', unsafe_allow_html=True)
+            else:
+                st.markdown(
+                    f'<div class="kpi" style="border-left:3px solid {RED};">'
+                    f'<div class="kpi-label">Schema Detected</div>'
+                    f'<div class="kpi-value" style="font-size:1rem;color:{RED};">Unknown</div>'
+                    f'<div class="kpi-sub">Columns don\'t match any known schema</div>'
+                    f'</div>', unsafe_allow_html=True)
+
+        st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+
+        if not match.matched_model:
+            # Show what columns were found vs expected
+            sec("Column Mismatch Details")
+            found_cols = set(df.columns)
+            st.markdown(
+                f'<div class="card">'
+                f'<div style="font-size:.82rem;font-weight:600;margin-bottom:8px;">Your columns ({n_cols}):</div>'
+                f'<div style="font-size:.78rem;font-family:JetBrains Mono,monospace;color:{TEXT_SEC};line-height:1.8;">'
+                f'{", ".join(sorted(found_cols))}'
+                f'</div></div>', unsafe_allow_html=True)
+
+            for model_name, sig in _SIGNATURES.items():
+                missing = sig - found_cols
+                present = sig & found_cols
+                pct = len(present) / len(sig) * 100
+                pcl = GREEN if pct == 100 else (AMBER if pct >= 60 else RED)
+                st.markdown(
+                    f'<div class="trow">'
+                    f'<span style="flex:2;font-weight:600;">{_SCHEMA_DESCRIPTIONS[model_name][0]}</span>'
+                    f'<span style="flex:1;text-align:center;color:{pcl};font-weight:600;font-family:JetBrains Mono,monospace;">{pct:.0f}%</span>'
+                    f'<span style="flex:3;color:{TEXT_MUTED};font-size:.75rem;">'
+                    f'{"Missing: " + ", ".join(sorted(missing)) if missing else "All signature columns present"}'
+                    f'</span>'
+                    f'</div>', unsafe_allow_html=True)
+        else:
+            # Validate rows with Pydantic
+            sec("Row Validation")
+
+            model_cls = _MODEL_MAP[match.matched_model]
+            errors = []
+            valid_count = 0
+
+            with st.spinner("Validating rows..."):
+                for idx, row in df.iterrows():
+                    try:
+                        model_cls(**row.to_dict())
+                        valid_count += 1
+                    except Exception as e:
+                        errors.append({"row": idx + 2, "error": str(e)})
+                        if len(errors) >= 50:
+                            break
+
+            error_count = len(errors)
+            total_checked = valid_count + error_count
+            pass_rate = valid_count / total_checked * 100 if total_checked > 0 else 0
+
+            v1, v2, v3 = st.columns(3)
+            with v1:
+                vcl = GREEN if error_count == 0 else (AMBER if pass_rate >= 95 else RED)
+                st.markdown(
+                    f'<div class="kpi" style="border-left:3px solid {vcl};">'
+                    f'<div class="kpi-label">Pass Rate</div>'
+                    f'<div class="kpi-value" style="color:{vcl};">{pass_rate:.1f}%</div>'
+                    f'<div class="kpi-sub">{valid_count:,} of {total_checked:,} rows valid</div>'
+                    f'</div>', unsafe_allow_html=True)
+            with v2:
+                st.markdown(
+                    f'<div class="kpi" style="border-left:3px solid {GREEN};">'
+                    f'<div class="kpi-label">Valid Rows</div>'
+                    f'<div class="kpi-value" style="color:{GREEN};">{valid_count:,}</div>'
+                    f'<div class="kpi-sub">Passed all Pydantic checks</div>'
+                    f'</div>', unsafe_allow_html=True)
+            with v3:
+                ecl = GREEN if error_count == 0 else RED
+                st.markdown(
+                    f'<div class="kpi" style="border-left:3px solid {ecl};">'
+                    f'<div class="kpi-label">Errors</div>'
+                    f'<div class="kpi-value" style="color:{ecl};">{error_count}</div>'
+                    f'<div class="kpi-sub">{"All clean" if error_count == 0 else "First 50 shown below"}</div>'
+                    f'</div>', unsafe_allow_html=True)
+
+            # Error details
+            if errors:
+                with st.expander(f"Validation Errors ({error_count})", expanded=True):
+                    for err in errors[:20]:
+                        err_short = err["error"][:200]
+                        st.markdown(
+                            f'<div class="trow" style="align-items:flex-start;">'
+                            f'<span style="flex:0 0 60px;font-weight:600;font-family:JetBrains Mono,monospace;color:{RED};">Row {err["row"]}</span>'
+                            f'<span style="flex:1;font-size:.78rem;color:{TEXT_SEC};word-break:break-all;">{err_short}</span>'
+                            f'</div>', unsafe_allow_html=True)
+
+            # Data preview
+            sec("Data Preview")
+            tab_preview, tab_stats = st.tabs(["First 100 Rows", "Column Statistics"])
+
+            with tab_preview:
+                st.dataframe(df.head(100), use_container_width=True, hide_index=True, height=400)
+
+            with tab_stats:
+                desc = df.describe(include="all").T
+                desc.index.name = "Column"
+                st.dataframe(desc, use_container_width=True, height=400)
+
+            # Load into dashboard
+            if error_count == 0:
+                st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+                sec("Load into Dashboard")
+
+                target_map = {
+                    "SiteRecord": ("site_database.csv", DDIR),
+                    "NeighborRelation": ("neighbor_relations.csv", DDIR),
+                    "PMRecord": ("pm_data_april2026.csv", DDIR),
+                    "RelationPMRecord": ("relation_pm_data.csv", DDIR),
+                    "ClusterKPISummary": ("cluster_kpi_summary.csv", DDIR),
+                }
+
+                fname, target_dir = target_map[match.matched_model]
+                target_path = target_dir / fname
+                existing = target_path.exists()
+
+                if existing:
+                    old_df = pd.read_csv(target_path)
+                    st.markdown(
+                        f'<div class="card" style="border-left:3px solid {AMBER};">'
+                        f'<div style="font-size:.82rem;font-weight:600;color:{TEXT};margin-bottom:4px;">Existing file will be replaced</div>'
+                        f'<div style="font-size:.78rem;color:{TEXT_SEC};">'
+                        f'<code>{fname}</code> — currently {len(old_df):,} rows → will become {n_rows:,} rows'
+                        f'</div></div>', unsafe_allow_html=True)
+                else:
+                    st.markdown(
+                        f'<div class="card" style="border-left:3px solid {GREEN};">'
+                        f'<div style="font-size:.82rem;color:{TEXT_SEC};">'
+                        f'New file: <code>{fname}</code> will be created with {n_rows:,} rows'
+                        f'</div></div>', unsafe_allow_html=True)
+
+                lc1, lc2 = st.columns([1, 3])
+                with lc1:
+                    if st.button("Load Data", type="primary", use_container_width=True):
+                        df.to_csv(target_path, index=False)
+                        st.cache_data.clear()
+                        st.success(f"Loaded {n_rows:,} rows into {fname}. Dashboard will refresh with new data.")
+                        st.balloons()
+                with lc2:
+                    st.markdown(
+                        f'<div style="font-size:.78rem;color:{TEXT_MUTED};padding:8px 0;">'
+                        f'This replaces the local data file. The dashboard will reload with the new dataset on next page navigation.'
+                        f'</div>', unsafe_allow_html=True)
+
+            elif pass_rate >= 95:
+                st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+                st.warning(
+                    f"{error_count} rows failed validation ({pass_rate:.1f}% pass rate). "
+                    f"Fix the errors in your CSV and re-upload for a clean load."
+                )
+            else:
+                st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+                st.error(
+                    f"Too many validation errors ({error_count} failures, {pass_rate:.1f}% pass rate). "
+                    f"Check that you're using the correct CSV schema."
+                )
 
 
 # ── Footer ───────────────────────────────────────────────────────────
