@@ -84,3 +84,16 @@ Every push runs: `ruff check` → `mypy` → `pytest`. See `.github/workflows/ci
 ## Legacy
 
 The original Tokyo Cesium 3D demo is preserved on the [`legacy/tokyo-demo`](https://github.com/Life-Atlas/altiostar-tokyo-mro/tree/legacy/tokyo-demo) branch.
+
+## Troubleshooting (macOS)
+
+If you run into a macOS system popup stating **"Python quit unexpectedly"** (SIGSEGV/EXC_BAD_ACCESS) when launching scripts or loading the Streamlit dashboard, this is due to macOS's safety checks for multi-threaded processes calling `fork()`.
+
+To resolve this, set the following environment variable in your terminal before running the commands:
+```bash
+export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+```
+Or prefix the command directly:
+```bash
+OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES venv/bin/streamlit run src/dashboard/app.py
+```
