@@ -4,15 +4,47 @@ Reusable AI/ML pipeline for Mobility Robustness Optimization: CSV data in → tr
 
 **Stream 4** of [AMITY 2026](https://github.com/Life-Atlas/amity-2026) | **Plan:** [ALTIOSTAR-PLAN.md](https://github.com/Life-Atlas/amity-2026/blob/main/streams/ALTIOSTAR-PLAN.md)
 
-## Quick Start
+### Consolidated Staging Branch
+The consolidated integration branch containing the combined work of all team members is:
+👉 **`staging`**
 
+## Pre-requisites & Quick Start
+
+### Pre-requisites
+- **Python**: version 3.10 to 3.14.
+- **Operating System**: macOS or Linux.
+- **Virtual Environment**: Recommended to isolate library dependencies.
+
+### Setup
 ```bash
 git clone https://github.com/Life-Atlas/altiostar-tokyo-mro.git
 cd altiostar-tokyo-mro
-pip install -e ".[dev]"
-pre-commit install
-pytest
+git checkout staging
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+pip install -r requirements-dashboard.txt
 ```
+
+### Running the Project Commands
+
+- **Run the Pytest Suite**:
+  ```bash
+  PYTHONPATH=. venv/bin/pytest tests/ -v
+  ```
+- **Launch the Streamlit Dashboard**:
+  ```bash
+  # On macOS, prefix with OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES to avoid thread forks crashing
+  OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES venv/bin/streamlit run src/dashboard/app.py
+  ```
+- **Compile the Widescreen Presentation Deck**:
+  ```bash
+  venv/bin/python scripts/generate_pptx.py
+  ```
+- **Run the SLA Ship Gate Validator**:
+  ```bash
+  venv/bin/python src/pipeline/ship_gate.py --results-dir results/seeded_runs
+  ```
 
 ## Architecture: 7 Autonomous Agents
 
@@ -97,3 +129,21 @@ Or prefix the command directly:
 ```bash
 OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES venv/bin/streamlit run src/dashboard/app.py
 ```
+
+## Things Done
+
+- **Robust Ingestion**: Built `schema_mapper.py` supporting dynamic set-based signatures to auto-detect operator CSV columns.
+- **High-fidelity Simulation**: Designed a custom Gymnasium environment (`mro_env.py`) that transitions states using database lookups in microseconds rather than empirical curve physics.
+- **Reward Calibration**: Engineered a `v2` Rate-Based Reward function with asymmetric boundary penalties for HOSR and Ping-Pongs.
+- **Statistical Variant Sweeps**: Trained 4 reward variants over 100k timesteps across baseline, rain fade, rush hour, and tower failure scenarios.
+- **Ship Gate Validator**: Built `ship_gate.py` to ensure every production model meets SLA targets (HOSR > 99%, Ping-Pong < 5%).
+- **ONNX Deployment Exporter**: Developed `export_onnx.py` with output clamping to match deterministic Stable-Baselines3 actions.
+- **Streamlit Dashboard**: Created a dark-themed operator control dashboard featuring geographic maps, cell inspectors, variant benchmarks, and a real-time simulator.
+- **3D Spatial Digital Twin**: Built a CesiumJS digital twin simulator visualizing NVIDIA Sionna ray-tracing coverage and UE handover trajectories.
+
+## Next Steps & Improvements
+
+- **Live 5G Integration**: Interface the ONNX inference model with real vCU-CP/vDU nodes via the standard E2 interface.
+- **Hardware-in-the-Loop Testing**: Validate policy execution speeds on ARM-based O-RAN edge processors.
+- **Scale to Larger Datasets**: Extend the Schema Mapper and double-caching mechanism to handle multi-gigabyte operator datasets with millions of relations.
+- **Enhanced Spatial Modeling**: Load higher resolution building models (e.g. from Project PLATEAU) into the 3D twin to improve millimeter-wave propagation accuracy.
