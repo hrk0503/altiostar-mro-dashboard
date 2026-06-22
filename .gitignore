@@ -48,4 +48,5 @@ src/dashboard/.streamlit/secrets.toml
 docs/nicolas-presentation-script.md
 docs/presentation.pptx
 docs/screenshots/
-
+# Legacy Cesium worktree
+legacy_cesium/

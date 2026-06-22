@@ -242,10 +242,258 @@ def create_presentation() -> None:
     add_bullet_list(slide, roles_left, Inches(0.8), Inches(1.8), Inches(5.6), Inches(5.0), font_size=15)
     add_bullet_list(slide, roles_right, Inches(6.8), Inches(1.8), Inches(5.6), Inches(5.0), font_size=15)
 
-    # Slide 6: Results & ONNX
+    # Slide 6: O-RAN MRO Technical Architecture (Screenshot)
+    slide = prs.slides.add_slide(slide_layout)
+    set_slide_background(slide)
+    img_arch_path = Path("docs/screenshots/architecture.png")
+    if img_arch_path.exists():
+        slide.shapes.add_picture(str(img_arch_path), Inches(0), Inches(0), Inches(13.333), Inches(7.5))
+    else:
+        add_slide_header(slide, "O-RAN MRO Technical Architecture", "System Design Overview")
+        card_box = slide.shapes.add_textbox(Inches(0.8), Inches(1.8), Inches(11.7), Inches(5.0))
+        ctf = card_box.text_frame
+        ctf.word_wrap = True
+        cp = ctf.paragraphs[0]
+        cp.text = "🏗️ End-to-End System Design"
+        cp.font.name = "Arial"
+        cp.font.size = Pt(22)
+        cp.font.bold = True
+        cp.font.color.rgb = color_primary
+        cp.space_after = Pt(16)
+        cp2 = ctf.add_paragraph()
+        cp2.text = "Visualizes the end-to-end O-RAN MRO pipeline, from raw CSV ingestion to ONNX model export for K8s deployment."
+        cp2.font.name = "Arial"
+        cp2.font.size = Pt(16)
+        cp2.font.color.rgb = color_text
+
+    # Slide 7: Technical Architecture Breakdown (Explanation)
+    slide = prs.slides.add_slide(slide_layout)
+    set_slide_background(slide)
+    add_slide_header(slide, "Technical Pipeline Architecture", "System Design Breakdown")
+    
+    bullets_arch = [
+        ("Raw Ingestion & Schema Mapper", "Reads PM Counters, Site Database, and Neighbor Relations CSVs. Maps columns dynamically using order-independent set signature matching (cols.issubset)."),
+        ("In-Memory Double Cache Slices", "Groups compiled 2.2M-row relation-level PM records and caches indices in memory, reducing env boot and step lookup times to under 50 microseconds."),
+        ("Gymnasium RL Simulator", "Models network transitions using nearest-CIO lookup. Exposes a 9D Observation Space and a continuous Action Space [-2.0, 2.0] dB delta for CIO offsets."),
+        ("PPO Sweep & Ship Gate Validation", "Trains Stable-Baselines3 PPO variants (v0-v3) with Optuna sweeps. Enforces strict ship gate criteria (HOSR > 99.0%, Ping-Pong < 5.0%) before exporting ONNX with output clamping.")
+    ]
+    add_bullet_list(slide, bullets_arch, Inches(0.8), Inches(1.8), Inches(6.5), Inches(5.0))
+    
+    card_box = slide.shapes.add_textbox(Inches(7.8), Inches(1.8), Inches(4.7), Inches(5.0))
+    ctf = card_box.text_frame
+    ctf.word_wrap = True
+    
+    cp = ctf.paragraphs[0]
+    cp.text = "🔌 O-RAN Deployment Flow"
+    cp.font.name = "Arial"
+    cp.font.size = Pt(22)
+    cp.font.bold = True
+    cp.font.color.rgb = color_primary
+    cp.space_after = Pt(16)
+    
+    cp2 = ctf.add_paragraph()
+    cp2.text = "The pipeline is built as a closed loop. Historical metrics feed the Simulator, PPO policy optimizes CIO offsets, validation checks quality gates, and ONNX models compile directly into K8s pods at baseband."
+    cp2.font.name = "Arial"
+    cp2.font.size = Pt(16)
+    cp2.font.color.rgb = color_text
+
+    # Slide 8: Streamlit Management Dashboard - Overview & Health
+    slide = prs.slides.add_slide(slide_layout)
+    set_slide_background(slide)
+    add_slide_header(slide, "Streamlit Management Dashboard", "Interactive Overview & Health")
+    
+    bullets_dash = [
+        ("Executive Performance KPI Cards", "Displays live metrics including Handover Success Rate (HOSR), Ping-Pong rate, PRB usage, and active UE count."),
+        ("Cell Health Distribution (Donut)", "Classifies the 75-cell cluster in Shibuya: 23 Healthy (green), 46 Warning (orange), and 6 Critical (red)."),
+        ("Operational Health Breakdown", "Provides direct visual summaries of degraded cells to focus engineering efforts where handovers fail most."),
+        ("SLA Performance Audits", "Tracks real-time KPIs and flags sites that fail to maintain the strict G4 target thresholds.")
+    ]
+    add_bullet_list(slide, bullets_dash, Inches(0.8), Inches(1.8), Inches(6.5), Inches(5.0))
+    
+    # Embed the cell health donut screenshot
+    img_donut_path = Path("docs/screenshots/cell_health_donut.png")
+    if img_donut_path.exists():
+        slide.shapes.add_picture(str(img_donut_path), Inches(7.8), Inches(1.6), Inches(4.5), Inches(4.8))
+    else:
+        card_box = slide.shapes.add_textbox(Inches(7.8), Inches(1.8), Inches(4.7), Inches(5.0))
+        ctf = card_box.text_frame
+        ctf.word_wrap = True
+        cp = ctf.paragraphs[0]
+        cp.text = "📊 Donut Chart"
+        cp.font.name = "Arial"
+        cp.font.size = Pt(22)
+        cp.font.bold = True
+        cp.font.color.rgb = color_primary
+        cp.space_after = Pt(16)
+        cp2 = ctf.add_paragraph()
+        cp2.text = "Visualizes cell health distribution (Healthy/Warning/Critical) to identify problematic sites at a glance."
+        cp2.font.name = "Arial"
+        cp2.font.size = Pt(16)
+        cp2.font.color.rgb = color_text
+
+    # Slide 7: Interactive Cell Map & Sector Details
+    slide = prs.slides.add_slide(slide_layout)
+    set_slide_background(slide)
+    add_slide_header(slide, "Geographic Cell Map & Site Inspector", "Interactive Topology")
+    
+    bullets_map = [
+        ("Geographic Cluster Visualizer", "Renders the 75-cell Shibuya cluster, showing site sectors, frequency bands, and geographical coordinates."),
+        ("Physical Attribute Mapping", "Displays sector frequency band, electrical/mechanical tilt, and elevation height for individual sites."),
+        ("Handover Relation Overlay", "Draws lines connecting neighbor cells to expose spatial spacing, coverage boundaries, and overlapping zones."),
+        ("Cell Detail Panel", "Provides granular reports for selected cells (e.g. RKSB-001-1), including active UEs, average SINR/RSRP, and neighbor table offsets.")
+    ]
+    add_bullet_list(slide, bullets_map, Inches(0.8), Inches(1.8), Inches(6.5), Inches(5.0))
+    
+    # Embed the cell map / details screenshot
+    img_map_path = Path("docs/screenshots/cell_map.png")
+    if img_map_path.exists():
+        slide.shapes.add_picture(str(img_map_path), Inches(7.5), Inches(2.2), Inches(5.2), Inches(3.14))
+    else:
+        card_box = slide.shapes.add_textbox(Inches(7.8), Inches(1.8), Inches(4.7), Inches(5.0))
+        ctf = card_box.text_frame
+        ctf.word_wrap = True
+        cp = ctf.paragraphs[0]
+        cp.text = "🗺️ Topology Inspector"
+        cp.font.name = "Arial"
+        cp.font.size = Pt(22)
+        cp.font.bold = True
+        cp.font.color.rgb = color_primary
+        cp.space_after = Pt(16)
+        cp2 = ctf.add_paragraph()
+        cp2.text = "Exposes cell sector geometry, coverage overlaps, and neighbor relationship offsets on a geographical layout."
+        cp2.font.name = "Arial"
+        cp2.font.size = Pt(16)
+        cp2.font.color.rgb = color_text
+
+    # Slide 8: RL Variant Comparison & Performance Heatmap
+    slide = prs.slides.add_slide(slide_layout)
+    set_slide_background(slide)
+    add_slide_header(slide, "Variant Comparison & Performance Heatmap", "Model Evaluation")
+    
+    bullets_variant = [
+        ("HO Success Rate Comparison", "Compares all 4 variants (v0-v3) under the 4 scenarios (baseline, rain fade, rush hour, tower failure) as a bar chart."),
+        ("SLA Benchmark Lines", "Shows a 99% Target threshold (red line) and the Random Baseline performance of 79.2% (gray line)."),
+        ("Multi-Metric Radar Fingerprint", "Tracks balanced criteria (low failure, low ping-pong, low too-early, low wrong-cell) on a radar plot."),
+        ("Scenario Heatmap Grid", "Visualizes variant success rate rates directly, validating 99.99% convergence under baseline and rain fade scenarios.")
+    ]
+    add_bullet_list(slide, bullets_variant, Inches(0.8), Inches(1.8), Inches(6.5), Inches(5.0))
+    
+    # Embed stacked variant bar chart and heatmap/radar screenshot
+    img_bar_path = Path("docs/screenshots/experiment_results_bar.png")
+    img_heat_path = Path("docs/screenshots/heatmap_radar.png")
+    if img_bar_path.exists() and img_heat_path.exists():
+        slide.shapes.add_picture(str(img_bar_path), Inches(7.5), Inches(1.6), Inches(5.0), Inches(2.0))
+        slide.shapes.add_picture(str(img_heat_path), Inches(7.5), Inches(3.8), Inches(5.0), Inches(2.0))
+    else:
+        card_box = slide.shapes.add_textbox(Inches(7.8), Inches(1.8), Inches(4.7), Inches(5.0))
+        ctf = card_box.text_frame
+        ctf.word_wrap = True
+        cp = ctf.paragraphs[0]
+        cp.text = "📈 Variant Analytics"
+        cp.font.name = "Arial"
+        cp.font.size = Pt(22)
+        cp.font.bold = True
+        cp.font.color.rgb = color_primary
+        cp.space_after = Pt(16)
+        cp2 = ctf.add_paragraph()
+        cp2.text = "Exposes variant success rates across baseline and stress scenarios to ensure safety and stability."
+        cp2.font.name = "Arial"
+        cp2.font.size = Pt(16)
+        cp2.font.color.rgb = color_text
+
+    # Slide 9: Real-Time RL Simulation & Parameters
+    slide = prs.slides.add_slide(slide_layout)
+    set_slide_background(slide)
+    add_slide_header(slide, "Real-Time RL Simulation", "Simulation Sandbox")
+    
+    bullets_sim = [
+        ("Gymnasium Step Telemetry", "Provides real-time state visualization including Cluster HOSR (98.85% at step 15), cumulative reward (4,393), and degraded cell counts (5)."),
+        ("Live Simulation Parameters", "Exposes active environment factors including UE Load (1.0x), RSRP Offset (0 dB), and Failure Multiplier (1.0x)."),
+        ("Continuous CIO Tuning Monitor", "Displays real-time action adjustments (CIO +0 dB) computed by the RL agent for active neighbor relations."),
+        ("Variant Leaderboard Track", "Compares active success rate predictions across variants (v0: 99.99%) to highlight the optimal operational policy.")
+    ]
+    add_bullet_list(slide, bullets_sim, Inches(0.8), Inches(1.8), Inches(6.5), Inches(5.0))
+    
+    # Embed the realtime simulation screenshot
+    img_sim_path = Path("docs/screenshots/realtime_simulation.png")
+    if img_sim_path.exists():
+        slide.shapes.add_picture(str(img_sim_path), Inches(7.5), Inches(2.3), Inches(5.2), Inches(2.87))
+    else:
+        card_box = slide.shapes.add_textbox(Inches(7.8), Inches(1.8), Inches(4.7), Inches(5.0))
+        ctf = card_box.text_frame
+        ctf.word_wrap = True
+        cp = ctf.paragraphs[0]
+        cp.text = "🎮 Simulation Monitor"
+        cp.font.name = "Arial"
+        cp.font.size = Pt(22)
+        cp.font.bold = True
+        cp.font.color.rgb = color_primary
+        cp.space_after = Pt(16)
+        cp2 = ctf.add_paragraph()
+        cp2.text = "Allows operators to trigger scenarios and visually verify agent learning and action adjustments in real-time."
+        cp2.font.name = "Arial"
+        cp2.font.size = Pt(16)
+        cp2.font.color.rgb = color_text
+    # Slide 10: 3D Digital Twin Screenshot
+    slide = prs.slides.add_slide(slide_layout)
+    set_slide_background(slide)
+    img_cesium_path = Path("docs/screenshots/cesium_3d_twin.jpg")
+    if img_cesium_path.exists():
+        slide.shapes.add_picture(str(img_cesium_path), Inches(0), Inches(0), Inches(13.333), Inches(7.5))
+    else:
+        add_slide_header(slide, "Tokyo 3D Digital Twin", "CesiumJS Visualisation")
+        card_box = slide.shapes.add_textbox(Inches(0.8), Inches(1.8), Inches(11.7), Inches(5.0))
+        ctf = card_box.text_frame
+        ctf.word_wrap = True
+        cp = ctf.paragraphs[0]
+        cp.text = "🖥️ 3D Digital Twin Visualization"
+        cp.font.name = "Arial"
+        cp.font.size = Pt(22)
+        cp.font.bold = True
+        cp.font.color.rgb = color_primary
+        cp.space_after = Pt(16)
+        cp2 = ctf.add_paragraph()
+        cp2.text = "Renders a high-fidelity 3D spatial view of Tokyo towers, modeling building geometry and NVIDIA Sionna ray-tracing coverage maps."
+        cp2.font.name = "Arial"
+        cp2.font.size = Pt(16)
+        cp2.font.color.rgb = color_text
+
+    # Slide 11: 3D Digital Twin Explanation
+    slide = prs.slides.add_slide(slide_layout)
+    set_slide_background(slide)
+    add_slide_header(slide, "Tokyo 3D Digital Twin Sandbox", "Spatial Network Twin")
+    
+    bullets_twin = [
+        ("Urban Spatial Database", "Models 22 macro site towers across Shinjuku, Shibuya, and Minato-ku, capturing engineering azimuths, heights, mechanical/electrical tilts, and E2/A1 RIC interfaces."),
+        ("NVIDIA Sionna Ray-Tracing", "Replaces Okumura-Hata formulas with GPU ray-tracing. Simulates coverage blocking, reflection, and diffraction across sub-6 GHz (n77/n78) and mmWave (n257) frequencies."),
+        ("UE Mobility & Corridor Handovers", "Simulates real-world traffic paths (Yamanote Line trains, expressways) and visualizes serving sector paths (green: success, red: radio link failures)."),
+        ("Operational Business ROI", "By using the twin to optimize CIO offsets using RL, handover failures drop from 2.5% to 0.5%, saving billions of yen in NOC triage and subscriber churn.")
+    ]
+    add_bullet_list(slide, bullets_twin, Inches(0.8), Inches(1.8), Inches(6.5), Inches(5.0))
+    
+    card_box = slide.shapes.add_textbox(Inches(7.8), Inches(1.8), Inches(4.7), Inches(5.0))
+    ctf = card_box.text_frame
+    ctf.word_wrap = True
+    
+    cp = ctf.paragraphs[0]
+    cp.text = "🔮 Physical & Digital Twin"
+    cp.font.name = "Arial"
+    cp.font.size = Pt(22)
+    cp.font.bold = True
+    cp.font.color.rgb = color_primary
+    cp.space_after = Pt(16)
+    
+    cp2 = ctf.add_paragraph()
+    cp2.text = "The 3D twin models actual building geometry and radio physics. It allows the RL agent to test and validate network optimization policies in a safe, high-fidelity sandbox before deploying to live baseband nodes."
+    cp2.font.name = "Arial"
+    cp2.font.size = Pt(16)
+    cp2.font.color.rgb = color_text
+
+    # Slide 12: Results & ONNX
     slide = prs.slides.add_slide(slide_layout)
     set_slide_background(slide)
     add_slide_header(slide, "100k Sweep & ONNX Export", "Phase 3 Results")
+
     
     bullets_p5 = [
         ("100k Sweeps (16/16 Completed)", "PPO trained across 4 variants x 4 scenarios. Variant v2 baseline achieves HOSR: 99.99% and Ping-Pong: 0.00%."),
