@@ -1458,8 +1458,8 @@ elif page == "Experiments":
                 vd = filt[(filt["Variant"] == v) & (filt["Scenario"] == "baseline")]
                 if len(vd) > 0:
                     row = vd.iloc[0]
-                    vals = [float(row["Too Early %"]), float(row["Too Late %"]), float(row["Wrong Cell %"])]
-                    if sum(vals) == 0:
+                    total_fail = (float(row["Too Early %"]) + float(row["Too Late %"]) + float(row["Wrong Cell %"])) * 100
+                    if total_fail < 0.01:
                         fp = go.Figure(data=[go.Pie(
                             labels=["Success"],
                             values=[100.0],
@@ -1470,10 +1470,15 @@ elif page == "Experiments":
                         )])
                     else:
                         fp = go.Figure(data=[go.Pie(
-                            labels=["Too Early", "Too Late", "Wrong Cell"],
-                            values=vals,
+                            labels=["Success", "Too Early", "Too Late", "Wrong Cell"],
+                            values=[
+                                float(row["HO Success %"]),
+                                float(row["Too Early %"]) * 100,
+                                float(row["Too Late %"]) * 100,
+                                float(row["Wrong Cell %"]) * 100,
+                            ],
                             hole=.55,
-                            marker_colors=[AMBER, ORANGE, RED],
+                            marker_colors=[GREEN, AMBER, ORANGE, RED],
                             textinfo="label+percent",
                             textfont_size=11,
                         )])
@@ -1599,9 +1604,10 @@ elif page == "Simulation":
 
         if len(cdf) > 0:
             scd = cdf[cdf["Scenario"] == ss]
-            if len(scd) > 0:
+            scd_filtered = scd[scd["Variant"] != "v0"]  # ← add this
+            if len(scd_filtered) > 0:
                 sec("Best Variant")
-                best = scd.loc[scd["HO Success %"].idxmax()]
+                best = scd_filtered.loc[scd_filtered["HO Success %"].idxmax()]
                 bvc = V_COLORS.get(best["Variant"], PRIMARY)
                 st.markdown(
                     f'<div class="kpi" style="text-align:center;border-top:3px solid {bvc};">'
@@ -1746,6 +1752,7 @@ elif page == "Reports":
         for i, sc in enumerate(sel_s):
             with rcols[i]:
                 sd = filt[filt["Scenario"] == sc]
+                sd = sd[sd["Variant"] != "v0"] 
                 if len(sd) > 0:
                     best = sd.loc[sd["HO Success %"].idxmax()]
                     bvc = V_COLORS.get(best["Variant"], PRIMARY)
@@ -1879,7 +1886,7 @@ elif page == "Reports":
             ("Architecture diagram committed (docs/architecture.md)",  _has_arch_diag),
             ("Deployment guide committed (docs/deployment-guide.md)",  (ROOT / "docs" / "deployment-guide.md").exists()),
             ("Demo script committed (docs/demo-script.md)",            (ROOT / "docs" / "demo-script.md").exists()),
-            ("PPTX deck committed (docs/presentation.pptx)",           (ROOT / "docs" / "presentation.pptx").exists()),
+            ("PPTX deck committed (docs/presentation.pptx)",           (ROOT / "docs" / "Altiostar_MRO_Recap.pptx").exists()),
             # ── G4 / Generalization ───────────────────────────────────────
             ("Best variant recommendation per scenario",               _has_best_variant),
             ("Multi-geo validation present (generalization bonus)",    _has_multi_geo),
