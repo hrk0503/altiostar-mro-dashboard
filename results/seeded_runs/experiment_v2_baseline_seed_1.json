@@ -1,0 +1,101 @@
+{
+  "experiment": "v2_baseline_seed_1",
+  "reward_version": "v2",
+  "scenario": "baseline",
+  "timestamp": "2026-06-09T13:41:22+00:00",
+  "config": {
+    "total_timesteps": 50000,
+    "eval_episodes": 5,
+    "seed": 1,
+    "algorithm": "PPO",
+    "policy": "MlpPolicy"
+  },
+  "training": {
+    "time_s": 1117.5,
+    "episode_rewards": [
+      210402.2312,
+      210375.3672,
+      210573.7636,
+      210458.0636,
+      210630.247,
+      210539.0011,
+      210635.4428,
+      210516.7937,
+      210681.0619,
+      210459.287,
+      210466.2383,
+      210625.9926,
+      210554.5302,
+      210501.0168,
+      210513.9132,
+      210472.5119,
+      210490.03,
+      210451.93
+    ],
+    "checkpoint_path": "checkpoints/seeded_runs/ppo_v2_baseline_seed_1.zip"
+  },
+  "evaluation": {
+    "mean_reward": 210585.8552,
+    "std_reward": 50.4468,
+    "ho_success_rate": 79.2676,
+    "ho_failure_rate": 1.0306,
+    "pingpong_rate": 1.3839,
+    "too_early_rate": 0.1295,
+    "too_late_rate": 0.2007,
+    "wrong_cell_rate": 0.7032,
+    "n_episodes": 5,
+    "per_episode": [
+      {
+        "episode": 0,
+        "reward": 210613.8177,
+        "ho_success_rate": 79.2915,
+        "ho_failure_rate": 1.0292,
+        "pingpong_rate": 1.384,
+        "too_early_rate": 0.1299,
+        "too_late_rate": 0.2019,
+        "wrong_cell_rate": 0.7025
+      },
+      {
+        "episode": 1,
+        "reward": 210612.5204,
+        "ho_success_rate": 79.2895,
+        "ho_failure_rate": 1.0278,
+        "pingpong_rate": 1.3815,
+        "too_early_rate": 0.1292,
+        "too_late_rate": 0.1991,
+        "wrong_cell_rate": 0.7009
+      },
+      {
+        "episode": 2,
+        "reward": 210576.7493,
+        "ho_success_rate": 79.2187,
+        "ho_failure_rate": 1.0325,
+        "pingpong_rate": 1.3823,
+        "too_early_rate": 0.1291,
+        "too_late_rate": 0.2005,
+        "wrong_cell_rate": 0.7053
+      },
+      {
+        "episode": 3,
+        "reward": 210491.9873,
+        "ho_success_rate": 79.2499,
+        "ho_failure_rate": 1.033,
+        "pingpong_rate": 1.3859,
+        "too_early_rate": 0.1303,
+        "too_late_rate": 0.2022,
+        "wrong_cell_rate": 0.7047
+      },
+      {
+        "episode": 4,
+        "reward": 210634.2013,
+        "ho_success_rate": 79.2885,
+        "ho_failure_rate": 1.0304,
+        "pingpong_rate": 1.386,
+        "too_early_rate": 0.1288,
+        "too_late_rate": 0.1997,
+        "wrong_cell_rate": 0.7028
+      }
+    ]
+  },
+  "mlflow_run_id": "bba019f82e194997a358a2d4a106b9cd"
+}

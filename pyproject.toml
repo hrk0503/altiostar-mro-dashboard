@@ -9,29 +9,29 @@ description = "Reusable MRO Training Pipeline — CSV in, trained RL model + das
 requires-python = ">=3.10"
 license = {text = "MIT"}
 dependencies = [
-    "gymnasium>=0.29",
-    "stable-baselines3>=2.3",
-    "pydantic>=2.0",
-    "pandas>=2.0",
-    "pyarrow>=15.0",
-    "mlflow>=2.12",
-    "streamlit>=1.35",
-    "pyyaml>=6.0",
-    "numpy>=1.26",
+    "gymnasium==1.1.1",
+    "stable-baselines3==2.7.1",
+    "pydantic==2.13.4",
+    "pandas==2.3.3",
+    "pyarrow==20.0.0",
+    "mlflow==3.1.4",
+    "streamlit==1.50.0",
+    "pyyaml==6.0.3",
+    "numpy==2.0.2",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.0",
-    "pytest-cov>=5.0",
-    "hypothesis>=6.100",
-    "mypy>=1.10",
-    "ruff>=0.4",
-    "pre-commit>=3.7",
+    "pytest==8.4.2",
+    "pytest-cov==6.2.1",
+    "hypothesis==6.141.1",
+    "mypy==1.16.0",
+    "ruff==0.11.13",
+    "pre-commit==4.2.0",
 ]
 export = [
-    "onnx>=1.16",
-    "onnxruntime>=1.18",
+    "onnx==1.18.0",
+    "onnxruntime==1.22.0",
 ]
 
 [tool.ruff]

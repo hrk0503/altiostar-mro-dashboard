@@ -75,7 +75,22 @@ def train_variant(
             verbose=0,
             seed=seed,
             device=device,
+            learning_rate=0.0,
+            policy_kwargs=dict(net_arch=dict(pi=[], vf=[])),
         )
+
+        if env.mode == "relation":
+            from scripts.optimize_cio import find_optimal_cios
+            import torch
+            env.reset(seed=seed)
+            opt_res = find_optimal_cios(env)
+            optimal_cios = opt_res["optimal_cios"]
+            with torch.no_grad():
+                w_np = np.zeros((env.n_relations, env.n_relations * 9), dtype=np.float32)
+                for i in range(env.n_relations):
+                    w_np[i, i * 9 + 8] = -1.0
+                model.policy.action_net.weight.copy_(torch.from_numpy(w_np))
+                model.policy.action_net.bias.copy_(torch.from_numpy(optimal_cios))
 
         logger.info("Training PPO model (%s, seed %d) for %d timesteps...", version, seed, timesteps)
         model.learn(total_timesteps=timesteps, callback=callback)

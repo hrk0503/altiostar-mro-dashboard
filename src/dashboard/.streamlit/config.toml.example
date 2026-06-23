@@ -1,0 +1,20 @@
+[theme]
+# AltioStar MRO Brand UI Tokens
+primaryColor = "#0096AA"             # Brand primary teal
+backgroundColor = "#F1F5F9"          # Light canvas slate background
+secondaryBackgroundColor = "#FFFFFF" # Card and Sidebar white backgrounds
+textColor = "#0F172A"                # Dark slate body text
+font = "sans serif"
+
+[server]
+headless = true
+port = 8501
+enableCORS = false
+enableXsrfProtection = true
+
+[client]
+showErrorDetails = true
+toolbarMode = "minimal"
+
+[runner]
+fastReruns = true

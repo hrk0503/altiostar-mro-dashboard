@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AltioStar MRO Training Pipeline Presentation</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: rgba(17, 24, 39, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --primary: #38bdf8;
+            --primary-glow: rgba(56, 189, 248, 0.15);
+            --accent: #818cf8;
+            --success: #34d399;
+            --warning: #fbbf24;
+            --font-display: 'Outfit', sans-serif;
+            --font-body: 'Inter', sans-serif;
+            --font-mono: 'Fira Code', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.08) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(129, 140, 248, 0.08) 0px, transparent 50%);
+        }
+
+        /* Slide Container */
+        .presentation-container {
+            position: relative;
+            width: 90vw;
+            height: 80vh;
+            max-width: 1200px;
+            max-height: 800px;
+            perspective: 1500px;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 48px 64px;
+            opacity: 0;
+            visibility: hidden;
+            transform: rotateY(15deg) translateZ(-100px);
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(16px);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+        }
+
+        .slide.active {
+            opacity: 1;
+            visibility: visible;
+            transform: rotateY(0deg) translateZ(0);
+            z-index: 10;
+        }
+
+        .slide.prev {
+            transform: rotateY(-15deg) translateZ(-100px);
+        }
+
+        /* Typography */
+        h1, h2, h3 {
+            font-family: var(--font-display);
+            font-weight: 700;
+        }
+
+        .slide-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 16px;
+        }
+
+        .slide-title {
+            font-size: 2.2rem;
+            background: linear-gradient(to right, #ffffff, var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .slide-tag {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--primary);
+            background: var(--primary-glow);
+            padding: 6px 14px;
+            border-radius: 100px;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .slide-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* Slide specific styles */
+        /* Title Slide */
+        .slide-title-card {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            gap: 20px;
+            position: relative;
+        }
+
+        .logo-container {
+            width: 140px;
+            height: 140px;
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.1) 0%, rgba(129, 140, 248, 0.1) 100%);
+            border-radius: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(56, 189, 248, 0.1);
+            margin-bottom: 10px;
+        }
+
+        .logo-w {
+            width: 90px;
+            height: 90px;
+            fill: none;
+            stroke: var(--primary);
+            stroke-width: 1.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            filter: drop-shadow(0 0 10px var(--primary));
+        }
+
+        .main-title {
+            font-size: 3.2rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #ffffff, #93c5fd, var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1.15;
+            letter-spacing: -1px;
+        }
+
+        .subtitle {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            font-weight: 300;
+        }
+
+        .meta-info {
+            margin-top: 30px;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .presenters {
+            font-weight: 600;
+            color: var(--primary);
+            letter-spacing: 0.5px;
+        }
+
+        /* Content List layout */
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            align-items: start;
+        }
+
+        .bullet-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .bullet-list li {
+            position: relative;
+            padding-left: 28px;
+            font-size: 1.05rem;
+            line-height: 1.5;
+            color: var(--text-primary);
+        }
+
+        .bullet-list li::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 8px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--primary);
+            box-shadow: 0 0 8px var(--primary);
+        }
+
+        .bullet-list li strong {
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .bullet-list li .desc {
+            display: block;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* Detail Cards */
+        .detail-panel {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .version-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(52, 211, 153, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(52, 211, 153, 0.2);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-family: var(--font-mono);
+            font-weight: 600;
+            font-size: 1.1rem;
+            align-self: flex-start;
+            margin-bottom: 20px;
+        }
+
+        /* Pipeline Diagram CSS */
+        .pipeline-diagram {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding: 10px;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+
+        .pipeline-node {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            padding: 12px 24px;
+            width: 85%;
+            text-align: center;
+            position: relative;
+            transition: border-color 0.3s ease;
+        }
+
+        .pipeline-node:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+
+        .pipeline-node .title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #ffffff;
+        }
+
+        .pipeline-node .detail {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-family: var(--font-mono);
+            margin-top: 2px;
+        }
+
+        .pipeline-arrow {
+            width: 2px;
+            height: 16px;
+            background: linear-gradient(to bottom, var(--primary), var(--accent));
+            position: relative;
+        }
+
+        .pipeline-arrow::after {
+            content: "▼";
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%) scale(0.6);
+            color: var(--accent);
+            font-size: 10px;
+        }
+
+        /* KPI Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 10px;
+        }
+
+        .kpi-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(56, 189, 248, 0.3);
+            background: rgba(56, 189, 248, 0.02);
+        }
+
+        .kpi-card .value {
+            font-size: 2rem;
+            font-weight: 800;
+            font-family: var(--font-display);
+            margin: 8px 0;
+        }
+
+        .kpi-card .value.primary-color {
+            color: var(--primary);
+            text-shadow: 0 0 10px var(--primary-glow);
+        }
+
+        .kpi-card .value.success-color {
+            color: var(--success);
+            text-shadow: 0 0 10px rgba(52, 211, 153, 0.15);
+        }
+
+        .kpi-card .label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .kpi-card .detail-text {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-family: var(--font-mono);
+        }
+
+        /* Navigation controls */
+        .controls-container {
+            margin-top: 24px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            z-index: 20;
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-primary);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: var(--bg-color);
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+
+        .progress-dots {
+            display: flex;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.15);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .dot.active {
+            background: var(--primary);
+            width: 24px;
+            border-radius: 4px;
+            box-shadow: 0 0 8px var(--primary-glow);
+        }
+
+        .slide-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+            padding-top: 16px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .slide-footer .team-tag {
+            font-weight: 500;
+        }
+
+        .slide-footer .page-number {
+            font-family: var(--font-mono);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="presentation-container">
+        
+        <!-- Slide 1: Introduction -->
+        <div class="slide active" id="slide-1">
+            <div class="slide-content">
+                <div class="slide-title-card">
+                    <div class="logo-container">
+                        <svg class="logo-w" viewBox="0 0 100 100">
+                            <!-- W logo stylized like folds -->
+                            <path d="M15 25 L35 75 L50 45 L65 75 L85 25" />
+                        </svg>
+                    </div>
+                    <h1 class="main-title">AltioStar MRO Training Pipeline</h1>
+                    <p class="subtitle">Reinforcement Learning and Hyperparameter Tuning loops for 5G Handover Optimization</p>
+                    
+                    <div class="meta-info">
+                        <span class="presenters">Stream 4 | Harshit · Ananyaa · Shourya · Devika</span>
+                        <span>WINNIIO × Amity 2026 | June 2026</span>
+                    </div>
+                </div>
+            </div>
+            <div class="slide-footer">
+                <span class="team-tag">AltioStar MRO Project</span>
+                <span class="page-number">1 / 6</span>
+            </div>
+        </div>
+
+        <!-- Slide 2: Phase 0 -->
+        <div class="slide" id="slide-2">
+            <div class="slide-header">
+                <h2 class="slide-title">📡 Phase 0: Foundational Setup</h2>
+                <span class="slide-tag">Foundation</span>
+            </div>
+            <div class="slide-content grid-layout">
+                <ul class="bullet-list">
+                    <li>
+                        <strong>Dev Environment Bootstrap</strong>
+                        <span class="desc">Configured standard local dependencies (Gymnasium, PyTorch, Stable Baselines3, MLflow) cleanly on developers' systems.</span>
+                    </li>
+                    <li>
+                        <strong>Cell-Level Gymnasium Environment</strong>
+                        <span class="desc">Built <code>MROEnv</code> mapping cell parameters (Power, Tilt, CIO) to ROP actions and KPI outputs.</span>
+                    </li>
+                    <li>
+                        <strong>Synthetic Data Generators</strong>
+                        <span class="desc">Integrated mock telemetry CSV parsers simulating cluster logs to feed the environment step updates.</span>
+                    </li>
+                    <li>
+                        <strong>Automated Verification Suites</strong>
+                        <span class="desc">Implemented regression testing for state outputs, reward signs, and environmental telemetry updates.</span>
+                    </li>
+                </ul>
+                <div class="detail-panel">
+                    <div class="version-badge">🚀 tag: v0.1.0</div>
+                    <ul class="bullet-list" style="gap: 12px;">
+                        <li><strong>Outcome:</strong> Verified a stable local runtime pipeline ready for reinforcement learning training loops.</li>
+                        <li><strong>Standard Checkpoint:</strong> tagged and pushed cleanly to <code>origin/staging</code>.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="slide-footer">
+                <span class="team-tag">Phase 0 Release Checkpoint</span>
+                <span class="page-number">2 / 6</span>
+            </div>
+        </div>
+
+        <!-- Slide 3: Phase 1 -->
+        <div class="slide" id="slide-3">
+            <div class="slide-header">
+                <h2 class="slide-title">⚙️ Phase 1: Core Pipeline & Training</h2>
+                <span class="slide-tag">Core Development</span>
+            </div>
+            <div class="slide-content grid-layout">
+                <ul class="bullet-list">
+                    <li>
+                        <strong>Relation-Level Environment (v2)</strong>
+                        <span class="desc">Extended <code>MROEnv</code> to relation-level granularity (source cell → target cell), handling 763 relations dynamically.</span>
+                    </li>
+                    <li>
+                        <strong>SB3 PPO Agent Convergence Loop</strong>
+                        <span class="desc">Constructed reinforcement learning pipelines evaluating actions over consecutive epoch episodes.</span>
+                    </li>
+                    <li>
+                        <strong>Live Optuna sweeps</strong>
+                        <span class="desc">Implemented automated hyperparameter sweeps tuning learning rate, batch size, n_steps, and discount factor (Gamma).</span>
+                    </li>
+                    <li>
+                        <strong>Clean Tracking & Double Caching</strong>
+                        <span class="desc">Resolved MLflow space encoding path bugs and cached dataframes to cut test runtime from hours to 18 seconds.</span>
+                    </li>
+                </ul>
+                <div class="detail-panel">
+                    <div class="version-badge">🔥 tag: v0.2.0</div>
+                    <ul class="bullet-list" style="gap: 12px;">
+                        <li><strong>Telemetry Extraction:</strong> Extracted dual-metric indicators (HO success vs ping-pongs) via schema maps.</li>
+                        <li><strong>Staging Merge:</strong> Passed 144 unit tests, fully green status on Ruff & Mypy, and merged cleanly to staging.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="slide-footer">
+                <span class="team-tag">Phase 1 Release Checkpoint</span>
+                <span class="page-number">3 / 6</span>
+            </div>
+        </div>
+
+        <!-- Slide 4: Entire Pipeline -->
+        <div class="slide" id="slide-4">
+            <div class="slide-header">
+                <h2 class="slide-title">🔗 Entire Training Pipeline Architecture</h2>
+                <span class="slide-tag">Architecture</span>
+            </div>
+            <div class="slide-content grid-layout">
+                <div class="pipeline-diagram">
+                    <div class="pipeline-node">
+                        <div class="title">Raw PM Data Ingestion</div>
+                        <div class="detail">pm_data_relation_level.csv (142MB)</div>
+                    </div>
+                    <div class="pipeline-arrow"></div>
+                    <div class="pipeline-node">
+                        <div class="title">Schema Mapping & Data Cache</div>
+                        <div class="detail">schema_mapper.py / Double caching</div>
+                    </div>
+                    <div class="pipeline-arrow"></div>
+                    <div class="pipeline-node">
+                        <div class="title">Gymnasium MRO Environment</div>
+                        <div class="detail">mro_env.py (relation-mode)</div>
+                    </div>
+                </div>
+                <div class="pipeline-diagram">
+                    <div class="pipeline-node">
+                        <div class="title">RL PPO Model Loop & Optuna Tuning</div>
+                        <div class="detail">train_relation_ppo.py / optuna_sweep.py</div>
+                    </div>
+                    <div class="pipeline-arrow"></div>
+                    <div class="pipeline-node">
+                        <div class="title">Experiment Store (SQLite DB) & Checkpoint</div>
+                        <div class="detail">mlflow.db / checkpoints/ppo_relation_100k.zip</div>
+                    </div>
+                    <div class="pipeline-arrow"></div>
+                    <div class="pipeline-node">
+                        <div class="title">Visual KPI Dashboard</div>
+                        <div class="detail">Streamlit app.py (Baseline comparison)</div>
+                    </div>
+                </div>
+            </div>
+            <div class="slide-footer">
+                <span class="team-tag">AltioStar End-to-End System Diagram</span>
+                <span class="page-number">4 / 6</span>
+            </div>
+        </div>
+
+        <!-- Slide 5: Current Results -->
+        <div class="slide" id="slide-5">
+            <div class="slide-header">
+                <h2 class="slide-title">📊 Current Results & Tuning Value</h2>
+                <span class="slide-tag">Evaluation</span>
+            </div>
+            <div class="slide-content grid-layout">
+                <div>
+                    <h3 style="margin-bottom: 12px; font-size: 1.2rem; color: #ffffff;">Performance Comparison</h3>
+                    <ul class="bullet-list" style="gap: 16px;">
+                        <li>
+                            <strong>Random Baseline Benchmarks:</strong>
+                            <span class="desc">HO Success Rate: 79.25% | PP Rate: 1.39% | Mean Reward: 38.47.</span>
+                        </li>
+                        <li>
+                            <strong>Trained PPO Agent (100k timesteps):</strong>
+                            <span class="desc">Mean Reward: 8,304,784.40 | HO Success Rate: 79.27% | Stable Policy Convergence.</span>
+                        </li>
+                        <li>
+                            <strong>Optuna Hyperparameter Sweeps:</strong>
+                            <span class="desc">LR: 0.00056, batch_size: 128, n_steps: 2048, gamma: 0.9817 yields the highest mean reward of 8,311,482.33.</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="label">PPO Conv Reward</div>
+                        <div class="value primary-color">8.30M</div>
+                        <div class="detail-text">vs 38.47 random</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="label">Best Trial Value</div>
+                        <div class="value success-color">8.31M</div>
+                        <div class="detail-text">Optuna Maximize</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="label">Success Rate</div>
+                        <div class="value" style="color: white;">79.27%</div>
+                        <div class="detail-text">HOSR Convergence</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="label">Unit Tests</div>
+                        <div class="value" style="color: var(--success);">144 / 144</div>
+                        <div class="detail-text">100% Green pytest</div>
+                    </div>
+                </div>
+            </div>
+            <div class="slide-footer">
+                <span class="team-tag">Model KPIs & Verification Metrics</span>
+                <span class="page-number">5 / 6</span>
+            </div>
+        </div>
+
+        <!-- Slide 6: Future Work -->
+        <div class="slide" id="slide-6">
+            <div class="slide-header">
+                <h2 class="slide-title">🔮 Phase 2 Outlook & Next Steps</h2>
+                <span class="slide-tag">Roadmap</span>
+            </div>
+            <div class="slide-content grid-layout">
+                <ul class="bullet-list">
+                    <li>
+                        <strong>ONNX Serialization & Model Export</strong>
+                        <span class="desc">Convert Stable Baselines3 PyTorch model checkpoints to lightweight ONNX format to support high-frequency inference runtimes.</span>
+                    </li>
+                    <li>
+                        <strong>Production Deployment Pipeline</strong>
+                        <span class="desc">Create inference loader classes pulling serialized parameters to calculate live CIO adjustments on network controllers.</span>
+                    </li>
+                    <li>
+                        <strong>MLflow Model Registry Integration</strong>
+                        <span class="desc">Register candidate checkpoints, audit tags (Staging, Production), and archive legacy runs.</span>
+                    </li>
+                    <li>
+                        <strong>In-Field Validation Framework</strong>
+                        <span class="desc">Establish shadow deployment metrics to audit agent predictions against live cell-level performance telemetry before enforcement.</span>
+                    </li>
+                </ul>
+                <div class="detail-panel">
+                    <h3 style="color: var(--primary); margin-bottom: 12px; font-size: 1.1rem;">Phase 2 Work Target</h3>
+                    <p style="font-size: 0.95rem; line-height: 1.6; color: var(--text-secondary);">
+                        Transitioning the offline training pipeline into a production-grade inference engine serving optimization updates directly to network controllers.
+                    </p>
+                </div>
+            </div>
+            <div class="slide-footer">
+                <span class="team-tag">Phase 2 Engineering Tasks</span>
+                <span class="page-number">6 / 6</span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Presentation Controls -->
+    <div class="controls-container">
+        <button class="nav-btn" id="prev-btn">◀</button>
+        <div class="progress-dots" id="dots-container">
+            <div class="dot active" data-slide="0"></div>
+            <div class="dot" data-slide="1"></div>
+            <div class="dot" data-slide="2"></div>
+            <div class="dot" data-slide="3"></div>
+            <div class="dot" data-slide="4"></div>
+            <div class="dot" data-slide="5"></div>
+        </div>
+        <button class="nav-btn" id="next-btn">▶</button>
+    </div>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const dots = document.querySelectorAll('.dot');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        let currentSlideIndex = 0;
+
+        function updateSlides(targetIndex) {
+            // Validate boundaries
+            if (targetIndex < 0 || targetIndex >= slides.length) return;
+
+            // Remove active classes
+            slides[currentSlideIndex].classList.remove('active');
+            dots[currentSlideIndex].classList.remove('active');
+
+            if (targetIndex > currentSlideIndex) {
+                slides[currentSlideIndex].classList.add('prev');
+            } else {
+                slides[targetIndex].classList.remove('prev');
+            }
+
+            // Set new active
+            currentSlideIndex = targetIndex;
+            slides[currentSlideIndex].classList.add('active');
+            slides[currentSlideIndex].classList.remove('prev');
+            dots[currentSlideIndex].classList.add('active');
+        }
+
+        // Event listeners for buttons
+        prevBtn.addEventListener('click', () => {
+            if (currentSlideIndex > 0) {
+                updateSlides(currentSlideIndex - 1);
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentSlideIndex < slides.length - 1) {
+                updateSlides(currentSlideIndex + 1);
+            }
+        });
+
+        // Event listeners for dots
+        dots.forEach(dot => {
+            dot.addEventListener('click', () => {
+                const targetIndex = parseInt(dot.getAttribute('data-slide'));
+                updateSlides(targetIndex);
+            });
+        });
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+                if (currentSlideIndex < slides.length - 1) {
+                    updateSlides(currentSlideIndex + 1);
+                }
+            } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+                if (currentSlideIndex > 0) {
+                    updateSlides(currentSlideIndex - 1);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
