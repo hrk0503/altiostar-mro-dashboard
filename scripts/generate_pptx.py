@@ -128,10 +128,73 @@ def create_presentation() -> None:
     p4.font.size = Pt(13)
     p4.font.color.rgb = color_sub
 
-    # Slide 2: Ingestion & Schema Mapper
+    # Slide 2: SPIN Context — Situation & Problems
+    slide = prs.slides.add_slide(slide_layout)
+    set_slide_background(slide)
+    add_slide_header(slide, "SPIN: Situation & Problems", "Industry Context")
+    
+    bullets_spin1 = [
+        ("Situation (S): O-RAN Disaggregation", "The industry is transitioning from monolithic to disaggregated Open Radio Access Networks (O-RAN), splitting baseband processing into vCU, vDU, and RIC components."),
+        ("Situation (S): Dense 5G Deployments", "Operators deploy high-density 5G clusters (sub-6 GHz n77/n78 and mmWave n257) in high-traffic urban corridors (e.g. Tokyo Yamanote line and expressways)."),
+        ("Problem (P): Handover Anomalies", "Static, empirical cell parameters are too slow. Suboptimal Cell Individual Offsets (CIO) trigger Radio Link Failures (RLF) from too-early or too-late handovers, or resource-draining Ping-Pongs."),
+        ("Problem (P): Propagation Modeling Gaps", "Standard empirical formulas (Okumura-Hata) cannot model complex building blockages and diffraction paths for high-frequency 28 GHz mmWave signals.")
+    ]
+    add_bullet_list(slide, bullets_spin1, Inches(0.8), Inches(1.8), Inches(6.5), Inches(5.0))
+    
+    card_box = slide.shapes.add_textbox(Inches(7.8), Inches(1.8), Inches(4.7), Inches(5.0))
+    ctf = card_box.text_frame
+    ctf.word_wrap = True
+    
+    cp = ctf.paragraphs[0]
+    cp.text = "⚠️ The Operational Gap"
+    cp.font.name = "Arial"
+    cp.font.size = Pt(22)
+    cp.font.bold = True
+    cp.font.color.rgb = color_primary
+    cp.space_after = Pt(16)
+    
+    cp2 = ctf.add_paragraph()
+    cp2.text = "Monolithic, manual tuning methods are completely incapable of managing the high-frequency transitions and dynamic mobility patterns of modern 5G urban networks."
+    cp2.font.name = "Arial"
+    cp2.font.size = Pt(16)
+    cp2.font.color.rgb = color_text
+
+    # Slide 3: SPIN Context — Implications & Needs
+    slide = prs.slides.add_slide(slide_layout)
+    set_slide_background(slide)
+    add_slide_header(slide, "SPIN: Implications & Needs", "Industry Context")
+    
+    bullets_spin2 = [
+        ("Implication (I): Dropped Connections", "A minor 2.5% handover failure rate translates directly into 2 million dropped subscriber connections daily in a major metropolis like Tokyo."),
+        ("Implication (I): High OPEX & Churn", "Manual drive testing and NOC triage overhead inflate operational costs, while call drops damage operator reputation and drive subscriber churn to competitors."),
+        ("Need (N): near-Real-Time Optimization", "Operators need automated closed-loop optimization systems to dynamically compute and update CIO offsets per relation at millisecond scales."),
+        ("Need (N): Physics-Informed Twins", "A high-fidelity spatial digital twin (GPU ray-traced) is required to safely train, calibrate, and validate Reinforcement Learning policies prior to baseband deployment.")
+    ]
+    add_bullet_list(slide, bullets_spin2, Inches(0.8), Inches(1.8), Inches(6.5), Inches(5.0))
+    
+    card_box = slide.shapes.add_textbox(Inches(7.8), Inches(1.8), Inches(4.7), Inches(5.0))
+    ctf = card_box.text_frame
+    ctf.word_wrap = True
+    
+    cp = ctf.paragraphs[0]
+    cp.text = "🎯 The Solution Requirement"
+    cp.font.name = "Arial"
+    cp.font.size = Pt(22)
+    cp.font.bold = True
+    cp.font.color.rgb = color_primary
+    cp.space_after = Pt(16)
+    
+    cp2 = ctf.add_paragraph()
+    cp2.text = "To minimize failures, the system must bridge physical radio physics with reinforcement learning. High-fidelity twins and automated Ship Gates ensure safe, robust, and SLA-compliant baseband updates."
+    cp2.font.name = "Arial"
+    cp2.font.size = Pt(16)
+    cp2.font.color.rgb = color_text
+
+    # Slide 4: Ingestion & Schema Mapper
     slide = prs.slides.add_slide(slide_layout)
     set_slide_background(slide)
     add_slide_header(slide, "The Ingestion Data Pipeline", "Data Engineering")
+
     
     bullets_p1 = [
         ("Raw Operator CSV Files", "Ingests 4 base files: site database (75 cells), neighbor relations (763 pairs), PM data (216K rows), and monthly KPI summary (75 rows)."),
