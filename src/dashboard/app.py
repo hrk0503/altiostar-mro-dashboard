@@ -425,7 +425,7 @@ RDIR = ROOT / "results"
 DDIR = ROOT / "data" / "synthetic"
 EXTRA_GEO = ROOT / "data" / "extra_geo"
 
-_DATASETS = {"Shibuya, Tokyo (Rakuten · LTE)": None}
+_DATASETS = {"Shibuya, Tokyo (LTE)": None}
 if EXTRA_GEO.exists():
     _GEO_LABELS = {
         "helsinki": "Helsinki (Elisa · Nokia RAN)",
