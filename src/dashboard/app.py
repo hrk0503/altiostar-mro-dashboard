@@ -1,4 +1,4 @@
-"""AltioStar MRO — Dashboard.
+"""MRO Optimization Platform — Dashboard.
 
 Tailwind-inspired clean UI: dark sidebar, flat KPI cards,
 colored badges, clean tables, donut charts.
@@ -42,14 +42,14 @@ _fav = ASSETS / "favicon.ico"
 if _fav.exists():
     _fav_b64 = base64.b64encode(_fav.read_bytes()).decode()
     st.set_page_config(
-        page_title="WINNIIO · AltioStar MRO",
+        page_title="WINNIIO · MRO Optimization Platform",
         page_icon=f"data:image/x-icon;base64,{_fav_b64}",
         layout="wide",
         initial_sidebar_state="expanded",
     )
 else:
     st.set_page_config(
-        page_title="WINNIIO · AltioStar MRO",
+        page_title="WINNIIO · MRO Optimization Platform",
         page_icon="📡",
         layout="wide",
         initial_sidebar_state="expanded",
@@ -83,7 +83,7 @@ if not _is_authed:
         st.markdown(
             '<div style="text-align:center; margin-bottom:8px;">'
             '<span style="font-size:1.1rem; font-weight:700; color:#0F172A;">'
-            'AltioStar MRO Dashboard</span></div>'
+            'MRO Optimization Platform</span></div>'
             '<div style="text-align:center; margin-bottom:24px;">'
             '<span style="font-size:.82rem; color:#64748B;">'
             'Rakuten Japan 5G</span></div>',
@@ -515,7 +515,7 @@ with st.sidebar:
         f'{crane_tag}'
         f'<div>'
         f'<div style="font-size:1.1rem; font-weight:700; color:#E2E8F0 !important; letter-spacing:.5px; line-height:1.2;">WINNIIO</div>'
-        f'<div style="font-size:.6rem; color:#64748B !important; letter-spacing:.1em;">AltioStar MRO</div>'
+        f'<div style="font-size:.6rem; color:#64748B !important; letter-spacing:.1em;">MRO Optimization Platform</div>'
         f'</div></div>', unsafe_allow_html=True)
 
     st.divider()
@@ -2226,5 +2226,5 @@ elif page == "Data Upload":
 st.markdown(f'<div style="height:1px;background:{BORDER};margin:20px 0 12px 0;"></div>', unsafe_allow_html=True)
 st.markdown(
     f'<div style="text-align:center;font-size:.72rem;color:{TEXT_MUTED};padding-bottom:16px;">'
-    f'WINNIIO AltioStar MRO · Rakuten Japan 5G · 75 Cells · 763 Relations · 99% Target'
+    f'WINNIIO MRO Optimization Platform · Rakuten Japan 5G · 75 Cells · 763 Relations · 99% Target'
     f'</div>', unsafe_allow_html=True)
