@@ -1162,7 +1162,7 @@ elif page == "Cell Map":
             lat=md["latitude"], lon=md["longitude"], mode="markers",
             marker=dict(
                 size=md["bub"], color=md["ho_sr"],
-                colorscale=[[0, RED], [.5, AMBER], [.96, AMBER], [1, GREEN]],
+                colorscale=[[0, RED], [.3, AMBER], [.7, GREEN], [1, GREEN]],
                 cmin=85, cmax=100,
                 colorbar=dict(title=dict(text="HO %"), thickness=10, len=.4),
             ),
@@ -1534,7 +1534,7 @@ elif page == "Network":
         x=td["x"], y=td["y"], mode="markers+text",
         marker=dict(
             size=ns, color=td["ho_sr"],
-            colorscale=[[0, RED], [.5, AMBER], [.96, AMBER], [1, GREEN]],
+            colorscale=[[0, RED], [.3, AMBER], [.7, GREEN], [1, GREEN]],
             cmin=80, cmax=100,
             line=dict(width=1.5, color="white"),
             colorbar=dict(title=dict(text="Success %")),
@@ -1665,7 +1665,7 @@ elif page == "Simulation":
                 marker=dict(
                     size=np.clip(sdf["ho_att"] * .5, 6, 28),
                     color=sdf["lsr"],
-                    colorscale=[[0, RED], [.5, AMBER], [.96, AMBER], [1, GREEN]],
+                    colorscale=[[0, RED], [.3, AMBER], [.7, GREEN], [1, GREEN]],
                     cmin=88, cmax=100,
                 ),
                 hovertemplate="<b>%{customdata[0]}</b><br>Success: %{customdata[1]:.2f}%<extra></extra>",
@@ -1936,7 +1936,7 @@ elif page == "Data Upload":
     }
 
     _SCHEMA_DESCRIPTIONS = {
-        "SiteRecord": ("Site Database", "Cell tower locations, sectors, antennas, bands", "site_database.csv"),
+        "SiteRecord": ("Site Database", "Cell locations, sectors, antennas, bands", "site_database.csv"),
         "NeighborRelation": ("Neighbor Relations", "Cell-to-cell adjacency, CIO offsets, distances", "neighbor_relations.csv"),
         "PMRecord": ("PM Counters", "15-min ROP performance measurements per cell", "pm_data_april2026.csv"),
         "RelationPMRecord": ("Relation PM", "Per-relation handover counters per ROP", "relation-level data"),
