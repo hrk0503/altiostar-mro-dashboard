@@ -1,38 +1,30 @@
 #!/usr/bin/env python3
-"""Generate ADDITIONAL multi-geo / multi-SEASON MRO datasets (4 sites x 4 seasons = 16).
+"""Generate ADDITIONAL multi-geo / multi-season LTE MRO datasets.
 
-Extends generate_multi_geo_data.py with calendar anchoring (``start_date``) and a
-research-grounded, *climate- and band-specific* seasonal modifier per location.
+Matrix: 3 footprints x 4 seasons = 12 datasets (LTE).
 
-Why seasons vary the data (sources in the accompanying SEASONAL_RESEARCH.md):
-  * Foliage: deciduous canopy in leaf adds ~3-10 dB path loss at ~2 GHz vs bare
-    winter, worse when wet, and worse at Band 41 (2.5 GHz) than Band 1/3
-    (ITU-R P.833; MP Antenna; RF Essentials). -> summer/spring hurt vegetated
-    (rural Japan, parks): lower RSRP, more failures.
-  * Snow / ice accretion + cold: antenna icing and detuning in continental and
-    mountain winters (Kyiv, Nagano ski country) -> RSRP down, failures up.
-    Tokyo winter is mild/dry -> minimal.
-  * Tropospheric ducting: temperature-inversion co-channel interference,
-    "predominately co-channel TDD", peaking summer/autumn over coastal water
-    (Wikipedia tropospheric propagation; US11018784B2). Band 41 is TDD and
-    Tokyo is coastal (Tokyo Bay) -> downtown summer/autumn sees more WRONG-CELL
-    handovers and ping-pong. Inland Kyiv/Nagano largely spared.
-  * Typhoon / rain (Japan autumn): wind-driven foliage fades (up to ~22 dB) and
-    Band 41 rain fade -> elevated, variable failures.
-  * Traffic seasonality: Tokyo summer tourism + rainy season; Nagano winter ski
-    crowds; Kyiv mild summer.
+Covers every "You bring" input on the Rakuten/Altiostar slide:
+  * Site database — azimuth, tilt, height        -> site_database.csv
+  * Clutter & elevation                          -> site_database.csv
+  * Neighbour lists & mobility KPIs              -> neighbor_relations.csv +
+                                                    pm_data_relation_level.csv +
+                                                    cluster_kpi_summary.csv
+  * RSRP / RSRQ / SINR samples                   -> radio_samples.csv
 
-Distinct learnable signatures the RL agent should pick up:
-  rural  -> too-LATE-dominated failures (wide cells, UE travels far)
-  Tokyo summer/autumn -> WRONG-CELL + ping-pong dominated (Band 41 TDD ducting)
+Each season bends the curves with research-grounded, climate- AND band-specific
+RF physics so footprints react differently (see SEASONAL_RESEARCH.md):
+  foliage (summer/spring, vegetated, worse at higher freq), snow/ice (continental
+  & mountain winter), tropospheric ducting (coastal Band-41 TDD summer/autumn ->
+  wrong-cell + ping-pong), typhoon/rain (Japan autumn), traffic seasonality
+  (Tokyo summer tourism, Nagano winter ski).
+
+Distinct learnable signatures:
+  rural  -> too-LATE-dominated failures (wide cells)
+  Tokyo summer/autumn -> WRONG-CELL + ping-pong (Band 41 TDD ducting, Tokyo Bay)
   Kyiv winter -> high overall failure, low RSRP (snow/cold)
 
-Output per dataset (schema = src/pipeline/models.py, format the env prefers):
-  data/extra_geo/<location>_<season>/{site_database,neighbor_relations,
-  pm_data_relation_level,cluster_kpi_summary}.csv
-
-Bands restricted to SiteRecord.validate_band whitelist so data passes the
-strict pipeline validator.
+All CSVs pass src/pipeline/models.py validators (Band 1/3/41 whitelist) and the
+env's source_cell_id relation-mode detection. Data is synthetic.
 """
 
 import csv
@@ -45,67 +37,69 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent / "data" / "extra_geo"
 
 WHITELIST_BANDS = {"Band 1 (2100MHz)", "Band 3 (1800MHz)", "Band 41 (2500MHz)"}
+TDD_BAND = "Band 41 (2500MHz)"  # TDD -> tropospheric-ducting sensitive
 
-# Season anchor month (year fixed for reproducibility).
 SEASON_MONTH = {"winter": (2026, 1, 13), "spring": (2026, 4, 14),
                 "summer": (2026, 7, 15), "autumn": (2026, 10, 13)}
 
-# ── Per-location base config ──────────────────────────────────────
-# has_tdd flips on Band-41 ducting sensitivity. veg = vegetation density
-# (foliage seasonal swing). climate drives which seasonal profile applies.
 LOCATIONS = {
     "kyiv": {
-        "prefix": "KYIV", "city_name": "Kyiv",
-        "center": (50.4501, 30.5234), "num_sites": 16, "tac_base": 40000,
-        "bands": ["Band 1 (2100MHz)", "Band 3 (1800MHz)"], "vendor": "Ericsson",
-        "clutter": ["Dense Urban", "Urban", "Suburban"],
-        "jitter_km": 1.6, "base_ho_rate": 200.0, "base_fail_rate": 0.025,
-        "problem_fail_rate": 0.09, "problem_fraction": 0.10, "days": 8,
-        "late_bias": 0.0, "climate": "continental",
+        "prefix": "KYIV", "city_name": "Kyiv", "center": (50.4501, 30.5234),
+        "num_sites": 16, "tac_base": 40000, "vendor": "Ericsson",
+        "bands": ["Band 1 (2100MHz)", "Band 3 (1800MHz)"],
+        "clutter": ["Dense Urban", "Urban", "Suburban"], "jitter_km": 1.6,
+        "base_ho_rate": 200.0, "base_fail_rate": 0.025, "problem_fail_rate": 0.09,
+        "problem_fraction": 0.10, "days": 8, "late_bias": 0.0,
+        "climate": "continental",
     },
     "japan_rural": {
-        "prefix": "RJPN", "city_name": "Nagano-Rural",
-        "center": (36.6510, 138.1810), "num_sites": 11, "tac_base": 41000,
-        "bands": ["Band 1 (2100MHz)", "Band 3 (1800MHz)"], "vendor": "NEC",
-        "clutter": ["Rural", "Suburban", "Open Area"],
-        "jitter_km": 6.0, "base_ho_rate": 100.0, "base_fail_rate": 0.022,
-        "problem_fail_rate": 0.085, "problem_fraction": 0.10, "days": 10,
-        "late_bias": 0.20, "climate": "mountain",
+        "prefix": "RJPN", "city_name": "Nagano-Rural", "center": (36.6510, 138.1810),
+        "num_sites": 11, "tac_base": 41000, "vendor": "NEC",
+        "bands": ["Band 1 (2100MHz)", "Band 3 (1800MHz)"],
+        "clutter": ["Rural", "Suburban", "Open Area"], "jitter_km": 6.0,
+        "base_ho_rate": 100.0, "base_fail_rate": 0.022, "problem_fail_rate": 0.085,
+        "problem_fraction": 0.10, "days": 10, "late_bias": 0.20,
+        "climate": "mountain",
     },
     "tokyo": {
-        "prefix": "TKYO", "city_name": "Tokyo-Downtown",
-        "center": (35.6595, 139.7005), "num_sites": 16, "tac_base": 42000,
-        "bands": ["Band 1 (2100MHz)", "Band 41 (2500MHz)"], "vendor": "Rakuten",
-        "clutter": ["Dense Urban", "High-Rise", "Urban"],
-        "jitter_km": 1.3, "base_ho_rate": 350.0, "base_fail_rate": 0.03,
-        "problem_fail_rate": 0.10, "problem_fraction": 0.12, "days": 7,
-        "late_bias": 0.0, "climate": "coastal_subtropical",
+        "prefix": "TKYO", "city_name": "Tokyo-Downtown", "center": (35.6595, 139.7005),
+        "num_sites": 16, "tac_base": 42000, "vendor": "Rakuten",
+        "bands": ["Band 1 (2100MHz)", "Band 41 (2500MHz)"],
+        "clutter": ["Dense Urban", "High-Rise", "Urban"], "jitter_km": 1.3,
+        "base_ho_rate": 350.0, "base_fail_rate": 0.03, "problem_fail_rate": 0.10,
+        "problem_fraction": 0.12, "days": 7, "late_bias": 0.0,
+        "climate": "coastal_subtropical",
     },
 }
 
-# ── Per-climate, per-season modifier profiles ─────────────────────
-# load_mult, fail_mult, rsrp_offset(dB), pp_mult(ping-pong), wrong_bias(extra
-# wrong-cell share from ducting interference).
 PROFILES = {
-    "continental": {  # Kyiv: harsh snowy winter, deciduous foliage, mild summer
+    "continental": {
         "winter": {"load": 0.95, "fail": 1.60, "rsrp": -5.0, "pp": 1.20, "wrong": 0.00},
         "spring": {"load": 1.00, "fail": 1.05, "rsrp": -1.0, "pp": 1.00, "wrong": 0.00},
         "summer": {"load": 1.10, "fail": 1.20, "rsrp": -3.0, "pp": 1.05, "wrong": 0.03},
         "autumn": {"load": 1.00, "fail": 1.15, "rsrp": -2.0, "pp": 1.05, "wrong": 0.02},
     },
-    "mountain": {  # Nagano: heavy snow + ski crowds winter, dense forest summer, typhoon autumn
+    "mountain": {
         "winter": {"load": 1.25, "fail": 1.70, "rsrp": -5.0, "pp": 1.20, "wrong": 0.00},
         "spring": {"load": 0.95, "fail": 1.10, "rsrp": -2.0, "pp": 1.00, "wrong": 0.00},
         "summer": {"load": 1.00, "fail": 1.35, "rsrp": -5.0, "pp": 1.05, "wrong": 0.02},
         "autumn": {"load": 1.00, "fail": 1.45, "rsrp": -3.0, "pp": 1.15, "wrong": 0.03},
     },
-    "coastal_subtropical": {  # Tokyo: mild winter, rainy/typhoon + Band41 TDD ducting summer/autumn
+    "coastal_subtropical": {
         "winter": {"load": 1.05, "fail": 1.05, "rsrp": -1.0, "pp": 1.00, "wrong": 0.00},
         "spring": {"load": 1.15, "fail": 1.10, "rsrp": -1.0, "pp": 1.15, "wrong": 0.05},
         "summer": {"load": 1.40, "fail": 1.30, "rsrp": -2.0, "pp": 1.50, "wrong": 0.20},
         "autumn": {"load": 1.10, "fail": 1.25, "rsrp": -2.0, "pp": 1.35, "wrong": 0.15},
     },
 }
+
+
+def sround(x):
+    """Unbiased stochastic rounding — preserves expected value for small counts."""
+    if x <= 0:
+        return 0
+    f = math.floor(x)
+    return int(f + (1 if random.random() < (x - f) else 0))
 
 
 def haversine_m(lat1, lon1, lat2, lon2):
@@ -116,15 +110,6 @@ def haversine_m(lat1, lon1, lat2, lon2):
     return R * 2 * math.asin(math.sqrt(a))
 
 
-def sround(x):
-    """Stochastic rounding — preserves expected value for small counts so a
-    fractional failure (e.g. 0.4) doesn't always floor to 0."""
-    if x <= 0:
-        return 0
-    f = math.floor(x)
-    return int(f + (1 if random.random() < (x - f) else 0))
-
-
 def jitter(lat, lon, radius_km):
     dlat = random.uniform(-radius_km / 111, radius_km / 111)
     dlon = random.uniform(-radius_km / (111 * math.cos(math.radians(lat))),
@@ -133,22 +118,32 @@ def jitter(lat, lon, radius_km):
 
 
 def split_failures(fail, late_bias, wrong_bias):
-    """Distribute a failure count into (too_early, too_late, wrong_cell) using
-    location/season biases, then clamp so the parts never exceed `fail`."""
+    """Distribute failures into (too_early, too_late, wrong_cell) with biases,
+    using unbiased stochastic rounding so ratios hold at any volume."""
     if fail <= 0:
         return 0, 0, 0
     late_share = min(0.75, 0.30 + late_bias)
     wrong_share = min(0.75, 0.20 + wrong_bias)
     early_share = max(0.05, 1.0 - late_share - wrong_share)
-    # Stochastic (unbiased) rounding so the residual `wrong` bucket doesn't
-    # silently absorb every flooring loss -> ratios hold at any failure volume.
     early = min(fail, sround(fail * early_share))
     late = min(fail - early, sround(fail * late_share))
     wrong = max(0, fail - early - late)
     return early, late, wrong
 
 
-def generate(location_key: str, season: str, seed: int):
+def load_curve(hour):
+    if 7 <= hour <= 9:
+        return 1.0 + 0.3 * math.sin(math.pi * (hour - 7) / 2)
+    if 11 <= hour <= 14:
+        return 0.9
+    if 16 <= hour <= 20:
+        return 1.2 + 0.2 * math.sin(math.pi * (hour - 16) / 4)
+    if hour >= 22 or hour <= 5:
+        return 0.15
+    return 0.3
+
+
+def generate(location_key, season, seed):
     cfg = LOCATIONS[location_key]
     prof = PROFILES[cfg["climate"]][season]
     for b in cfg["bands"]:
@@ -190,6 +185,7 @@ def generate(location_key: str, season: str, seed: int):
         w = csv.DictWriter(f, fieldnames=sites[0].keys())
         w.writeheader()
         w.writerows(sites)
+    band_of = {c["cell_id"]: c["frequency_band"] for c in sites}
 
     # 2. neighbor_relations.csv
     neighbors = []
@@ -222,7 +218,7 @@ def generate(location_key: str, season: str, seed: int):
     n_problem = max(1, int(num_cells * cfg["problem_fraction"]))
     problem_ids = set(random.sample([c["cell_id"] for c in sites], n_problem))
 
-    # 3. pm_data_relation_level.csv
+    # 3. pm_data_relation_level.csv  (mobility KPIs, relation level — env-preferred)
     rows = 0
     with open(out / "pm_data_relation_level.csv", "w", newline="") as f:
         w = csv.writer(f)
@@ -233,17 +229,7 @@ def generate(location_key: str, season: str, seed: int):
         for day in range(cfg["days"]):
             for rop in range(96):
                 ts = start_date + timedelta(days=day, minutes=rop * 15)
-                hr = ts.hour
-                load = 0.3
-                if 7 <= hr <= 9:
-                    load = 1.0 + 0.3 * math.sin(math.pi * (hr - 7) / 2)
-                elif 11 <= hr <= 14:
-                    load = 0.9
-                elif 16 <= hr <= 20:
-                    load = 1.2 + 0.2 * math.sin(math.pi * (hr - 16) / 4)
-                elif hr >= 22 or hr <= 5:
-                    load = 0.15
-                load *= prof["load"]
+                load = load_curve(ts.hour) * prof["load"]
                 ts_str = ts.strftime("%Y-%m-%d %H:%M:%S")
                 for cell in sites:
                     cid = cell["cell_id"]
@@ -251,7 +237,6 @@ def generate(location_key: str, season: str, seed: int):
                     cnbrs = nbr_by_cell.get(cid, [])
                     if not cnbrs:
                         continue
-                    # Cell-level totals (large counts -> structure survives).
                     total_att = max(1, int(random.gauss(cfg["base_ho_rate"],
                                                         cfg["base_ho_rate"] * 0.25) * load))
                     base = (random.uniform(cfg["problem_fail_rate"] * 0.7, cfg["problem_fail_rate"] * 1.3)
@@ -261,15 +246,12 @@ def generate(location_key: str, season: str, seed: int):
                     total_fail = min(total_att, max(0, int(total_att * fail_rate)))
                     total_succ = total_att - total_fail
                     pp_base = 0.04 if is_problem else 0.015
-                    total_pp = min(total_succ, max(0, int(total_succ
-                                   * random.uniform(0.005, pp_base) * prof["pp"])))
-                    # Split failures ONCE at cell level where counts are meaningful,
-                    # then hand each category down to relations.
+                    total_pp = min(total_succ, max(0, int(
+                        total_succ * random.uniform(0.005, pp_base) * prof["pp"])))
                     c_early, c_late, c_wrong = split_failures(
                         total_fail, cfg["late_bias"], prof["wrong"])
 
-                    n = len(cnbrs)
-                    weights = [random.random() ** 0.5 for _ in range(n)]
+                    weights = [random.random() ** 0.5 for _ in cnbrs]
                     wsum = sum(weights) or 1
                     for j, nbr in enumerate(cnbrs):
                         frac = weights[j] / wsum
@@ -313,21 +295,53 @@ def generate(location_key: str, season: str, seed: int):
         w.writeheader()
         w.writerows(kpis)
 
-    print(f"  {location_key:12s} {season:6s}: {len(sites):3d} cells  "
-          f"{len(neighbors):4d} rel  {rows:>8,} PM rows  "
-          f"{n_problem} problem  -> {out.name}/")
+    # 5. radio_samples.csv  (RSRP / RSRQ / SINR samples — hourly, cell level)
+    #    Interference (ducting on Band 41 TDD + ping-pong) degrades SINR;
+    #    congestion degrades RSRQ. Matches PMRecord radio fields / valid ranges.
+    sinr_intf = -((prof["pp"] - 1.0) * 6.0 + prof["wrong"] * 12.0)
+    rs_rows = 0
+    with open(out / "radio_samples.csv", "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["timestamp_utc", "cell_id", "enodeb_id", "frequency_band",
+                    "avg_rsrp_dBm", "avg_rsrq_dB", "avg_sinr_dB",
+                    "prb_utilization_dl_pct", "prb_utilization_ul_pct", "active_ue_avg"])
+        for day in range(cfg["days"]):
+            for hour in range(24):
+                ts = start_date + timedelta(days=day, hours=hour)
+                load = load_curve(hour) * prof["load"]
+                ts_str = ts.strftime("%Y-%m-%d %H:%M:%S")
+                for cell in sites:
+                    cid = cell["cell_id"]
+                    is_problem = cid in problem_ids
+                    # Band 41 (TDD) extra interference hit during ducting seasons.
+                    tdd_hit = (3.0 if band_of[cid] == TDD_BAND
+                               and season in ("summer", "autumn") else 0.0)
+                    rsrp = random.gauss(-95 if is_problem else -82, 4) + prof["rsrp"]
+                    rsrp = round(min(-40.0, max(-140.0, rsrp)), 1)
+                    sinr = random.gauss(14 - (8 if is_problem else 0), 5) + sinr_intf - tdd_hit
+                    sinr = round(min(40.0, max(-10.0, sinr)), 1)
+                    rsrq = random.gauss(-9 if not is_problem else -13, 2) - (load - 0.5) * 3.0
+                    rsrq = round(min(0.0, max(-30.0, rsrq)), 1)
+                    prb_dl = round(min(100.0, max(0.0, random.gauss(55 * load, 12))), 1)
+                    prb_ul = round(min(100.0, max(0.0, random.gauss(32 * load, 9))), 1)
+                    ue = round(max(0.0, random.gauss(90 * load, 22)), 1)
+                    w.writerow([ts_str, cid, cell["enodeb_id"], cell["frequency_band"],
+                                rsrp, rsrq, sinr, prb_dl, prb_ul, ue])
+                    rs_rows += 1
+
+    print(f"  {location_key:11s} {season:6s}: {len(sites):3d} cells {len(neighbors):4d} rel  "
+          f"{rows:>8,} PM  {rs_rows:>6,} radio  {n_problem} problem  -> {out.name}/")
     return rows
 
 
 if __name__ == "__main__":
     seasons = ["winter", "spring", "summer", "autumn"]
-    seed = 300
-    grand = 0
+    seed, grand = 300, 0
     for loc in LOCATIONS:
-        print(f"\n=== {loc} (all seasons) ===")
+        print(f"\n=== {loc} (all seasons, LTE) ===")
         for season in seasons:
             grand += generate(loc, season, seed)
             seed += 1
     n = len(LOCATIONS) * len(seasons)
-    print(f"\nDone! {n} datasets ({len(LOCATIONS)} locations x {len(seasons)} seasons), "
-          f"{grand:,} total PM rows under data/extra_geo/")
+    print(f"\nDone! {n} LTE datasets ({len(LOCATIONS)} footprints x {len(seasons)} seasons), "
+          f"{grand:,} PM rows under data/extra_geo/")
