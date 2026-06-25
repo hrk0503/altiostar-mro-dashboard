@@ -1,0 +1,49 @@
+cell_id,enodeb_id,site_name,latitude,longitude,antenna_height_m,sector,azimuth_deg,electrical_tilt_deg,mechanical_tilt_deg,total_tilt_deg,clutter_type,elevation_m,frequency_band,pci,tac,vendor,technology,status
+TKYO-001-1,TKYO-001,Tokyo-Downtown-Site-001,35.652177,139.713958,50,1,3,4,2,6,High-Rise,38.8,Band 1 (2100MHz),1,42000,Rakuten,LTE,Active
+TKYO-001-2,TKYO-001,Tokyo-Downtown-Site-001,35.652177,139.713958,43,2,121,4,3,7,High-Rise,38.7,Band 1 (2100MHz),2,42000,Rakuten,LTE,Active
+TKYO-001-3,TKYO-001,Tokyo-Downtown-Site-001,35.652177,139.713958,27,3,236,6,0,6,Dense Urban,52.8,Band 1 (2100MHz),3,42000,Rakuten,LTE,Active
+TKYO-002-1,TKYO-002,Tokyo-Downtown-Site-002,35.667987,139.705243,44,1,1,5,0,5,High-Rise,56.9,Band 41 (2500MHz),4,42001,Rakuten,LTE,Active
+TKYO-002-2,TKYO-002,Tokyo-Downtown-Site-002,35.667987,139.705243,49,2,123,4,3,7,Dense Urban,42.5,Band 41 (2500MHz),5,42001,Rakuten,LTE,Active
+TKYO-002-3,TKYO-002,Tokyo-Downtown-Site-002,35.667987,139.705243,49,3,241,5,2,7,Urban,56.3,Band 41 (2500MHz),6,42001,Rakuten,LTE,Active
+TKYO-003-1,TKYO-003,Tokyo-Downtown-Site-003,35.663617,139.714891,32,1,0,3,3,6,Urban,55.2,Band 1 (2100MHz),7,42002,Rakuten,LTE,Active
+TKYO-003-2,TKYO-003,Tokyo-Downtown-Site-003,35.663617,139.714891,42,2,119,2,3,5,High-Rise,66.3,Band 1 (2100MHz),8,42002,Rakuten,LTE,Active
+TKYO-003-3,TKYO-003,Tokyo-Downtown-Site-003,35.663617,139.714891,42,3,241,6,0,6,Urban,42.9,Band 1 (2100MHz),9,42002,Rakuten,LTE,Active
+TKYO-004-1,TKYO-004,Tokyo-Downtown-Site-004,35.65148,139.711366,41,1,-1,3,3,6,Dense Urban,48.0,Band 41 (2500MHz),10,42003,Rakuten,LTE,Active
+TKYO-004-2,TKYO-004,Tokyo-Downtown-Site-004,35.65148,139.711366,28,2,125,4,3,7,High-Rise,63.8,Band 41 (2500MHz),11,42003,Rakuten,LTE,Active
+TKYO-004-3,TKYO-004,Tokyo-Downtown-Site-004,35.65148,139.711366,28,3,244,5,2,7,High-Rise,43.2,Band 41 (2500MHz),12,42003,Rakuten,LTE,Active
+TKYO-005-1,TKYO-005,Tokyo-Downtown-Site-005,35.661271,139.704363,50,1,1,2,3,5,Urban,78.0,Band 1 (2100MHz),13,42004,Rakuten,LTE,Active
+TKYO-005-2,TKYO-005,Tokyo-Downtown-Site-005,35.661271,139.704363,47,2,117,5,1,6,High-Rise,59.7,Band 1 (2100MHz),14,42004,Rakuten,LTE,Active
+TKYO-005-3,TKYO-005,Tokyo-Downtown-Site-005,35.661271,139.704363,47,3,238,4,2,6,Urban,52.2,Band 1 (2100MHz),15,42004,Rakuten,LTE,Active
+TKYO-006-1,TKYO-006,Tokyo-Downtown-Site-006,35.656311,139.712457,34,1,-3,5,1,6,Dense Urban,45.6,Band 41 (2500MHz),16,42005,Rakuten,LTE,Active
+TKYO-006-2,TKYO-006,Tokyo-Downtown-Site-006,35.656311,139.712457,26,2,121,4,3,7,High-Rise,59.4,Band 41 (2500MHz),17,42005,Rakuten,LTE,Active
+TKYO-006-3,TKYO-006,Tokyo-Downtown-Site-006,35.656311,139.712457,25,3,243,4,1,5,Urban,67.4,Band 41 (2500MHz),18,42005,Rakuten,LTE,Active
+TKYO-007-1,TKYO-007,Tokyo-Downtown-Site-007,35.657807,139.709061,37,1,-4,6,3,9,High-Rise,39.2,Band 1 (2100MHz),19,42006,Rakuten,LTE,Active
+TKYO-007-2,TKYO-007,Tokyo-Downtown-Site-007,35.657807,139.709061,44,2,124,3,1,4,High-Rise,63.8,Band 1 (2100MHz),20,42006,Rakuten,LTE,Active
+TKYO-007-3,TKYO-007,Tokyo-Downtown-Site-007,35.657807,139.709061,35,3,236,2,3,5,Urban,74.7,Band 1 (2100MHz),21,42006,Rakuten,LTE,Active
+TKYO-008-1,TKYO-008,Tokyo-Downtown-Site-008,35.651597,139.691281,36,1,5,4,2,6,Dense Urban,56.4,Band 41 (2500MHz),22,42007,Rakuten,LTE,Active
+TKYO-008-2,TKYO-008,Tokyo-Downtown-Site-008,35.651597,139.691281,28,2,121,2,2,4,Urban,56.7,Band 41 (2500MHz),23,42007,Rakuten,LTE,Active
+TKYO-008-3,TKYO-008,Tokyo-Downtown-Site-008,35.651597,139.691281,27,3,240,6,1,7,Urban,67.2,Band 41 (2500MHz),24,42007,Rakuten,LTE,Active
+TKYO-009-1,TKYO-009,Tokyo-Downtown-Site-009,35.662026,139.701106,27,1,0,3,1,4,High-Rise,59.4,Band 1 (2100MHz),25,42008,Rakuten,LTE,Active
+TKYO-009-2,TKYO-009,Tokyo-Downtown-Site-009,35.662026,139.701106,33,2,119,5,0,5,High-Rise,49.3,Band 1 (2100MHz),26,42008,Rakuten,LTE,Active
+TKYO-009-3,TKYO-009,Tokyo-Downtown-Site-009,35.662026,139.701106,29,3,237,3,2,5,Dense Urban,53.7,Band 1 (2100MHz),27,42008,Rakuten,LTE,Active
+TKYO-010-1,TKYO-010,Tokyo-Downtown-Site-010,35.658974,139.691566,34,1,-3,2,0,2,Urban,58.4,Band 41 (2500MHz),28,42009,Rakuten,LTE,Active
+TKYO-010-2,TKYO-010,Tokyo-Downtown-Site-010,35.658974,139.691566,25,2,119,6,0,6,Urban,68.7,Band 41 (2500MHz),29,42009,Rakuten,LTE,Active
+TKYO-010-3,TKYO-010,Tokyo-Downtown-Site-010,35.658974,139.691566,50,3,235,3,3,6,Dense Urban,46.5,Band 41 (2500MHz),30,42009,Rakuten,LTE,Active
+TKYO-011-1,TKYO-011,Tokyo-Downtown-Site-011,35.666645,139.710341,30,1,-1,5,2,7,Urban,66.0,Band 1 (2100MHz),31,42010,Rakuten,LTE,Active
+TKYO-011-2,TKYO-011,Tokyo-Downtown-Site-011,35.666645,139.710341,49,2,116,2,0,2,Urban,65.1,Band 1 (2100MHz),32,42010,Rakuten,LTE,Active
+TKYO-011-3,TKYO-011,Tokyo-Downtown-Site-011,35.666645,139.710341,45,3,241,3,3,6,Urban,72.6,Band 1 (2100MHz),33,42010,Rakuten,LTE,Active
+TKYO-012-1,TKYO-012,Tokyo-Downtown-Site-012,35.651056,139.712673,40,1,0,4,2,6,Dense Urban,41.7,Band 41 (2500MHz),34,42011,Rakuten,LTE,Active
+TKYO-012-2,TKYO-012,Tokyo-Downtown-Site-012,35.651056,139.712673,41,2,124,4,2,6,Urban,73.0,Band 41 (2500MHz),35,42011,Rakuten,LTE,Active
+TKYO-012-3,TKYO-012,Tokyo-Downtown-Site-012,35.651056,139.712673,49,3,244,2,1,3,High-Rise,38.9,Band 41 (2500MHz),36,42011,Rakuten,LTE,Active
+TKYO-013-1,TKYO-013,Tokyo-Downtown-Site-013,35.664912,139.714386,39,1,0,5,0,5,Urban,49.6,Band 1 (2100MHz),37,42012,Rakuten,LTE,Active
+TKYO-013-2,TKYO-013,Tokyo-Downtown-Site-013,35.664912,139.714386,35,2,122,2,3,5,Urban,48.2,Band 1 (2100MHz),38,42012,Rakuten,LTE,Active
+TKYO-013-3,TKYO-013,Tokyo-Downtown-Site-013,35.664912,139.714386,35,3,245,3,3,6,High-Rise,47.5,Band 1 (2100MHz),39,42012,Rakuten,LTE,Active
+TKYO-014-1,TKYO-014,Tokyo-Downtown-Site-014,35.658898,139.688798,49,1,3,2,0,2,Urban,71.0,Band 41 (2500MHz),40,42013,Rakuten,LTE,Active
+TKYO-014-2,TKYO-014,Tokyo-Downtown-Site-014,35.658898,139.688798,27,2,124,4,0,4,High-Rise,70.6,Band 41 (2500MHz),41,42013,Rakuten,LTE,Active
+TKYO-014-3,TKYO-014,Tokyo-Downtown-Site-014,35.658898,139.688798,33,3,240,5,0,5,Dense Urban,37.2,Band 41 (2500MHz),42,42013,Rakuten,LTE,Active
+TKYO-015-1,TKYO-015,Tokyo-Downtown-Site-015,35.656633,139.707073,32,1,-4,3,3,6,High-Rise,77.6,Band 1 (2100MHz),43,42014,Rakuten,LTE,Active
+TKYO-015-2,TKYO-015,Tokyo-Downtown-Site-015,35.656633,139.707073,31,2,122,5,2,7,Dense Urban,73.9,Band 1 (2100MHz),44,42014,Rakuten,LTE,Active
+TKYO-015-3,TKYO-015,Tokyo-Downtown-Site-015,35.656633,139.707073,35,3,245,4,3,7,Urban,67.4,Band 1 (2100MHz),45,42014,Rakuten,LTE,Active
+TKYO-016-1,TKYO-016,Tokyo-Downtown-Site-016,35.647805,139.71284,37,1,-2,6,2,8,Dense Urban,47.9,Band 41 (2500MHz),46,42015,Rakuten,LTE,Active
+TKYO-016-2,TKYO-016,Tokyo-Downtown-Site-016,35.647805,139.71284,40,2,116,5,1,6,High-Rise,74.0,Band 41 (2500MHz),47,42015,Rakuten,LTE,Active
+TKYO-016-3,TKYO-016,Tokyo-Downtown-Site-016,35.647805,139.71284,39,3,243,5,1,6,Urban,62.0,Band 41 (2500MHz),48,42015,Rakuten,LTE,Active
