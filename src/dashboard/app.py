@@ -423,14 +423,61 @@ st.markdown(f"""
 ROOT = Path(__file__).resolve().parents[2]
 RDIR = ROOT / "results"
 DDIR = ROOT / "data" / "synthetic"
+EXTRA_GEO = ROOT / "data" / "extra_geo"
+
+_DATASETS = {"Shibuya, Tokyo (Rakuten · LTE)": None}
+if EXTRA_GEO.exists():
+    _GEO_LABELS = {
+        "helsinki": "Helsinki (Elisa · Nokia RAN)",
+        "kyiv": "Kyiv (Continental · Ericsson)",
+        "japan_rural": "Rural Nagano (Mountain · NEC)",
+        "tokyo": "Downtown Tokyo (Coastal · TDD)",
+    }
+    for city, label in _GEO_LABELS.items():
+        for season in ["spring", "summer", "autumn", "winter"]:
+            d = EXTRA_GEO / f"{city}_{season}"
+            if d.exists():
+                _DATASETS[f"{label} — {season.title()}"] = d
 
 # ── Data loaders ─────────────────────────────────────────────────────
 @st.cache_data(ttl=600)
-def ld_site(): return pd.read_csv(DDIR / "site_database.csv")
+def ld_site(ddir=None):
+    p = Path(ddir) if ddir else DDIR
+    return pd.read_csv(p / "site_database.csv")
+
 @st.cache_data(ttl=600)
-def ld_pm():   return pd.read_csv(DDIR / "pm_data_april2026.csv")
+def ld_pm(ddir=None):
+    p = Path(ddir) if ddir else DDIR
+    pm_file = p / "pm_data_april2026.csv"
+    if pm_file.exists():
+        return pd.read_csv(pm_file)
+    kpi_file = p / "cluster_kpi_summary.csv"
+    if kpi_file.exists():
+        kpi = pd.read_csv(kpi_file)
+        return pd.DataFrame({
+            "cell_id": kpi["cell_id"],
+            "ho_attempts_intra": kpi["total_ho_attempts"],
+            "ho_success_rate_pct": 100 - kpi["ho_failure_rate_pct"],
+            "ho_failure_rate_pct": kpi["ho_failure_rate_pct"],
+            "avg_rsrp_dBm": kpi["avg_rsrp_dBm"],
+            "avg_sinr_dB": kpi["avg_sinr_dB"] if "avg_sinr_dB" in kpi.columns else 8.0,
+            "prb_utilization_dl_pct": kpi["prb_utilization_dl_pct"] if "prb_utilization_dl_pct" in kpi.columns else 45.0,
+            "active_ue_avg": kpi["active_ue_avg"] if "active_ue_avg" in kpi.columns else 22.0,
+            "max_ue_connected": kpi["max_ue_connected"] if "max_ue_connected" in kpi.columns else 45,
+            "ho_success_intra": kpi["total_ho_success"],
+            "ho_failure_intra": kpi["total_ho_failures"],
+            "ho_failure_too_early": kpi["failure_too_early"],
+            "ho_failure_too_late": kpi["failure_too_late"],
+            "ho_failure_wrong_cell": kpi["failure_wrong_cell"],
+            "ho_pingpong_count": kpi["total_pingpong"],
+        })
+    return pd.read_csv(p / "pm_data_april2026.csv")
+
 @st.cache_data(ttl=600)
-def ld_rel():  return pd.read_csv(DDIR / "neighbor_relations.csv")
+def ld_rel(ddir=None):
+    p = Path(ddir) if ddir else DDIR
+    rel_file = p / "neighbor_relations.csv"
+    return pd.read_csv(rel_file)
 @st.cache_data(ttl=600)
 def ld_exp():
     exps = []
@@ -473,13 +520,11 @@ def health_badge(r):
     return "badge-red", "Critical"
 
 # ── Load data ────────────────────────────────────────────────────────
-site_db = ld_site()
-pm = ld_pm()
-rels = ld_rel()
+site_db = ld_site(str(_ds_dir) if _ds_dir else None)
+pm = ld_pm(str(_ds_dir) if _ds_dir else None)
+rels = ld_rel(str(_ds_dir) if _ds_dir else None)
 ed = ld_exp()
 cdf = comp_df(ed["experiments"])
-agent_best = cdf[(cdf["Scenario"] == "baseline") & (cdf["Variant"] != "v0")]["HO Success %"].max()
-
 ck = pm.groupby("cell_id").agg(
     ho_att=("ho_attempts_intra", "mean"),
     ho_sr=("ho_success_rate_pct", "mean"),
@@ -494,11 +539,14 @@ ck = pm.groupby("cell_id").agg(
 cm = site_db.merge(ck, on="cell_id", how="left")
 cm["prob"] = cm["ho_sr"] < 99
 n_prob = int(cm["prob"].sum())
-n_healthy = 75 - n_prob
+n_total = len(cm)
+n_healthy = n_total - n_prob
 avg_sr = cm["ho_sr"].mean()
 best_sr = cm["ho_sr"].max()
 worst_sr = cm["ho_sr"].min()
 avg_fr = cm["ho_fr"].mean()
+_ab = cdf[(cdf["Scenario"] == "baseline") & (cdf["Variant"] != "v0")]["HO Success %"]
+agent_best = _ab.max() if len(_ab) > 0 else avg_sr
 avg_prb = cm["prb"].mean()
 
 center_lat = cm["latitude"].mean()
@@ -532,10 +580,20 @@ with st.sidebar:
 
     st.divider()
 
+    _ds_choice = st.selectbox(
+        "Dataset",
+        list(_DATASETS.keys()),
+        index=0,
+        help="Switch between geographic footprints",
+    )
+    _ds_dir = _DATASETS[_ds_choice]
+
+    st.divider()
+
     st.markdown(
         f'<div style="padding:4px 14px; font-size:.75rem; line-height:2.2;">'
         f'<div style="display:flex; justify-content:space-between;">'
-        f'<span>Online Cells</span><span style="font-weight:600; color:#E2E8F0 !important;">75</span></div>'
+        f'<span>Online Cells</span><span style="font-weight:600; color:#E2E8F0 !important;">{n_total}</span></div>'
         f'<div style="display:flex; justify-content:space-between;">'
         f'<span>Healthy</span><span style="font-weight:600; color:{GREEN} !important;">{n_healthy}</span></div>'
         f'<div style="display:flex; justify-content:space-between;">'
@@ -603,7 +661,7 @@ tc1, tc2 = st.columns([2, 3])
 with tc1:
     st.markdown(
         f'<div class="page-title">{page}</div>'
-        f'<div class="page-subtitle">Shibuya Cluster · 75 Cells · 763 Relations</div>',
+        f'<div class="page-subtitle">{_ds_choice.split("—")[0].strip()} · {n_total} Cells · {len(rels)} Relations</div>',
         unsafe_allow_html=True)
 with tc2:
     st.markdown(
@@ -709,12 +767,12 @@ if st.session_state.show_health:
     with st.container():
         st.markdown(f'<div class="section-title">💊 Network Health Report</div>', unsafe_allow_html=True)
         hc1, hc2, hc3, hc4, hc5 = st.columns(5)
-        cells_online = 75
+        cells_online = n_total
         avg_rsrp = cm["rsrp"].mean()
         avg_sinr = cm["sinr"].mean()
         avg_ue = cm["ue"].mean()
         checks = [
-            ("Cell Availability", f"{cells_online}/75", cells_online == 75),
+            ("Cell Availability", f"{cells_online}/{n_total}", cells_online == n_total),
             ("Avg RSRP", f"{avg_rsrp:.1f} dBm", avg_rsrp > -90),
             ("Avg SINR", f"{avg_sinr:.1f} dB", avg_sinr > 5),
             ("HO Success", f"{avg_sr:.2f}%", avg_sr > 97),
@@ -752,7 +810,7 @@ if st.session_state.show_quick_export:
             report = {
                 "generated": now_jst.isoformat(),
                 "cluster_avg": round(avg_sr, 4),
-                "cells": 75, "problem_cells": n_prob,
+                "cells": n_total, "problem_cells": n_prob,
                 "experiments": len(ed["experiments"]),
                 "target": 99.0, "gap": round(max(0, 99 - avg_sr), 4),
             }
@@ -2231,5 +2289,5 @@ elif page == "Data Upload":
 st.markdown(f'<div style="height:1px;background:{BORDER};margin:20px 0 12px 0;"></div>', unsafe_allow_html=True)
 st.markdown(
     f'<div style="text-align:center;font-size:.72rem;color:{TEXT_MUTED};padding-bottom:16px;">'
-    f'WINNIIO MRO Optimization Platform · 75 Cells · 763 Relations · 99% Target'
+    f'WINNIIO MRO Optimization Platform · {n_total} Cells · {len(rels)} Relations · 99% Target'
     f'</div>', unsafe_allow_html=True)
