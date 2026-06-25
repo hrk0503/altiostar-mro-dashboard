@@ -251,6 +251,8 @@ st.markdown(f"""
   .badge-green::before {{ background: #22C55E; }}
   .badge-red {{ background: #FEE2E2; color: #991B1B; }}
   .badge-red::before {{ background: #EF4444; }}
+  .badge-orange {{ background: #FFEDD5; color: #9A3412; }}
+  .badge-orange::before {{ background: #F97316; }}
   .badge-amber {{ background: #FEF3C7; color: #92400E; }}
   .badge-amber::before {{ background: #F59E0B; }}
   .badge-blue {{ background: #DBEAFE; color: #1E40AF; }}
@@ -462,12 +464,12 @@ def comp_df(exps):
 
 def health_color(r):
     if r >= 99: return GREEN
-    if r >= 96: return AMBER
+    if r >= 95: return ORANGE
     return RED
 
 def health_badge(r):
     if r >= 99: return "badge-green", "Healthy"
-    if r >= 96: return "badge-amber", "Warning"
+    if r >= 95: return "badge-orange", "Warning"
     return "badge-red", "Critical"
 
 # ── Load data ────────────────────────────────────────────────────────
@@ -490,7 +492,7 @@ ck = pm.groupby("cell_id").agg(
 ).reset_index()
 
 cm = site_db.merge(ck, on="cell_id", how="left")
-cm["prob"] = cm["ho_sr"] < 96
+cm["prob"] = cm["ho_sr"] < 99
 n_prob = int(cm["prob"].sum())
 n_healthy = 75 - n_prob
 avg_sr = cm["ho_sr"].mean()
@@ -911,14 +913,14 @@ if page == "Dashboard":
     with d1:
         sec("Cell Health Distribution")
         healthy = int((cm["ho_sr"] >= 99).sum())
-        warning = int(((cm["ho_sr"] >= 96) & (cm["ho_sr"] < 99)).sum())
-        critical = int((cm["ho_sr"] < 96).sum())
+        warning = int(((cm["ho_sr"] >= 95) & (cm["ho_sr"] < 99)).sum())
+        critical = int((cm["ho_sr"] < 95).sum())
 
         fig_donut = go.Figure(data=[go.Pie(
             labels=["Healthy", "Warning", "Critical"],
             values=[healthy, warning, critical],
             hole=0.6,
-            marker_colors=[GREEN, AMBER, RED],
+            marker_colors=[GREEN, ORANGE, RED],
             textinfo="value",
             textfont=dict(size=16, family="JetBrains Mono"),
             hovertemplate="<b>%{label}</b><br>Count: %{value}<br>%{percent}<extra></extra>",
@@ -943,7 +945,7 @@ if page == "Dashboard":
 
         for label, count, color, badge_cls in [
             ("Healthy", healthy, GREEN, "badge-green"),
-            ("Warning", warning, AMBER, "badge-amber"),
+            ("Warning", warning, ORANGE, "badge-orange"),
             ("Critical", critical, RED, "badge-red"),
         ]:
             st.markdown(
@@ -958,28 +960,29 @@ if page == "Dashboard":
         tab1, tab2, tab3 = st.tabs(["All Cells", "Problem Cells", "Top Performers"])
 
         with tab1:
-            tbl = cm.sort_values("ho_sr").head(20)
+            tbl = cm.sort_values("ho_sr")
             st.markdown(
                 f'<div class="thead">'
                 f'<span style="flex:2">Cell ID</span>'
-                f'<span style="flex:2">Site</span>'
+                f'<span style="flex:2">Cell Tower</span>'
                 f'<span style="flex:1;text-align:center">Success %</span>'
                 f'<span style="flex:1;text-align:center">Failure %</span>'
                 f'<span style="flex:1;text-align:center">RSRP</span>'
                 f'<span style="flex:1;text-align:right">Status</span>'
                 f'</div>', unsafe_allow_html=True)
-            for _, r in tbl.iterrows():
-                bcls, blbl = health_badge(r["ho_sr"])
-                sr_color = health_color(r["ho_sr"])
-                st.markdown(
-                    f'<div class="trow">'
-                    f'<span style="flex:2;font-weight:600;font-family:JetBrains Mono,monospace;font-size:.8rem;">{r["cell_id"]}</span>'
-                    f'<span style="flex:2;color:{TEXT_SEC}">{r["site_name"]}</span>'
-                    f'<span style="flex:1;text-align:center;font-weight:600;color:{sr_color};font-family:JetBrains Mono,monospace;">{r["ho_sr"]:.2f}%</span>'
-                    f'<span style="flex:1;text-align:center;font-family:JetBrains Mono,monospace;color:{TEXT_SEC};">{r["ho_fr"]:.2f}%</span>'
-                    f'<span style="flex:1;text-align:center;font-family:JetBrains Mono,monospace;color:{TEXT_SEC};">{r["rsrp"]:.1f}</span>'
-                    f'<span style="flex:1;text-align:right"><span class="badge {bcls}">{blbl}</span></span>'
-                    f'</div>', unsafe_allow_html=True)
+            with st.container(height=380):
+                for _, r in tbl.iterrows():
+                    bcls, blbl = health_badge(r["ho_sr"])
+                    sr_color = health_color(r["ho_sr"])
+                    st.markdown(
+                        f'<div class="trow">'
+                        f'<span style="flex:2;font-weight:600;font-family:JetBrains Mono,monospace;font-size:.8rem;">{r["cell_id"]}</span>'
+                        f'<span style="flex:2;color:{TEXT_SEC}">{r["site_name"]}</span>'
+                        f'<span style="flex:1;text-align:center;font-weight:600;color:{sr_color};font-family:JetBrains Mono,monospace;">{r["ho_sr"]:.2f}%</span>'
+                        f'<span style="flex:1;text-align:center;font-family:JetBrains Mono,monospace;color:{TEXT_SEC};">{r["ho_fr"]:.2f}%</span>'
+                        f'<span style="flex:1;text-align:center;font-family:JetBrains Mono,monospace;color:{TEXT_SEC};">{r["rsrp"]:.1f}</span>'
+                        f'<span style="flex:1;text-align:right"><span class="badge {bcls}">{blbl}</span></span>'
+                        f'</div>', unsafe_allow_html=True)
 
         with tab2:
             prob_cells = cm[cm["prob"]].sort_values("ho_sr")
@@ -989,41 +992,45 @@ if page == "Dashboard":
                 st.markdown(
                     f'<div class="thead">'
                     f'<span style="flex:2">Cell ID</span>'
-                    f'<span style="flex:2">Site</span>'
+                    f'<span style="flex:2">Cell Tower</span>'
                     f'<span style="flex:1;text-align:center">Success %</span>'
                     f'<span style="flex:1;text-align:center">Failure %</span>'
                     f'<span style="flex:1;text-align:right">Status</span>'
                     f'</div>', unsafe_allow_html=True)
-                for _, r in prob_cells.iterrows():
-                    st.markdown(
-                        f'<div class="trow">'
-                        f'<span style="flex:2;font-weight:600;font-family:JetBrains Mono,monospace;font-size:.8rem;">{r["cell_id"]}</span>'
-                        f'<span style="flex:2;color:{TEXT_SEC}">{r["site_name"]}</span>'
-                        f'<span style="flex:1;text-align:center;font-weight:600;color:{RED};font-family:JetBrains Mono,monospace;">{r["ho_sr"]:.2f}%</span>'
-                        f'<span style="flex:1;text-align:center;font-family:JetBrains Mono,monospace;color:{TEXT_SEC};">{r["ho_fr"]:.2f}%</span>'
-                        f'<span style="flex:1;text-align:right"><span class="badge badge-red">Critical</span></span>'
-                        f'</div>', unsafe_allow_html=True)
+                with st.container(height=380):
+                    for _, r in prob_cells.iterrows():
+                        bcls, blbl = health_badge(r["ho_sr"])
+                        val_color = RED if r["ho_sr"] < 95 else ORANGE
+                        st.markdown(
+                            f'<div class="trow">'
+                            f'<span style="flex:2;font-weight:600;font-family:JetBrains Mono,monospace;font-size:.8rem;">{r["cell_id"]}</span>'
+                            f'<span style="flex:2;color:{TEXT_SEC}">{r["site_name"]}</span>'
+                            f'<span style="flex:1;text-align:center;font-weight:600;color:{val_color};font-family:JetBrains Mono,monospace;">{r["ho_sr"]:.2f}%</span>'
+                            f'<span style="flex:1;text-align:center;font-family:JetBrains Mono,monospace;color:{TEXT_SEC};">{r["ho_fr"]:.2f}%</span>'
+                            f'<span style="flex:1;text-align:right"><span class="badge {bcls}">{blbl}</span></span>'
+                            f'</div>', unsafe_allow_html=True)
 
         with tab3:
-            top_cells = cm.sort_values("ho_sr", ascending=False).head(15)
+            top_cells = cm.sort_values("ho_sr", ascending=False).head(30)
             st.markdown(
                 f'<div class="thead">'
                 f'<span style="flex:2">Cell ID</span>'
-                f'<span style="flex:2">Site</span>'
+                f'<span style="flex:2">Cell Tower</span>'
                 f'<span style="flex:1;text-align:center">Success %</span>'
                 f'<span style="flex:1;text-align:center">PRB %</span>'
                 f'<span style="flex:1;text-align:right">Status</span>'
                 f'</div>', unsafe_allow_html=True)
-            for _, r in top_cells.iterrows():
-                bcls, blbl = health_badge(r["ho_sr"])
-                st.markdown(
-                    f'<div class="trow">'
-                    f'<span style="flex:2;font-weight:600;font-family:JetBrains Mono,monospace;font-size:.8rem;">{r["cell_id"]}</span>'
-                    f'<span style="flex:2;color:{TEXT_SEC}">{r["site_name"]}</span>'
-                    f'<span style="flex:1;text-align:center;font-weight:600;color:{GREEN};font-family:JetBrains Mono,monospace;">{r["ho_sr"]:.2f}%</span>'
-                    f'<span style="flex:1;text-align:center;font-family:JetBrains Mono,monospace;color:{TEXT_SEC};">{r["prb"]:.1f}%</span>'
-                    f'<span style="flex:1;text-align:right"><span class="badge {bcls}">{blbl}</span></span>'
-                    f'</div>', unsafe_allow_html=True)
+            with st.container(height=380):
+                for _, r in top_cells.iterrows():
+                    bcls, blbl = health_badge(r["ho_sr"])
+                    st.markdown(
+                        f'<div class="trow">'
+                        f'<span style="flex:2;font-weight:600;font-family:JetBrains Mono,monospace;font-size:.8rem;">{r["cell_id"]}</span>'
+                        f'<span style="flex:2;color:{TEXT_SEC}">{r["site_name"]}</span>'
+                        f'<span style="flex:1;text-align:center;font-weight:600;color:{GREEN};font-family:JetBrains Mono,monospace;">{r["ho_sr"]:.2f}%</span>'
+                        f'<span style="flex:1;text-align:center;font-family:JetBrains Mono,monospace;color:{TEXT_SEC};">{r["prb"]:.1f}%</span>'
+                        f'<span style="flex:1;text-align:right"><span class="badge {bcls}">{blbl}</span></span>'
+                        f'</div>', unsafe_allow_html=True)
 
     # Experiment results bar chart (scenario-filtered)
     if len(cdf) > 0:
@@ -1162,7 +1169,14 @@ elif page == "Cell Map":
             lat=md["latitude"], lon=md["longitude"], mode="markers",
             marker=dict(
                 size=md["bub"], color=md["ho_sr"],
-                colorscale=[[0, RED], [.3, AMBER], [.7, GREEN], [1, GREEN]],
+                colorscale=[
+                    [0.0, RED],
+                    [0.6667, RED],
+                    [0.6667, ORANGE],
+                    [0.9333, ORANGE],
+                    [0.9333, GREEN],
+                    [1.0, GREEN]
+                ],
                 cmin=85, cmax=100,
                 colorbar=dict(title=dict(text="HO %"), thickness=10, len=.4),
             ),
@@ -1180,7 +1194,12 @@ elif page == "Cell Map":
     with ic:
         sec("Cell Inspector")
 
-        pk = st.selectbox("Select Cell", cm["cell_id"].tolist(), index=0)
+        pk = st.selectbox(
+            "Select Cell",
+            cm["cell_id"].tolist(),
+            index=0,
+            format_func=lambda cid: f"{cid} ({cm[cm['cell_id'] == cid].iloc[0]['site_name']})"
+        )
         cd = cm[cm["cell_id"] == pk].iloc[0]
         bcls, blbl = health_badge(cd["ho_sr"])
 
@@ -1191,7 +1210,7 @@ elif page == "Cell Map":
             f'<span class="badge {bcls}">{blbl}</span>'
             f'</div>'
             f'<div style="font-size:.82rem;color:{TEXT_SEC};line-height:2;">'
-            f'Site: <b>{cd["site_name"]}</b><br>'
+            f'Cell Tower: <b>{cd["site_name"]}</b><br>'
             f'Sector {cd["sector"]} · Az {cd["azimuth_deg"]}° · {cd["frequency_band"]}<br>'
             f'</div></div>', unsafe_allow_html=True)
 
@@ -1534,7 +1553,14 @@ elif page == "Network":
         x=td["x"], y=td["y"], mode="markers+text",
         marker=dict(
             size=ns, color=td["ho_sr"],
-            colorscale=[[0, RED], [.3, AMBER], [.7, GREEN], [1, GREEN]],
+            colorscale=[
+                [0.0, RED],
+                [0.75, RED],
+                [0.75, ORANGE],
+                [0.95, ORANGE],
+                [0.95, GREEN],
+                [1.0, GREEN]
+            ],
             cmin=80, cmax=100,
             line=dict(width=1.5, color="white"),
             colorbar=dict(title=dict(text="Success %")),
@@ -1547,7 +1573,7 @@ elif page == "Network":
         showlegend=False,
     ))
 
-    pt = td[td["ho_sr"] < 96]
+    pt = td[td["ho_sr"] < 95]
     if len(pt) > 0:
         ft.add_trace(go.Scatter(
             x=pt["x"], y=pt["y"], mode="markers",
@@ -1566,8 +1592,8 @@ elif page == "Network":
     l1, l2, l3, l4 = st.columns(4)
     for col, label, color, badge_cls in [
         (l1, "Healthy (>= 99%)", GREEN, "badge-green"),
-        (l2, "Warning (96-99%)", AMBER, "badge-amber"),
-        (l3, "Critical (< 96%)", RED, "badge-red"),
+        (l2, "Warning (95-99%)", ORANGE, "badge-orange"),
+        (l3, "Critical (< 95%)", RED, "badge-red"),
         (l4, "HO Relation Link", PRIMARY, "badge-blue"),
     ]:
         with col:
@@ -1643,7 +1669,7 @@ elif page == "Simulation":
             cio = rng.choice([-2, -1, 0, 1, 2])
             lr = float(np.sum(lsr * cm["ho_att"].values) / 100)
             alv = float(np.mean(lsr))
-            plv = int(np.sum(lsr < 96))
+            plv = int(np.sum(lsr < 95))
 
             st.markdown(
                 f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
@@ -1665,7 +1691,14 @@ elif page == "Simulation":
                 marker=dict(
                     size=np.clip(sdf["ho_att"] * .5, 6, 28),
                     color=sdf["lsr"],
-                    colorscale=[[0, RED], [.3, AMBER], [.7, GREEN], [1, GREEN]],
+                    colorscale=[
+                        [0.0, RED],
+                        [0.5833, RED],
+                        [0.5833, ORANGE],
+                        [0.9167, ORANGE],
+                        [0.9167, GREEN],
+                        [1.0, GREEN]
+                    ],
                     cmin=88, cmax=100,
                 ),
                 hovertemplate="<b>%{customdata[0]}</b><br>Success: %{customdata[1]:.2f}%<extra></extra>",
