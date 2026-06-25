@@ -1,6 +1,6 @@
 # Extra Geo / Multi-Season MRO Datasets
 
-12 additional handover datasets — **3 network footprints × 4 seasons** — to feed
+16 additional handover datasets — **4 network footprints × 4 seasons** — to feed
 the MRO pipeline / RL env beyond the original Tokyo + Berlin/Seoul clusters.
 
 | Footprint | Bands | Vendor | Clutter | Why it's distinct |
@@ -8,6 +8,7 @@ the MRO pipeline / RL env beyond the original Tokyo + Berlin/Seoul clusters.
 | **Kyiv** (continental) | Band 1, Band 3 (FDD) | Ericsson | Dense Urban → Suburban | Harsh snowy winter (RSRP↓, fail↑); early/normal-dominated failures |
 | **Nagano rural** (mountain) | Band 1, Band 3 (FDD) | NEC | Rural / Open | Wide-spaced cells → **too-late HO dominated**; winter ski load + snow |
 | **Downtown Tokyo** (coastal) | Band 1, **Band 41 (TDD)** | Rakuten | Dense Urban / High-Rise | Band 41 TDD + Tokyo Bay → summer/autumn **tropospheric ducting** → wrong-cell + ping-pong |
+| **Helsinki — Elisa** (nordic) | Band 1, Band 3 (FDD) | Nokia RAN | Dense Urban → Suburban | Long Baltic snowy winter → **highest failure (5.0%) + lowest RSRP** of the set; mild long-day summer |
 
 Seasons: `winter` (Jan), `spring` (Apr), `summer` (Jul), `autumn` (Oct), 2026.
 Each season applies climate-/band-specific RF physics (foliage, snow/ice,

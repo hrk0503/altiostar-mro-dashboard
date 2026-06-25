@@ -70,6 +70,15 @@ LOCATIONS = {
         "problem_fraction": 0.12, "days": 7, "late_bias": 0.0,
         "climate": "coastal_subtropical",
     },
+    "helsinki": {  # Elisa network (Nokia RAN)
+        "prefix": "HELS", "city_name": "Helsinki", "center": (60.1699, 24.9384),
+        "num_sites": 14, "tac_base": 44000, "vendor": "Nokia",
+        "bands": ["Band 1 (2100MHz)", "Band 3 (1800MHz)"],
+        "clutter": ["Dense Urban", "Urban", "Suburban"], "jitter_km": 1.5,
+        "base_ho_rate": 170.0, "base_fail_rate": 0.025, "problem_fail_rate": 0.09,
+        "problem_fraction": 0.10, "days": 8, "late_bias": 0.0,
+        "climate": "nordic",
+    },
 }
 
 PROFILES = {
@@ -90,6 +99,12 @@ PROFILES = {
         "spring": {"load": 1.15, "fail": 1.10, "rsrp": -1.0, "pp": 1.15, "wrong": 0.05},
         "summer": {"load": 1.40, "fail": 1.30, "rsrp": -2.0, "pp": 1.50, "wrong": 0.20},
         "autumn": {"load": 1.10, "fail": 1.25, "rsrp": -2.0, "pp": 1.35, "wrong": 0.15},
+    },
+    "nordic": {  # Helsinki: long harsh snowy winter, short mild summer, Baltic-coastal
+        "winter": {"load": 1.00, "fail": 1.75, "rsrp": -6.0, "pp": 1.20, "wrong": 0.00},
+        "spring": {"load": 0.95, "fail": 1.05, "rsrp": -1.0, "pp": 1.00, "wrong": 0.00},
+        "summer": {"load": 1.15, "fail": 1.15, "rsrp": -2.0, "pp": 1.10, "wrong": 0.04},
+        "autumn": {"load": 1.00, "fail": 1.20, "rsrp": -2.0, "pp": 1.05, "wrong": 0.02},
     },
 }
 
