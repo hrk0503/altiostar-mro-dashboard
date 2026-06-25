@@ -519,6 +519,16 @@ def health_badge(r):
     if r >= 95: return "badge-orange", "Warning"
     return "badge-red", "Critical"
 
+# ── Dataset selector (must run before data load) ────────────────────
+with st.sidebar:
+    _ds_choice = st.selectbox(
+        "Dataset",
+        list(_DATASETS.keys()),
+        index=0,
+        help="Switch between geographic footprints",
+    )
+    _ds_dir = _DATASETS[_ds_choice]
+
 # ── Load data ────────────────────────────────────────────────────────
 site_db = ld_site(str(_ds_dir) if _ds_dir else None)
 pm = ld_pm(str(_ds_dir) if _ds_dir else None)
@@ -577,16 +587,6 @@ with st.sidebar:
         "Reports",
         "Data Upload",
     ], label_visibility="collapsed")
-
-    st.divider()
-
-    _ds_choice = st.selectbox(
-        "Dataset",
-        list(_DATASETS.keys()),
-        index=0,
-        help="Switch between geographic footprints",
-    )
-    _ds_dir = _DATASETS[_ds_choice]
 
     st.divider()
 
