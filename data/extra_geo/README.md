@@ -30,8 +30,11 @@ extra_geo/<location>_<season>/
   neighbor_relations.csv       # committed
   cluster_kpi_summary.csv      # committed
   radio_samples.csv            # committed — RSRP/RSRQ/SINR/PRB/UE, hourly
-  pm_data_relation_level.csv   # gitignored — regenerate (see below)
+  pm_data_relation_level.csv   # committed (~24MB each, like pm_data_april2026.csv)
 ```
+All four CSVs are committed — clone the repo and the data is ready to use, no
+regen step. (Each PM file is ~22–27 MB, well under GitHub's 100 MB limit and in
+line with the existing `data/synthetic/pm_data_april2026.csv`.)
 
 `radio_samples.csv` columns: `timestamp_utc, cell_id, enodeb_id, frequency_band,
 avg_rsrp_dBm, avg_rsrq_dB, avg_sinr_dB, prb_utilization_dl_pct,
@@ -40,11 +43,12 @@ prb_utilization_ul_pct, active_ue_avg` — values stay within the
 (Band 41 TDD ducting + ping-pong) depresses SINR; congestion depresses RSRQ — so
 e.g. Tokyo SINR drops winter 13.2 → summer 6.2 dB.
 
-## Regenerate everything (deterministic, fixed seeds)
+## Regenerate everything (optional — data is already committed)
 ```bash
 python scripts/generate_extra_geo_data.py
 ```
-Produces all 12 datasets under `data/extra_geo/` (~283 MB, 4.44 M PM rows total).
+Deterministically reproduces all 12 datasets under `data/extra_geo/`
+(~297 MB, 4.44 M PM rows total) from fixed seeds.
 
 ## Feeding the env
 Relation-level format — `MROEnv` auto-detects it via the `source_cell_id` column
