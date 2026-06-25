@@ -1,0 +1,4 @@
+# Large relation-level PM is regenerated deterministically from
+# scripts/generate_extra_geo_data.py (fixed seeds) — not stored in git,
+# matching how data/synthetic/pm_data_relation_level.csv is handled.
+*/pm_data_relation_level.csv
