@@ -86,7 +86,7 @@ if not _is_authed:
             'MRO Optimization Platform</span></div>'
             '<div style="text-align:center; margin-bottom:24px;">'
             '<span style="font-size:.82rem; color:#64748B;">'
-            'Rakuten Japan 5G</span></div>',
+            'Secure Access</span></div>',
             unsafe_allow_html=True)
         pwd = st.text_input("Password", type="password", placeholder="Enter dashboard password")
         login_btn = st.button("Sign In", use_container_width=True, type="primary")
@@ -561,6 +561,11 @@ with st.sidebar:
         f'<div style="font-size:.68rem; color:{TEXT_MUTED} !important; margin-top:4px;">Gap: {gap:.2f}%</div>'
         f'</div>', unsafe_allow_html=True)
 
+    st.divider()
+    if st.button("Log Out", use_container_width=True):
+        st.query_params.clear()
+        st.rerun()
+
 
 # ══════════════════════════════════════════════════════════════════════
 # HELPER: section title
@@ -598,7 +603,7 @@ tc1, tc2 = st.columns([2, 3])
 with tc1:
     st.markdown(
         f'<div class="page-title">{page}</div>'
-        f'<div class="page-subtitle">Rakuten Japan 5G · Shibuya · 75 Cells · 763 Relations</div>',
+        f'<div class="page-subtitle">Shibuya Cluster · 75 Cells · 763 Relations</div>',
         unsafe_allow_html=True)
 with tc2:
     st.markdown(
@@ -2226,5 +2231,5 @@ elif page == "Data Upload":
 st.markdown(f'<div style="height:1px;background:{BORDER};margin:20px 0 12px 0;"></div>', unsafe_allow_html=True)
 st.markdown(
     f'<div style="text-align:center;font-size:.72rem;color:{TEXT_MUTED};padding-bottom:16px;">'
-    f'WINNIIO MRO Optimization Platform · Rakuten Japan 5G · 75 Cells · 763 Relations · 99% Target'
+    f'WINNIIO MRO Optimization Platform · 75 Cells · 763 Relations · 99% Target'
     f'</div>', unsafe_allow_html=True)
