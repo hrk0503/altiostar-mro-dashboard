@@ -479,17 +479,40 @@ def ld_rel(ddir=None):
     rel_file = p / "neighbor_relations.csv"
     return pd.read_csv(rel_file)
 @st.cache_data(ttl=600)
-def ld_exp():
+def ld_exp(geo_name=None):
     exps = []
-    for f in sorted(RDIR.glob("experiment_*.json")):
-        try: exps.append(json.loads(f.read_text()))
-        except: continue
+    if geo_name:
+        geo_file = RDIR / "geo" / f"{geo_name}.json"
+        if geo_file.exists():
+            try:
+                g = json.loads(geo_file.read_text())
+                ev = g.get("evaluation", {})
+                exps.append({
+                    "experiment": geo_name,
+                    "reward_version": "v2",
+                    "scenario": "baseline",
+                    "timestamp": g.get("timestamp", ""),
+                    "config": g.get("config", {}),
+                    "training": g.get("training", {}),
+                    "evaluation": ev,
+                })
+            except: pass
+    else:
+        for f in sorted(RDIR.glob("experiment_*.json")):
+            try: exps.append(json.loads(f.read_text()))
+            except: continue
     sw = {}
     sp = RDIR / "sweep_results.json"
     if sp.exists():
         try: sw = json.loads(sp.read_text())
         except: pass
-    return {"experiments": exps, "sweep": sw}
+    # Load cross-geo summary for comparison
+    geo_all = {}
+    mg = RDIR / "multi_geo_training.json"
+    if mg.exists():
+        try: geo_all = json.loads(mg.read_text())
+        except: pass
+    return {"experiments": exps, "sweep": sw, "geo_all": geo_all}
 
 def comp_df(exps):
     rows = []
@@ -533,8 +556,10 @@ with st.sidebar:
 site_db = ld_site(str(_ds_dir) if _ds_dir else None)
 pm = ld_pm(str(_ds_dir) if _ds_dir else None)
 rels = ld_rel(str(_ds_dir) if _ds_dir else None)
-ed = ld_exp()
+_geo_name = _ds_dir.name if _ds_dir else None
+ed = ld_exp(geo_name=_geo_name)
 cdf = comp_df(ed["experiments"])
+_is_geo = _geo_name is not None
 ck = pm.groupby("cell_id").agg(
     ho_att=("ho_attempts_intra", "mean"),
     ho_sr=("ho_success_rate_pct", "mean"),
@@ -1095,8 +1120,43 @@ if page == "Dashboard":
                         f'<span style="flex:1;text-align:right"><span class="badge {bcls}">{blbl}</span></span>'
                         f'</div>', unsafe_allow_html=True)
 
-    # Experiment results bar chart (scenario-filtered)
-    if len(cdf) > 0:
+    # Experiment results — geography-aware
+    if _is_geo and len(cdf) > 0:
+        geo_ev = ed["experiments"][0].get("evaluation", {}) if ed["experiments"] else {}
+        geo_tr = ed["experiments"][0].get("training", {}) if ed["experiments"] else {}
+        sec(f"Training Results — {_ds_choice}")
+        p1, p2, p3, p4 = st.columns(4)
+        with p1:
+            _gsr = geo_ev.get("ho_success_rate", 0)
+            st.markdown(
+                f'<div class="kpi" style="border-left:3px solid {GREEN};">'
+                f'<div class="kpi-label">HO Success Rate</div>'
+                f'<div class="kpi-value" style="color:{GREEN};">{_gsr:.2f}%</div>'
+                f'<div class="kpi-sub">PPO v2 optimized</div>'
+                f'</div>', unsafe_allow_html=True)
+        with p2:
+            st.markdown(
+                f'<div class="kpi" style="border-left:3px solid {RED};">'
+                f'<div class="kpi-label">HO Failure Rate</div>'
+                f'<div class="kpi-value">{geo_ev.get("ho_failure_rate", 0):.2f}%</div>'
+                f'<div class="kpi-sub">Residual failures</div>'
+                f'</div>', unsafe_allow_html=True)
+        with p3:
+            st.markdown(
+                f'<div class="kpi" style="border-left:3px solid {AMBER};">'
+                f'<div class="kpi-label">Ping-Pong Rate</div>'
+                f'<div class="kpi-value">{geo_ev.get("pingpong_rate", 0):.2f}%</div>'
+                f'<div class="kpi-sub">Oscillation metric</div>'
+                f'</div>', unsafe_allow_html=True)
+        with p4:
+            _ri = geo_tr.get("relations_improved", 0)
+            st.markdown(
+                f'<div class="kpi" style="border-left:3px solid {BLUE};">'
+                f'<div class="kpi-label">Relations Improved</div>'
+                f'<div class="kpi-value">{_ri}</div>'
+                f'<div class="kpi-sub">CIO-optimized relations</div>'
+                f'</div>', unsafe_allow_html=True)
+    elif len(cdf) > 0:
         sec("Experiment Results — HO Success Rate")
         fb = go.Figure()
         for v in sorted(cdf["Variant"].unique()):
@@ -1111,10 +1171,9 @@ if page == "Dashboard":
             ))
         fb.add_hline(y=99, line_dash="dot", line_color=RED, opacity=.5,
             annotation_text="99% Target", annotation_font_color=RED, annotation_font_size=11)
-        # Highlight the currently-selected scenario with a vertical annotation
         if dash_scenario != "baseline":
             fb.add_vrect(
-                x0=-0.5, x1=3.5,  # plotly uses categorical, highlight by annotation
+                x0=-0.5, x1=3.5,
                 annotation_text="", fillcolor="rgba(0,0,0,0)",
             )
         _bl_path = ROOT / "results" / "random_baseline.json"
@@ -1139,7 +1198,7 @@ if page == "Dashboard":
         st.plotly_chart(fb, use_container_width=True)
 
     # summary — high-level progress snapshot
-    if len(cdf) > 0:
+    if not _is_geo and len(cdf) > 0:
         sec("Experiment Progress")
         _n_variants = len(cdf["Variant"].unique())
         _n_scenarios = len(cdf["Scenario"].unique())
@@ -1304,8 +1363,150 @@ elif page == "Cell Map":
 # PAGE: EXPERIMENTS (Variant Comparison)
 # ══════════════════════════════════════════════════════════════════════
 elif page == "Experiments":
-    if len(cdf) == 0:
+    if _is_geo and len(cdf) == 0:
+        st.warning("No training results for this geography. Run `python3 scripts/train_multi_geo.py`")
+    elif len(cdf) == 0:
         st.warning("No data. Run `python3 run_experiment.py --sweep-all`")
+    elif _is_geo:
+        # ── Geography-specific training results ──
+        geo_res = ed["experiments"][0] if ed["experiments"] else {}
+        geo_ev = geo_res.get("evaluation", {})
+        geo_tr = geo_res.get("training", {})
+        geo_cfg = geo_res.get("config", {})
+        _geo_label = _ds_choice.split("—")[0].strip() if "—" in _ds_choice else _ds_choice
+
+        sec(f"Training Results — {_ds_choice}")
+        g1, g2, g3, g4 = st.columns(4)
+        with g1:
+            st.markdown(
+                f'<div class="kpi" style="border-left:3px solid {GREEN};">'
+                f'<div class="kpi-label">HO Success Rate</div>'
+                f'<div class="kpi-value" style="color:{GREEN};">{geo_ev.get("ho_success_rate", 0):.2f}%</div>'
+                f'<div class="kpi-sub">After CIO optimization</div>'
+                f'</div>', unsafe_allow_html=True)
+        with g2:
+            st.markdown(
+                f'<div class="kpi" style="border-left:3px solid {RED};">'
+                f'<div class="kpi-label">HO Failure Rate</div>'
+                f'<div class="kpi-value">{geo_ev.get("ho_failure_rate", 0):.2f}%</div>'
+                f'<div class="kpi-sub">Residual failures</div>'
+                f'</div>', unsafe_allow_html=True)
+        with g3:
+            st.markdown(
+                f'<div class="kpi" style="border-left:3px solid {AMBER};">'
+                f'<div class="kpi-label">Ping-Pong Rate</div>'
+                f'<div class="kpi-value">{geo_ev.get("pingpong_rate", 0):.2f}%</div>'
+                f'<div class="kpi-sub">Oscillation metric</div>'
+                f'</div>', unsafe_allow_html=True)
+        with g4:
+            st.markdown(
+                f'<div class="kpi" style="border-left:3px solid {BLUE};">'
+                f'<div class="kpi-label">Mean Reward</div>'
+                f'<div class="kpi-value">{geo_ev.get("mean_reward", 0):,.0f}</div>'
+                f'<div class="kpi-sub">{geo_cfg.get("total_timesteps", "?")} timesteps · {geo_tr.get("time_s", "?")}s</div>'
+                f'</div>', unsafe_allow_html=True)
+
+        gc1, gc2 = st.columns(2)
+        with gc1:
+            sec("Failure Breakdown")
+            _te = geo_ev.get("too_early_rate", 0)
+            _tl = geo_ev.get("too_late_rate", 0)
+            _wc = geo_ev.get("wrong_cell_rate", 0)
+            _sr = geo_ev.get("ho_success_rate", 100)
+            fp = go.Figure(data=[go.Pie(
+                labels=["Success", "Too Early", "Too Late", "Wrong Cell", "Ping-Pong"],
+                values=[_sr, _te, _tl, _wc, geo_ev.get("pingpong_rate", 0)],
+                hole=.55,
+                marker_colors=[GREEN, AMBER, ORANGE, RED, "#94A3B8"],
+                textinfo="label+percent",
+                textfont_size=11,
+            )])
+            fp.update_layout(
+                height=350, margin=dict(t=20, b=10, l=10, r=10),
+                showlegend=False, template=PLT, paper_bgcolor=CARD,
+            )
+            st.plotly_chart(fp, use_container_width=True)
+
+        with gc2:
+            sec("Training Details")
+            _ri = geo_tr.get("relations_improved", 0)
+            _mi = geo_tr.get("mean_improvement_pct", 0)
+            _details = [
+                ("Algorithm", "PPO (SB3)"),
+                ("Reward Version", "v2 — Rate-based"),
+                ("Optimization", "Greedy CIO search + PPO"),
+                ("Relations Improved", f"{_ri}"),
+                ("Mean Improvement", f"{_mi:.2f}%"),
+                ("Training Time", f"{geo_tr.get('time_s', '?')}s"),
+                ("Eval Episodes", f"{geo_cfg.get('eval_episodes', '?')}"),
+                ("Timesteps", f"{geo_cfg.get('total_timesteps', '?'):,}"),
+            ]
+            for lbl, val in _details:
+                st.markdown(
+                    f'<div class="trow">'
+                    f'<span style="color:{TEXT_SEC};">{lbl}</span>'
+                    f'<span style="font-weight:600;font-family:JetBrains Mono,monospace;">{val}</span>'
+                    f'</div>', unsafe_allow_html=True)
+
+        # Cross-geography comparison
+        _geo_all = ed.get("geo_all", {}).get("results", {})
+        if _geo_all:
+            sec("Cross-Geography Comparison — All Trained Datasets")
+            _geo_rows = []
+            for gn, gr in sorted(_geo_all.items()):
+                if "error" in gr: continue
+                _geo_rows.append({
+                    "Geography": gn.replace("_", " ").title(),
+                    "Cells": gr.get("cells", 0),
+                    "Relations": gr.get("relations", 0),
+                    "HO Success %": gr.get("ho_success_rate", 0),
+                    "HO Failure %": gr.get("ho_failure_rate", 0),
+                    "Ping-Pong %": gr.get("pingpong_rate", 0),
+                    "Mean Reward": gr.get("mean_reward", 0),
+                    "geo_key": gn,
+                })
+            if _geo_rows:
+                _gdf = pd.DataFrame(_geo_rows)
+                _gdf = _gdf.sort_values("HO Success %", ascending=False)
+
+                _city_colors = {
+                    "helsinki": "#0A8E99",
+                    "kyiv": "#FFD700",
+                    "japan_rural": "#2E8B57",
+                    "tokyo": "#E74C3C",
+                }
+                fg = go.Figure()
+                _bar_colors = []
+                for _, r in _gdf.iterrows():
+                    _ck = r["geo_key"].rsplit("_", 1)[0]
+                    _bar_colors.append(_city_colors.get(_ck, PRIMARY))
+
+                fg.add_trace(go.Bar(
+                    x=_gdf["Geography"], y=_gdf["HO Success %"],
+                    marker_color=_bar_colors,
+                    text=_gdf["HO Success %"].round(2),
+                    textposition="outside",
+                    textfont=dict(size=10, family="JetBrains Mono"),
+                ))
+                fg.add_hline(y=99, line_dash="dot", line_color=RED, opacity=.5,
+                    annotation_text="99% Target", annotation_font_color=RED, annotation_font_size=11)
+                fg.update_layout(
+                    height=480, template=PLT,
+                    paper_bgcolor=CARD, plot_bgcolor="#FAFBFC",
+                    font=dict(color=TEXT, size=11, family="Inter"),
+                    margin=dict(t=20, b=120, l=60, r=20),
+                    yaxis_title="HO Success Rate (%)",
+                    yaxis_range=[93, 100],
+                    xaxis_tickangle=-45,
+                )
+                st.plotly_chart(fg, use_container_width=True)
+
+                sec("Performance Table")
+                st.dataframe(
+                    _gdf[["Geography", "Cells", "Relations", "HO Success %", "HO Failure %", "Ping-Pong %", "Mean Reward"]].reset_index(drop=True),
+                    use_container_width=True, hide_index=True,
+                )
+
     else:
         f1, f2 = st.columns(2)
         av = sorted(cdf["Variant"].unique())
@@ -1576,7 +1777,8 @@ elif page == "Experiments":
 # PAGE: NETWORK
 # ══════════════════════════════════════════════════════════════════════
 elif page == "Network":
-    sec("Network Topology — Shibuya 5G Cluster")
+    _net_label = _ds_choice.split("—")[0].strip() if _is_geo else "Shibuya 5G Cluster"
+    sec(f"Network Topology — {_net_label}")
 
     ts_sel = st.selectbox("Scenario view", ["baseline", "rush_hour", "rain_fade", "tower_failure"],
         format_func=lambda s: f"{s.replace('_', ' ').title()} — {SC_META[s]['l']}")
