@@ -1,23 +1,145 @@
 {
-  "timestamp": "2026-06-09",
-  "purpose": "Validate pipeline is geography-agnostic",
+  "timestamp": "2026-06-26",
+  "purpose": "Validate pipeline is geography-agnostic — 18 datasets trained (2 legacy + 16 PR#15)",
   "datasets": {
     "berlin_lte": {
       "cells": 60,
       "relations": 624,
       "train_time_s": 5.8,
-      "mean_reward": 126757.0
+      "mean_reward": 126757.0,
+      "ho_success_rate": null
     },
     "seoul_5g": {
       "cells": 45,
       "relations": 505,
       "train_time_s": 4.3,
-      "mean_reward": 145120.6
+      "mean_reward": 145120.6,
+      "ho_success_rate": null
+    },
+    "helsinki_spring": {
+      "cells": 42,
+      "relations": 486,
+      "train_time_s": 16.4,
+      "mean_reward": 64696.0,
+      "ho_success_rate": 97.21
+    },
+    "helsinki_summer": {
+      "cells": 42,
+      "relations": 458,
+      "train_time_s": 15.2,
+      "mean_reward": 62783.0,
+      "ho_success_rate": 96.84
+    },
+    "helsinki_autumn": {
+      "cells": 42,
+      "relations": 454,
+      "train_time_s": 15.7,
+      "mean_reward": 62872.0,
+      "ho_success_rate": 96.73
+    },
+    "helsinki_winter": {
+      "cells": 42,
+      "relations": 459,
+      "train_time_s": 15.2,
+      "mean_reward": 45581.0,
+      "ho_success_rate": 95.0
+    },
+    "kyiv_spring": {
+      "cells": 48,
+      "relations": 523,
+      "train_time_s": 17.6,
+      "mean_reward": 64567.0,
+      "ho_success_rate": 97.19
+    },
+    "kyiv_summer": {
+      "cells": 48,
+      "relations": 525,
+      "train_time_s": 17.6,
+      "mean_reward": 62069.0,
+      "ho_success_rate": 96.7
+    },
+    "kyiv_autumn": {
+      "cells": 48,
+      "relations": 541,
+      "train_time_s": 18.2,
+      "mean_reward": 63138.0,
+      "ho_success_rate": 96.91
+    },
+    "kyiv_winter": {
+      "cells": 48,
+      "relations": 523,
+      "train_time_s": 17.6,
+      "mean_reward": 56884.0,
+      "ho_success_rate": 95.52
+    },
+    "japan_rural_spring": {
+      "cells": 33,
+      "relations": 379,
+      "train_time_s": 14.3,
+      "mean_reward": 81546.0,
+      "ho_success_rate": 97.69
+    },
+    "japan_rural_summer": {
+      "cells": 33,
+      "relations": 368,
+      "train_time_s": 13.8,
+      "mean_reward": 78323.0,
+      "ho_success_rate": 97.0
+    },
+    "japan_rural_autumn": {
+      "cells": 33,
+      "relations": 370,
+      "train_time_s": 13.9,
+      "mean_reward": 77474.0,
+      "ho_success_rate": 96.74
+    },
+    "japan_rural_winter": {
+      "cells": 33,
+      "relations": 351,
+      "train_time_s": 13.2,
+      "mean_reward": 73883.0,
+      "ho_success_rate": 95.94
+    },
+    "tokyo_spring": {
+      "cells": 48,
+      "relations": 528,
+      "train_time_s": 17.6,
+      "mean_reward": 51025.0,
+      "ho_success_rate": 96.09
+    },
+    "tokyo_summer": {
+      "cells": 48,
+      "relations": 537,
+      "train_time_s": 18.4,
+      "mean_reward": 46477.0,
+      "ho_success_rate": 95.31
+    },
+    "tokyo_autumn": {
+      "cells": 48,
+      "relations": 520,
+      "train_time_s": 16.8,
+      "mean_reward": 48761.0,
+      "ho_success_rate": 95.54
+    },
+    "tokyo_winter": {
+      "cells": 48,
+      "relations": 517,
+      "train_time_s": 18.0,
+      "mean_reward": 52213.0,
+      "ho_success_rate": 96.3
     }
   },
   "tokyo_baseline": {
     "cells": 75,
     "relations": 763,
     "mean_reward_25k": 210579.0
+  },
+  "summary": {
+    "total_geographies": 18,
+    "total_training_time_s": 259.55,
+    "ho_success_range": "95.00% — 97.69%",
+    "best_geography": "japan_rural_spring (97.69%)",
+    "worst_geography": "helsinki_winter (95.00%)",
+    "mean_ho_success": 96.42
   }
 }

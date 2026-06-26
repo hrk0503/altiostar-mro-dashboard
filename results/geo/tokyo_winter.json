@@ -1,0 +1,97 @@
+{
+  "geography": "tokyo_winter",
+  "timestamp": "2026-06-26T12:52:48.537586+00:00",
+  "config": {
+    "total_timesteps": 5000,
+    "eval_episodes": 5,
+    "seed": 42,
+    "algorithm": "PPO",
+    "policy": "MlpPolicy",
+    "reward_version": "v2",
+    "optimization": "greedy_cio_search + PPO"
+  },
+  "network": {
+    "cells": 48,
+    "relations": 517,
+    "steps_per_episode": 672
+  },
+  "training": {
+    "time_s": 18.0,
+    "episode_rewards": [
+      52266.8647,
+      52279.4169,
+      52237.1542,
+      52201.5895,
+      52127.29,
+      52264.9879,
+      52155.0641,
+      52164.0691
+    ],
+    "checkpoint_path": "/Users/harshitrana/Downloads/altiostar-tokyo-mro/checkpoints/multi_geo/ppo_tokyo_winter.zip",
+    "relations_improved": 403,
+    "mean_improvement_pct": 75.07
+  },
+  "evaluation": {
+    "mean_reward": 52213.3586,
+    "std_reward": 30.8844,
+    "ho_success_rate": 96.2982,
+    "ho_failure_rate": 3.7018,
+    "pingpong_rate": 0.8679,
+    "too_early_rate": 1.8503,
+    "too_late_rate": 1.1014,
+    "wrong_cell_rate": 0.7501,
+    "n_episodes": 5,
+    "per_episode": [
+      {
+        "episode": 0,
+        "reward": 52236.76383309066,
+        "ho_success_rate": 96.30150169039003,
+        "ho_failure_rate": 3.6984983096099806,
+        "pingpong_rate": 0.8685720771484006,
+        "too_early_rate": 1.84849297094513,
+        "too_late_rate": 1.0993002163033174,
+        "wrong_cell_rate": 0.750705122361533
+      },
+      {
+        "episode": 1,
+        "reward": 52210.26363810524,
+        "ho_success_rate": 96.29906421271946,
+        "ho_failure_rate": 3.700935787280545,
+        "pingpong_rate": 0.8662947747982715,
+        "too_early_rate": 1.8480047683989274,
+        "too_late_rate": 1.1021395926779296,
+        "wrong_cell_rate": 0.7507914262036883
+      },
+      {
+        "episode": 2,
+        "reward": 52196.299837809056,
+        "ho_success_rate": 96.29805271562107,
+        "ho_failure_rate": 3.7019472843789303,
+        "pingpong_rate": 0.8683438549972339,
+        "too_early_rate": 1.8536979121371024,
+        "too_late_rate": 1.1002563894662485,
+        "wrong_cell_rate": 0.7479929827755792
+      },
+      {
+        "episode": 3,
+        "reward": 52255.979690747336,
+        "ho_success_rate": 96.3058860421253,
+        "ho_failure_rate": 3.694113957874702,
+        "pingpong_rate": 0.8688595220803192,
+        "too_early_rate": 1.8457035705459097,
+        "too_late_rate": 1.1007830034758985,
+        "wrong_cell_rate": 0.7476273838528941
+      },
+      {
+        "episode": 4,
+        "reward": 52167.48607326299,
+        "ho_success_rate": 96.28647720565885,
+        "ho_failure_rate": 3.713522794341144,
+        "pingpong_rate": 0.8675263373895807,
+        "too_early_rate": 1.8557074672849903,
+        "too_late_rate": 1.1044047670599004,
+        "wrong_cell_rate": 0.7534105599962535
+      }
+    ]
+  }
+}
