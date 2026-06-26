@@ -1448,6 +1448,43 @@ elif page == "Experiments":
                     f'<span style="font-weight:600;font-family:JetBrains Mono,monospace;">{val}</span>'
                     f'</div>', unsafe_allow_html=True)
 
+        # CIO Change Export
+        _cio_csv = ROOT / "results" / "cio_exports" / f"{_geo_name}_cio_changes.csv"
+        if _cio_csv.exists():
+            sec("CIO Change Export")
+            _cio_df = pd.read_csv(_cio_csv)
+            _n_changed = len(_cio_df[_cio_df["action"] != "unchanged"])
+            _mean_imp = _cio_df["improvement_%"].mean()
+            ec1, ec2, ec3 = st.columns([1, 1, 1])
+            with ec1:
+                st.markdown(
+                    f'<div class="kpi" style="border-left:3px solid {PRIMARY};">'
+                    f'<div class="kpi-label">Total Relations</div>'
+                    f'<div class="kpi-value">{len(_cio_df)}</div>'
+                    f'</div>', unsafe_allow_html=True)
+            with ec2:
+                st.markdown(
+                    f'<div class="kpi" style="border-left:3px solid {GREEN};">'
+                    f'<div class="kpi-label">CIO Changed</div>'
+                    f'<div class="kpi-value">{_n_changed}</div>'
+                    f'</div>', unsafe_allow_html=True)
+            with ec3:
+                st.markdown(
+                    f'<div class="kpi" style="border-left:3px solid {BLUE};">'
+                    f'<div class="kpi-label">Mean Improvement</div>'
+                    f'<div class="kpi-value">+{_mean_imp:.1f}%</div>'
+                    f'</div>', unsafe_allow_html=True)
+            _top10 = _cio_df.head(10)[["source_cell", "target_cell", "initial_cio_dB", "optimized_cio_dB", "cio_delta_dB", "before_success_%", "after_success_%", "improvement_%"]]
+            _top10.columns = ["Source", "Target", "Initial CIO (dB)", "Optimized CIO (dB)", "Δ CIO (dB)", "Before %", "After %", "Improvement %"]
+            st.dataframe(_top10, use_container_width=True, hide_index=True)
+            st.download_button(
+                "📥 Download Full CIO Change Report (CSV)",
+                _cio_df.to_csv(index=False),
+                f"{_geo_name}_cio_changes.csv",
+                "text/csv",
+                use_container_width=True,
+            )
+
         # Cross-geography comparison
         _geo_all = ed.get("geo_all", {}).get("results", {})
         if _geo_all:
@@ -1771,6 +1808,43 @@ elif page == "Experiments":
                         showlegend=False, template=PLT, paper_bgcolor=CARD,
                     )
                     st.plotly_chart(fp, use_container_width=True)
+
+        # CIO Change Export (Shibuya)
+        _shibuya_csv = ROOT / "results" / "cio_exports" / "shibuya_cio_changes.csv"
+        if _shibuya_csv.exists():
+            sec("CIO Change Export")
+            _scio = pd.read_csv(_shibuya_csv)
+            _sn_changed = len(_scio[_scio["action"] != "unchanged"])
+            _smean_imp = _scio["improvement_%"].mean()
+            sc1, sc2, sc3 = st.columns(3)
+            with sc1:
+                st.markdown(
+                    f'<div class="kpi" style="border-left:3px solid {PRIMARY};">'
+                    f'<div class="kpi-label">Total Relations</div>'
+                    f'<div class="kpi-value">{len(_scio)}</div>'
+                    f'</div>', unsafe_allow_html=True)
+            with sc2:
+                st.markdown(
+                    f'<div class="kpi" style="border-left:3px solid {GREEN};">'
+                    f'<div class="kpi-label">CIO Changed</div>'
+                    f'<div class="kpi-value">{_sn_changed}</div>'
+                    f'</div>', unsafe_allow_html=True)
+            with sc3:
+                st.markdown(
+                    f'<div class="kpi" style="border-left:3px solid {BLUE};">'
+                    f'<div class="kpi-label">Mean Improvement</div>'
+                    f'<div class="kpi-value">+{_smean_imp:.1f}%</div>'
+                    f'</div>', unsafe_allow_html=True)
+            _stop10 = _scio.head(10)[["source_cell", "target_cell", "initial_cio_dB", "optimized_cio_dB", "cio_delta_dB", "before_success_%", "after_success_%", "improvement_%"]]
+            _stop10.columns = ["Source", "Target", "Initial CIO (dB)", "Optimized CIO (dB)", "Δ CIO (dB)", "Before %", "After %", "Improvement %"]
+            st.dataframe(_stop10, use_container_width=True, hide_index=True)
+            st.download_button(
+                "📥 Download Full CIO Change Report (CSV)",
+                _scio.to_csv(index=False),
+                "shibuya_cio_changes.csv",
+                "text/csv",
+                use_container_width=True,
+            )
 
 
 # ══════════════════════════════════════════════════════════════════════

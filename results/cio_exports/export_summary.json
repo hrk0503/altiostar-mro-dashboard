@@ -1,0 +1,114 @@
+[
+  {
+    "geography": "helsinki_autumn",
+    "total_relations": 454,
+    "relations_changed": 0,
+    "mean_improvement": 80.28,
+    "csv_path": "/Users/harshitrana/Downloads/altiostar-tokyo-mro/results/cio_exports/helsinki_autumn_cio_changes.csv"
+  },
+  {
+    "geography": "helsinki_spring",
+    "total_relations": 486,
+    "relations_changed": 0,
+    "mean_improvement": 73.66,
+    "csv_path": "/Users/harshitrana/Downloads/altiostar-tokyo-mro/results/cio_exports/helsinki_spring_cio_changes.csv"
+  },
+  {
+    "geography": "helsinki_summer",
+    "total_relations": 458,
+    "relations_changed": 0,
+    "mean_improvement": 77.17,
+    "csv_path": "/Users/harshitrana/Downloads/altiostar-tokyo-mro/results/cio_exports/helsinki_summer_cio_changes.csv"
+  },
+  {
+    "geography": "helsinki_winter",
+    "total_relations": 459,
+    "relations_changed": 0,
+    "mean_improvement": 74.88,
+    "csv_path": "/Users/harshitrana/Downloads/altiostar-tokyo-mro/results/cio_exports/helsinki_winter_cio_changes.csv"
+  },
+  {
+    "geography": "japan_rural_autumn",
+    "total_relations": 370,
+    "relations_changed": 0,
+    "mean_improvement": 75.86,
+    "csv_path": "/Users/harshitrana/Downloads/altiostar-tokyo-mro/results/cio_exports/japan_rural_autumn_cio_changes.csv"
+  },
+  {
+    "geography": "japan_rural_spring",
+    "total_relations": 379,
+    "relations_changed": 0,
+    "mean_improvement": 74.39,
+    "csv_path": "/Users/harshitrana/Downloads/altiostar-tokyo-mro/results/cio_exports/japan_rural_spring_cio_changes.csv"
+  },
+  {
+    "geography": "japan_rural_summer",
+    "total_relations": 368,
+    "relations_changed": 0,
+    "mean_improvement": 72.82,
+    "csv_path": "/Users/harshitrana/Downloads/altiostar-tokyo-mro/results/cio_exports/japan_rural_summer_cio_changes.csv"
+  },
+  {
+    "geography": "japan_rural_winter",
+    "total_relations": 351,
+    "relations_changed": 0,
+    "mean_improvement": 73.77,
+    "csv_path": "/Users/harshitrana/Downloads/altiostar-tokyo-mro/results/cio_exports/japan_rural_winter_cio_changes.csv"
+  },
+  {
+    "geography": "kyiv_autumn",
+    "total_relations": 541,
+    "relations_changed": 0,
+    "mean_improvement": 77.41,
+    "csv_path": "/Users/harshitrana/Downloads/altiostar-tokyo-mro/results/cio_exports/kyiv_autumn_cio_changes.csv"
+  },
+  {
+    "geography": "kyiv_spring",
+    "total_relations": 523,
+    "relations_changed": 0,
+    "mean_improvement": 77.59,
+    "csv_path": "/Users/harshitrana/Downloads/altiostar-tokyo-mro/results/cio_exports/kyiv_spring_cio_changes.csv"
+  },
+  {
+    "geography": "kyiv_summer",
+    "total_relations": 525,
+    "relations_changed": 0,
+    "mean_improvement": 78.68,
+    "csv_path": "/Users/harshitrana/Downloads/altiostar-tokyo-mro/results/cio_exports/kyiv_summer_cio_changes.csv"
+  },
+  {
+    "geography": "kyiv_winter",
+    "total_relations": 523,
+    "relations_changed": 0,
+    "mean_improvement": 75.3,
+    "csv_path": "/Users/harshitrana/Downloads/altiostar-tokyo-mro/results/cio_exports/kyiv_winter_cio_changes.csv"
+  },
+  {
+    "geography": "tokyo_autumn",
+    "total_relations": 520,
+    "relations_changed": 0,
+    "mean_improvement": 78.65,
+    "csv_path": "/Users/harshitrana/Downloads/altiostar-tokyo-mro/results/cio_exports/tokyo_autumn_cio_changes.csv"
+  },
+  {
+    "geography": "tokyo_spring",
+    "total_relations": 528,
+    "relations_changed": 0,
+    "mean_improvement": 78.02,
+    "csv_path": "/Users/harshitrana/Downloads/altiostar-tokyo-mro/results/cio_exports/tokyo_spring_cio_changes.csv"
+  },
+  {
+    "geography": "tokyo_summer",
+    "total_relations": 537,
+    "relations_changed": 0,
+    "mean_improvement": 76.66,
+    "csv_path": "/Users/harshitrana/Downloads/altiostar-tokyo-mro/results/cio_exports/tokyo_summer_cio_changes.csv"
+  },
+  {
+    "geography": "tokyo_winter",
+    "total_relations": 517,
+    "relations_changed": 0,
+    "mean_improvement": 75.07,
+    "csv_path": "/Users/harshitrana/Downloads/altiostar-tokyo-mro/results/cio_exports/tokyo_winter_cio_changes.csv"
+  }
+]
