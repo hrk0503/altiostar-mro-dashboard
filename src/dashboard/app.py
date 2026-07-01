@@ -482,21 +482,39 @@ def ld_rel(ddir=None):
 def ld_exp(geo_name=None):
     exps = []
     if geo_name:
-        geo_file = RDIR / "geo" / f"{geo_name}.json"
-        if geo_file.exists():
-            try:
-                g = json.loads(geo_file.read_text())
-                ev = g.get("evaluation", {})
-                exps.append({
-                    "experiment": geo_name,
-                    "reward_version": "v2",
-                    "scenario": "baseline",
-                    "timestamp": g.get("timestamp", ""),
-                    "config": g.get("config", {}),
-                    "training": g.get("training", {}),
-                    "evaluation": ev,
-                })
-            except: pass
+        for vn in ["v0", "v1", "v2", "v3"]:
+            for sc in ["baseline", "rain_fade", "rush_hour", "tower_failure"]:
+                gf = RDIR / "geo" / f"{geo_name}_{vn}_{sc}.json"
+                if gf.exists():
+                    try:
+                        g = json.loads(gf.read_text())
+                        ev = g.get("evaluation", {})
+                        exps.append({
+                            "experiment": f"{geo_name}_{vn}_{sc}",
+                            "reward_version": vn,
+                            "scenario": sc,
+                            "timestamp": g.get("timestamp", ""),
+                            "config": g.get("config", {}),
+                            "training": g.get("training", {}),
+                            "evaluation": ev,
+                        })
+                    except: pass
+        if not exps:
+            geo_file = RDIR / "geo" / f"{geo_name}.json"
+            if geo_file.exists():
+                try:
+                    g = json.loads(geo_file.read_text())
+                    ev = g.get("evaluation", {})
+                    exps.append({
+                        "experiment": geo_name,
+                        "reward_version": "v2",
+                        "scenario": "baseline",
+                        "timestamp": g.get("timestamp", ""),
+                        "config": g.get("config", {}),
+                        "training": g.get("training", {}),
+                        "evaluation": ev,
+                    })
+                except: pass
     else:
         for f in sorted(RDIR.glob("experiment_*.json")):
             try: exps.append(json.loads(f.read_text()))
@@ -1120,44 +1138,10 @@ if page == "Dashboard":
                         f'<span style="flex:1;text-align:right"><span class="badge {bcls}">{blbl}</span></span>'
                         f'</div>', unsafe_allow_html=True)
 
-    # Experiment results — geography-aware
-    if _is_geo and len(cdf) > 0:
-        geo_ev = ed["experiments"][0].get("evaluation", {}) if ed["experiments"] else {}
-        geo_tr = ed["experiments"][0].get("training", {}) if ed["experiments"] else {}
-        sec(f"Training Results — {_ds_choice}")
-        p1, p2, p3, p4 = st.columns(4)
-        with p1:
-            _gsr = geo_ev.get("ho_success_rate", 0)
-            st.markdown(
-                f'<div class="kpi" style="border-left:3px solid {GREEN};">'
-                f'<div class="kpi-label">HO Success Rate</div>'
-                f'<div class="kpi-value" style="color:{GREEN};">{_gsr:.2f}%</div>'
-                f'<div class="kpi-sub">PPO v2 optimized</div>'
-                f'</div>', unsafe_allow_html=True)
-        with p2:
-            st.markdown(
-                f'<div class="kpi" style="border-left:3px solid {RED};">'
-                f'<div class="kpi-label">HO Failure Rate</div>'
-                f'<div class="kpi-value">{geo_ev.get("ho_failure_rate", 0):.2f}%</div>'
-                f'<div class="kpi-sub">Residual failures</div>'
-                f'</div>', unsafe_allow_html=True)
-        with p3:
-            st.markdown(
-                f'<div class="kpi" style="border-left:3px solid {AMBER};">'
-                f'<div class="kpi-label">Ping-Pong Rate</div>'
-                f'<div class="kpi-value">{geo_ev.get("pingpong_rate", 0):.2f}%</div>'
-                f'<div class="kpi-sub">Oscillation metric</div>'
-                f'</div>', unsafe_allow_html=True)
-        with p4:
-            _ri = geo_tr.get("relations_improved", 0)
-            st.markdown(
-                f'<div class="kpi" style="border-left:3px solid {BLUE};">'
-                f'<div class="kpi-label">Relations Improved</div>'
-                f'<div class="kpi-value">{_ri}</div>'
-                f'<div class="kpi-sub">CIO-optimized relations</div>'
-                f'</div>', unsafe_allow_html=True)
-    elif len(cdf) > 0:
-        sec("Experiment Results — HO Success Rate")
+    # Experiment results — unified bar chart for all datasets
+    if len(cdf) > 0:
+        _chart_title = f"Experiment Results — {_ds_choice}" if _is_geo else "Experiment Results — HO Success Rate"
+        sec(_chart_title)
         fb = go.Figure()
         for v in sorted(cdf["Variant"].unique()):
             vd = cdf[cdf["Variant"] == v]
