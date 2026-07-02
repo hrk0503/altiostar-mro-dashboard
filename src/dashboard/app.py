@@ -1182,7 +1182,7 @@ if page == "Dashboard":
         st.plotly_chart(fb, use_container_width=True)
 
     # summary — high-level progress snapshot
-    if not _is_geo and len(cdf) > 0:
+    if len(cdf) > 0:
         sec("Experiment Progress")
         _n_variants = len(cdf["Variant"].unique())
         _n_scenarios = len(cdf["Scenario"].unique())
@@ -1351,183 +1351,6 @@ elif page == "Experiments":
         st.warning("No training results for this geography. Run `python3 scripts/train_multi_geo.py`")
     elif len(cdf) == 0:
         st.warning("No data. Run `python3 run_experiment.py --sweep-all`")
-    elif _is_geo:
-        # ── Geography-specific training results ──
-        geo_res = ed["experiments"][0] if ed["experiments"] else {}
-        geo_ev = geo_res.get("evaluation", {})
-        geo_tr = geo_res.get("training", {})
-        geo_cfg = geo_res.get("config", {})
-        _geo_label = _ds_choice.split("—")[0].strip() if "—" in _ds_choice else _ds_choice
-
-        sec(f"Training Results — {_ds_choice}")
-        g1, g2, g3, g4 = st.columns(4)
-        with g1:
-            st.markdown(
-                f'<div class="kpi" style="border-left:3px solid {GREEN};">'
-                f'<div class="kpi-label">HO Success Rate</div>'
-                f'<div class="kpi-value" style="color:{GREEN};">{geo_ev.get("ho_success_rate", 0):.2f}%</div>'
-                f'<div class="kpi-sub">After CIO optimization</div>'
-                f'</div>', unsafe_allow_html=True)
-        with g2:
-            st.markdown(
-                f'<div class="kpi" style="border-left:3px solid {RED};">'
-                f'<div class="kpi-label">HO Failure Rate</div>'
-                f'<div class="kpi-value">{geo_ev.get("ho_failure_rate", 0):.2f}%</div>'
-                f'<div class="kpi-sub">Residual failures</div>'
-                f'</div>', unsafe_allow_html=True)
-        with g3:
-            st.markdown(
-                f'<div class="kpi" style="border-left:3px solid {AMBER};">'
-                f'<div class="kpi-label">Ping-Pong Rate</div>'
-                f'<div class="kpi-value">{geo_ev.get("pingpong_rate", 0):.2f}%</div>'
-                f'<div class="kpi-sub">Oscillation metric</div>'
-                f'</div>', unsafe_allow_html=True)
-        with g4:
-            st.markdown(
-                f'<div class="kpi" style="border-left:3px solid {BLUE};">'
-                f'<div class="kpi-label">Mean Reward</div>'
-                f'<div class="kpi-value">{geo_ev.get("mean_reward", 0):,.0f}</div>'
-                f'<div class="kpi-sub">{geo_cfg.get("total_timesteps", "?")} timesteps · {geo_tr.get("time_s", "?")}s</div>'
-                f'</div>', unsafe_allow_html=True)
-
-        gc1, gc2 = st.columns(2)
-        with gc1:
-            sec("Failure Breakdown")
-            _te = geo_ev.get("too_early_rate", 0)
-            _tl = geo_ev.get("too_late_rate", 0)
-            _wc = geo_ev.get("wrong_cell_rate", 0)
-            _sr = geo_ev.get("ho_success_rate", 100)
-            fp = go.Figure(data=[go.Pie(
-                labels=["Success", "Too Early", "Too Late", "Wrong Cell", "Ping-Pong"],
-                values=[_sr, _te, _tl, _wc, geo_ev.get("pingpong_rate", 0)],
-                hole=.55,
-                marker_colors=[GREEN, AMBER, ORANGE, RED, "#94A3B8"],
-                textinfo="label+percent",
-                textfont_size=11,
-            )])
-            fp.update_layout(
-                height=350, margin=dict(t=20, b=10, l=10, r=10),
-                showlegend=False, template=PLT, paper_bgcolor=CARD,
-            )
-            st.plotly_chart(fp, use_container_width=True)
-
-        with gc2:
-            sec("Training Details")
-            _ri = geo_tr.get("relations_improved", 0)
-            _mi = geo_tr.get("mean_improvement_pct", 0)
-            _details = [
-                ("Algorithm", "PPO (SB3)"),
-                ("Reward Version", "v2 — Rate-based"),
-                ("Optimization", "Greedy CIO search + PPO"),
-                ("Relations Improved", f"{_ri}"),
-                ("Mean Improvement", f"{_mi:.2f}%"),
-                ("Training Time", f"{geo_tr.get('time_s', '?')}s"),
-                ("Eval Episodes", f"{geo_cfg.get('eval_episodes', '?')}"),
-                ("Timesteps", f"{geo_cfg.get('total_timesteps', '?'):,}"),
-            ]
-            for lbl, val in _details:
-                st.markdown(
-                    f'<div class="trow">'
-                    f'<span style="color:{TEXT_SEC};">{lbl}</span>'
-                    f'<span style="font-weight:600;font-family:JetBrains Mono,monospace;">{val}</span>'
-                    f'</div>', unsafe_allow_html=True)
-
-        # CIO Change Export
-        _cio_csv = ROOT / "results" / "cio_exports" / f"{_geo_name}_cio_changes.csv"
-        if _cio_csv.exists():
-            sec("CIO Change Export")
-            _cio_df = pd.read_csv(_cio_csv)
-            _n_changed = len(_cio_df[_cio_df["action"] != "unchanged"])
-            _mean_imp = _cio_df["improvement_%"].mean()
-            ec1, ec2, ec3 = st.columns([1, 1, 1])
-            with ec1:
-                st.markdown(
-                    f'<div class="kpi" style="border-left:3px solid {PRIMARY};">'
-                    f'<div class="kpi-label">Total Relations</div>'
-                    f'<div class="kpi-value">{len(_cio_df)}</div>'
-                    f'</div>', unsafe_allow_html=True)
-            with ec2:
-                st.markdown(
-                    f'<div class="kpi" style="border-left:3px solid {GREEN};">'
-                    f'<div class="kpi-label">CIO Changed</div>'
-                    f'<div class="kpi-value">{_n_changed}</div>'
-                    f'</div>', unsafe_allow_html=True)
-            with ec3:
-                st.markdown(
-                    f'<div class="kpi" style="border-left:3px solid {BLUE};">'
-                    f'<div class="kpi-label">Mean Improvement</div>'
-                    f'<div class="kpi-value">+{_mean_imp:.1f}%</div>'
-                    f'</div>', unsafe_allow_html=True)
-            _top10 = _cio_df.head(10)[["source_cell", "target_cell", "initial_cio_dB", "optimized_cio_dB", "cio_delta_dB", "before_success_%", "after_success_%", "improvement_%"]]
-            _top10.columns = ["Source", "Target", "Initial CIO (dB)", "Optimized CIO (dB)", "Δ CIO (dB)", "Before %", "After %", "Improvement %"]
-            st.dataframe(_top10, use_container_width=True, hide_index=True)
-            st.download_button(
-                "📥 Download Full CIO Change Report (CSV)",
-                _cio_df.to_csv(index=False),
-                f"{_geo_name}_cio_changes.csv",
-                "text/csv",
-                use_container_width=True,
-            )
-
-        # Cross-geography comparison
-        _geo_all = ed.get("geo_all", {}).get("results", {})
-        if _geo_all:
-            sec("Cross-Geography Comparison — All Trained Datasets")
-            _geo_rows = []
-            for gn, gr in sorted(_geo_all.items()):
-                if "error" in gr: continue
-                _geo_rows.append({
-                    "Geography": gn.replace("_", " ").title(),
-                    "Cells": gr.get("cells", 0),
-                    "Relations": gr.get("relations", 0),
-                    "HO Success %": gr.get("ho_success_rate", 0),
-                    "HO Failure %": gr.get("ho_failure_rate", 0),
-                    "Ping-Pong %": gr.get("pingpong_rate", 0),
-                    "Mean Reward": gr.get("mean_reward", 0),
-                    "geo_key": gn,
-                })
-            if _geo_rows:
-                _gdf = pd.DataFrame(_geo_rows)
-                _gdf = _gdf.sort_values("HO Success %", ascending=False)
-
-                _city_colors = {
-                    "helsinki": "#0A8E99",
-                    "kyiv": "#FFD700",
-                    "japan_rural": "#2E8B57",
-                    "tokyo": "#E74C3C",
-                }
-                fg = go.Figure()
-                _bar_colors = []
-                for _, r in _gdf.iterrows():
-                    _ck = r["geo_key"].rsplit("_", 1)[0]
-                    _bar_colors.append(_city_colors.get(_ck, PRIMARY))
-
-                fg.add_trace(go.Bar(
-                    x=_gdf["Geography"], y=_gdf["HO Success %"],
-                    marker_color=_bar_colors,
-                    text=_gdf["HO Success %"].round(2),
-                    textposition="outside",
-                    textfont=dict(size=10, family="JetBrains Mono"),
-                ))
-                fg.add_hline(y=99, line_dash="dot", line_color=RED, opacity=.5,
-                    annotation_text="99% Target", annotation_font_color=RED, annotation_font_size=11)
-                fg.update_layout(
-                    height=480, template=PLT,
-                    paper_bgcolor=CARD, plot_bgcolor="#FAFBFC",
-                    font=dict(color=TEXT, size=11, family="Inter"),
-                    margin=dict(t=20, b=120, l=60, r=20),
-                    yaxis_title="HO Success Rate (%)",
-                    yaxis_range=[93, 100],
-                    xaxis_tickangle=-45,
-                )
-                st.plotly_chart(fg, use_container_width=True)
-
-                sec("Performance Table")
-                st.dataframe(
-                    _gdf[["Geography", "Cells", "Relations", "HO Success %", "HO Failure %", "Ping-Pong %", "Mean Reward"]].reset_index(drop=True),
-                    use_container_width=True, hide_index=True,
-                )
-
     else:
         f1, f2 = st.columns(2)
         av = sorted(cdf["Variant"].unique())
@@ -1793,11 +1616,12 @@ elif page == "Experiments":
                     )
                     st.plotly_chart(fp, use_container_width=True)
 
-        # CIO Change Export (Shibuya)
-        _shibuya_csv = ROOT / "results" / "cio_exports" / "shibuya_cio_changes.csv"
-        if _shibuya_csv.exists():
+        # CIO Change Export
+        _cio_name = _geo_name if _is_geo else "shibuya"
+        _cio_csv = ROOT / "results" / "cio_exports" / f"{_cio_name}_cio_changes.csv"
+        if _cio_csv.exists():
             sec("CIO Change Export")
-            _scio = pd.read_csv(_shibuya_csv)
+            _scio = pd.read_csv(_cio_csv)
             _sn_changed = len(_scio[_scio["action"] != "unchanged"])
             _smean_imp = _scio["improvement_%"].mean()
             sc1, sc2, sc3 = st.columns(3)
@@ -1825,10 +1649,65 @@ elif page == "Experiments":
             st.download_button(
                 "📥 Download Full CIO Change Report (CSV)",
                 _scio.to_csv(index=False),
-                "shibuya_cio_changes.csv",
+                f"{_cio_name}_cio_changes.csv",
                 "text/csv",
                 use_container_width=True,
             )
+
+        # Cross-geography comparison (geo datasets only)
+        if _is_geo:
+            _geo_all = ed.get("geo_all", {}).get("results", {})
+            if _geo_all:
+                sec("Cross-Geography Comparison — All Trained Datasets")
+                _geo_rows = []
+                for gn, gr in sorted(_geo_all.items()):
+                    if "error" in gr: continue
+                    _geo_rows.append({
+                        "Geography": gn.replace("_", " ").title(),
+                        "Cells": gr.get("cells", 0),
+                        "Relations": gr.get("relations", 0),
+                        "HO Success %": gr.get("ho_success_rate", 0),
+                        "HO Failure %": gr.get("ho_failure_rate", 0),
+                        "Ping-Pong %": gr.get("pingpong_rate", 0),
+                        "Mean Reward": gr.get("mean_reward", 0),
+                        "geo_key": gn,
+                    })
+                if _geo_rows:
+                    _gdf = pd.DataFrame(_geo_rows)
+                    _gdf = _gdf.sort_values("HO Success %", ascending=False)
+                    _city_colors = {
+                        "helsinki": "#0A8E99", "kyiv": "#FFD700",
+                        "japan_rural": "#2E8B57", "tokyo": "#E74C3C",
+                    }
+                    _bar_colors = []
+                    for _, r in _gdf.iterrows():
+                        _ck = r["geo_key"].rsplit("_", 1)[0]
+                        _bar_colors.append(_city_colors.get(_ck, PRIMARY))
+                    fg = go.Figure()
+                    fg.add_trace(go.Bar(
+                        x=_gdf["Geography"], y=_gdf["HO Success %"],
+                        marker_color=_bar_colors,
+                        text=_gdf["HO Success %"].round(2),
+                        textposition="outside",
+                        textfont=dict(size=10, family="JetBrains Mono"),
+                    ))
+                    fg.add_hline(y=99, line_dash="dot", line_color=RED, opacity=.5,
+                        annotation_text="99% Target", annotation_font_color=RED, annotation_font_size=11)
+                    fg.update_layout(
+                        height=480, template=PLT,
+                        paper_bgcolor=CARD, plot_bgcolor="#FAFBFC",
+                        font=dict(color=TEXT, size=11, family="Inter"),
+                        margin=dict(t=20, b=120, l=60, r=20),
+                        yaxis_title="HO Success Rate (%)",
+                        yaxis_range=[93, 100],
+                        xaxis_tickangle=-45,
+                    )
+                    st.plotly_chart(fg, use_container_width=True)
+                    sec("Performance Table")
+                    st.dataframe(
+                        _gdf[["Geography", "Cells", "Relations", "HO Success %", "HO Failure %", "Ping-Pong %", "Mean Reward"]].reset_index(drop=True),
+                        use_container_width=True, hide_index=True,
+                    )
 
 
 # ══════════════════════════════════════════════════════════════════════
