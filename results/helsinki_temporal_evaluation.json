@@ -1,0 +1,318 @@
+{
+  "timestamp": "2026-07-02T11:15:25.390736+00:00",
+  "purpose": "Helsinki 80/20 temporal train/test split PPO validation",
+  "results": [
+    {
+      "geography": "helsinki_autumn",
+      "timestamp": "2026-07-02T11:13:37.605534+00:00",
+      "config": {
+        "timesteps": 5000,
+        "eval_episodes": 5,
+        "seed": 42,
+        "split_ratio": "80/20 temporal"
+      },
+      "network": {
+        "relations": 454,
+        "train_steps": 614,
+        "test_steps": 154
+      },
+      "evaluation": {
+        "mean_reward": 12534.3003,
+        "std_reward": 21.6096,
+        "ho_success_rate": 96.7116,
+        "ho_failure_rate": 3.2884,
+        "pingpong_rate": 0.7721,
+        "too_early_rate": 1.5721,
+        "too_late_rate": 0.9716,
+        "wrong_cell_rate": 0.7447,
+        "n_episodes": 5,
+        "per_episode": [
+          {
+            "episode": 0,
+            "reward": 12574.118158128113,
+            "ho_success_rate": 96.74175549811761,
+            "ho_failure_rate": 3.258244501882399,
+            "pingpong_rate": 0.7740086790435113,
+            "too_early_rate": 1.5748374070288802,
+            "too_late_rate": 0.9610252409097598,
+            "wrong_cell_rate": 0.7223818539437593
+          },
+          {
+            "episode": 1,
+            "reward": 12540.548866987228,
+            "ho_success_rate": 96.73411625755455,
+            "ho_failure_rate": 3.265883742445448,
+            "pingpong_rate": 0.7725101358190073,
+            "too_early_rate": 1.5670238027343495,
+            "too_late_rate": 0.9595714603716906,
+            "wrong_cell_rate": 0.7392884793394077
+          },
+          {
+            "episode": 2,
+            "reward": 12519.205533107743,
+            "ho_success_rate": 96.70074075916685,
+            "ho_failure_rate": 3.299259240833157,
+            "pingpong_rate": 0.7760113105440284,
+            "too_early_rate": 1.5728904138335147,
+            "too_late_rate": 0.9692155361475842,
+            "wrong_cell_rate": 0.7571532908520582
+          },
+          {
+            "episode": 3,
+            "reward": 12520.01783894375,
+            "ho_success_rate": 96.70185747864869,
+            "ho_failure_rate": 3.2981425213513114,
+            "pingpong_rate": 0.7746104050225194,
+            "too_early_rate": 1.5704772298829373,
+            "too_late_rate": 0.9798466149185798,
+            "wrong_cell_rate": 0.747818676549794
+          },
+          {
+            "episode": 4,
+            "reward": 12517.611205531284,
+            "ho_success_rate": 96.67933522937525,
+            "ho_failure_rate": 3.3206647706247487,
+            "pingpong_rate": 0.7636002315635414,
+            "too_early_rate": 1.5752604036367752,
+            "too_late_rate": 0.9884842455513426,
+            "wrong_cell_rate": 0.7569201214366303
+          }
+        ]
+      }
+    },
+    {
+      "geography": "helsinki_spring",
+      "timestamp": "2026-07-02T11:14:23.631653+00:00",
+      "config": {
+        "timesteps": 5000,
+        "eval_episodes": 5,
+        "seed": 42,
+        "split_ratio": "80/20 temporal"
+      },
+      "network": {
+        "relations": 486,
+        "train_steps": 614,
+        "test_steps": 154
+      },
+      "evaluation": {
+        "mean_reward": 12909.3296,
+        "std_reward": 17.5256,
+        "ho_success_rate": 97.1538,
+        "ho_failure_rate": 2.8462,
+        "pingpong_rate": 0.7052,
+        "too_early_rate": 1.4268,
+        "too_late_rate": 0.848,
+        "wrong_cell_rate": 0.5713,
+        "n_episodes": 5,
+        "per_episode": [
+          {
+            "episode": 0,
+            "reward": 12921.960087213665,
+            "ho_success_rate": 97.16151853011313,
+            "ho_failure_rate": 2.8384814698868657,
+            "pingpong_rate": 0.695549913117482,
+            "too_early_rate": 1.4293487104755607,
+            "too_late_rate": 0.8450001663001886,
+            "wrong_cell_rate": 0.5641325931111165
+          },
+          {
+            "episode": 1,
+            "reward": 12931.631191400811,
+            "ho_success_rate": 97.17091922926203,
+            "ho_failure_rate": 2.829080770737985,
+            "pingpong_rate": 0.6984251906114095,
+            "too_early_rate": 1.4288213600370718,
+            "too_late_rate": 0.8427288026213892,
+            "wrong_cell_rate": 0.5575306080795237
+          },
+          {
+            "episode": 2,
+            "reward": 12889.989549247548,
+            "ho_success_rate": 97.12001710424295,
+            "ho_failure_rate": 2.879982895757046,
+            "pingpong_rate": 0.7197756166398261,
+            "too_early_rate": 1.4278027456391176,
+            "too_late_rate": 0.8644878427554815,
+            "wrong_cell_rate": 0.5876923073624468
+          },
+          {
+            "episode": 3,
+            "reward": 12887.690814584494,
+            "ho_success_rate": 97.15979418972714,
+            "ho_failure_rate": 2.8402058102728556,
+            "pingpong_rate": 0.7057292420473109,
+            "too_early_rate": 1.4259894089963636,
+            "too_late_rate": 0.837150878306948,
+            "wrong_cell_rate": 0.5770655229695437
+          },
+          {
+            "episode": 4,
+            "reward": 12915.376436943188,
+            "ho_success_rate": 97.15686359617065,
+            "ho_failure_rate": 2.8431364038293436,
+            "pingpong_rate": 0.7066698144391395,
+            "too_early_rate": 1.4222628411891756,
+            "too_late_rate": 0.8508096236543178,
+            "wrong_cell_rate": 0.5700639389858504
+          }
+        ]
+      }
+    },
+    {
+      "geography": "helsinki_summer",
+      "timestamp": "2026-07-02T11:14:59.109536+00:00",
+      "config": {
+        "timesteps": 5000,
+        "eval_episodes": 5,
+        "seed": 42,
+        "split_ratio": "80/20 temporal"
+      },
+      "network": {
+        "relations": 458,
+        "train_steps": 614,
+        "test_steps": 154
+      },
+      "evaluation": {
+        "mean_reward": 12476.9068,
+        "std_reward": 20.7901,
+        "ho_success_rate": 96.7927,
+        "ho_failure_rate": 3.2073,
+        "pingpong_rate": 0.8372,
+        "too_early_rate": 1.4658,
+        "too_late_rate": 0.9524,
+        "wrong_cell_rate": 0.789,
+        "n_episodes": 5,
+        "per_episode": [
+          {
+            "episode": 0,
+            "reward": 12458.266751980409,
+            "ho_success_rate": 96.79300615254938,
+            "ho_failure_rate": 3.2069938474506254,
+            "pingpong_rate": 0.8345791686992435,
+            "too_early_rate": 1.4616909517077479,
+            "too_late_rate": 0.9575702381085521,
+            "wrong_cell_rate": 0.7877326576343249
+          },
+          {
+            "episode": 1,
+            "reward": 12454.542232118547,
+            "ho_success_rate": 96.75881202580386,
+            "ho_failure_rate": 3.241187974196135,
+            "pingpong_rate": 0.8464994047043581,
+            "too_early_rate": 1.4846838643521885,
+            "too_late_rate": 0.9627178482955615,
+            "wrong_cell_rate": 0.7937862615483845
+          },
+          {
+            "episode": 2,
+            "reward": 12477.477517258376,
+            "ho_success_rate": 96.78019077774951,
+            "ho_failure_rate": 3.2198092222504777,
+            "pingpong_rate": 0.8291648916977584,
+            "too_early_rate": 1.4725002020103504,
+            "too_late_rate": 0.9488744729449959,
+            "wrong_cell_rate": 0.7984345472951313
+          },
+          {
+            "episode": 3,
+            "reward": 12481.379884108901,
+            "ho_success_rate": 96.79774362105377,
+            "ho_failure_rate": 3.2022563789462235,
+            "pingpong_rate": 0.846850394825244,
+            "too_early_rate": 1.4641143550962197,
+            "too_late_rate": 0.951515725647533,
+            "wrong_cell_rate": 0.7866262982024711
+          },
+          {
+            "episode": 4,
+            "reward": 12512.867664825171,
+            "ho_success_rate": 96.83395972026867,
+            "ho_failure_rate": 3.1660402797313383,
+            "pingpong_rate": 0.828841313953572,
+            "too_early_rate": 1.446151563905835,
+            "too_late_rate": 0.9415445568994463,
+            "wrong_cell_rate": 0.7783441589260574
+          }
+        ]
+      }
+    },
+    {
+      "geography": "helsinki_winter",
+      "timestamp": "2026-07-02T11:15:25.377836+00:00",
+      "config": {
+        "timesteps": 5000,
+        "eval_episodes": 5,
+        "seed": 42,
+        "split_ratio": "80/20 temporal"
+      },
+      "network": {
+        "relations": 459,
+        "train_steps": 614,
+        "test_steps": 154
+      },
+      "evaluation": {
+        "mean_reward": 8953.2199,
+        "std_reward": 216.9394,
+        "ho_success_rate": 94.9674,
+        "ho_failure_rate": 5.0326,
+        "pingpong_rate": 0.9086,
+        "too_early_rate": 2.5061,
+        "too_late_rate": 1.4902,
+        "wrong_cell_rate": 1.0363,
+        "n_episodes": 5,
+        "per_episode": [
+          {
+            "episode": 0,
+            "reward": 9346.824378308027,
+            "ho_success_rate": 95.00951121198926,
+            "ho_failure_rate": 4.990488788010726,
+            "pingpong_rate": 0.883002643701636,
+            "too_early_rate": 2.486817860158456,
+            "too_late_rate": 1.4624142872591468,
+            "wrong_cell_rate": 1.0412566405931245
+          },
+          {
+            "episode": 1,
+            "reward": 8712.889643377206,
+            "ho_success_rate": 94.95341826881022,
+            "ho_failure_rate": 5.046581731189777,
+            "pingpong_rate": 0.9189328806348662,
+            "too_early_rate": 2.5072154753034233,
+            "too_late_rate": 1.4992352692550095,
+            "wrong_cell_rate": 1.0401309866313444
+          },
+          {
+            "episode": 2,
+            "reward": 8803.759329147308,
+            "ho_success_rate": 94.95087936379029,
+            "ho_failure_rate": 5.049120636209709,
+            "pingpong_rate": 0.9195443264290898,
+            "too_early_rate": 2.5135746799577707,
+            "too_late_rate": 1.491013295701566,
+            "wrong_cell_rate": 1.044532660550373
+          },
+          {
+            "episode": 3,
+            "reward": 8963.242131709982,
+            "ho_success_rate": 94.96462447939692,
+            "ho_failure_rate": 5.035375520603084,
+            "pingpong_rate": 0.8998653593895587,
+            "too_early_rate": 2.5077708747241654,
+            "too_late_rate": 1.506047535213046,
+            "wrong_cell_rate": 1.0215571106658734
+          },
+          {
+            "episode": 4,
+            "reward": 8939.384075548838,
+            "ho_success_rate": 94.95844834491892,
+            "ho_failure_rate": 5.041551655081087,
+            "pingpong_rate": 0.9217983669141536,
+            "too_early_rate": 2.515252482739925,
+            "too_late_rate": 1.4921867518907088,
+            "wrong_cell_rate": 1.0341124204504526
+          }
+        ]
+      }
+    }
+  ]
+}
