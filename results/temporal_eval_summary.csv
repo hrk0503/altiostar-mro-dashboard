@@ -1,0 +1,14 @@
+Geography,Season/Variant,Training Set HOSR (%),Test Set HOSR (%),Ping-Pong Rate (%),Generalization Gap (%),Source File
+shibuya_baseline,baseline,99.99 (Full),99.9855,0.0002,N/A,experiment_v2_baseline.json
+kyiv_autumn,autumn,96.9050,96.8904,0.7970,-0.0146,kyiv_temporal_evaluation.json
+kyiv_spring,spring,97.1931,97.1680,0.7513,-0.0251,kyiv_temporal_evaluation.json
+kyiv_summer,summer,96.6977,96.6769,0.8017,-0.0208,kyiv_temporal_evaluation.json
+kyiv_winter,winter,95.5229,95.5012,0.9049,-0.0217,kyiv_temporal_evaluation.json
+helsinki_autumn,autumn,96.7265,96.7116,0.7721,-0.0149,helsinki_temporal_evaluation.json
+helsinki_spring,spring,97.2056,97.1538,0.7052,-0.0518,helsinki_temporal_evaluation.json
+helsinki_summer,summer,96.8434,96.7927,0.8372,-0.0507,helsinki_temporal_evaluation.json
+helsinki_winter,winter,95.0020,94.9674,0.9086,-0.0346,helsinki_temporal_evaluation.json
+tokyo_autumn,autumn,95.5604,95.4830,1.2420,-0.0774,tokyo_eval_results.json
+tokyo_spring,spring,96.0986,96.0730,1.0695,-0.0255,tokyo_eval_results.json
+tokyo_summer,summer,95.3240,95.2679,1.4611,-0.0562,tokyo_eval_results.json
+tokyo_winter,winter,96.3022,96.2906,0.8845,-0.0116,tokyo_eval_results.json
