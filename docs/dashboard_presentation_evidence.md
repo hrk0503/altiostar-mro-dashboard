@@ -206,3 +206,65 @@ This section cross-references our presentation claims against official telecommu
 }
 ```
 
+---
+
+# PART IV: PLATFORM ACCESS & DATASET DIRECT DIRECTORY LINKS
+
+This section contains the direct links, credentials, and the response email draft to share with Nicolas and the Altiostar/Blaretech teams.
+
+## 1. Live Platform Dashboard Access
+* **Platform URL:** [https://altiostar-mro-dashboard.streamlit.app/](https://altiostar-mro-dashboard.streamlit.app/)
+* **Access Password:** `Winniio-2019`
+* **Features to Highlight:**
+  * **Cell Map Tab:** Interactive O-RAN Tokyo Shibuya cluster mapping (75 cells, 763 relation corridors).
+  * **Experiments Tab:** Coverage blockages, detailed handover anomaly charts (Too Early, Too Late, Wrong Cell), and fingerprint radar charts for all 17 geographies.
+
+## 2. Input Telemetry Datasets (Operator CSVs)
+All raw input databases are stored in the `/data` folder on the staging branch:
+* **Shibuya Baseline Telemetry:** [data/synthetic/](https://github.com/LifeAtlas/altiostar-tokyo-mro/tree/staging/data/synthetic)
+  * Contains `pm_data_relation_level.csv` (~2.2M transition rows), `neighbor_relations.csv`, and `radio_samples.csv`.
+* **Kyiv, Helsinki, Tokyo, & Nagano seasonal inputs:** [data/extra_geo/](https://github.com/LifeAtlas/altiostar-tokyo-mro/tree/staging/data/extra_geo)
+  * Organized by city and season. Each subdirectory contains raw PM logs, KPI summary matrices, and RSRP measurements.
+
+## 3. Output Configuration Overrides (Optimized CIO parameters)
+The optimized Cell Individual Offsets (CIO) parameter CSV overrides are stored in:
+* **Output Parameters Directory:** [results/cio_exports/](https://github.com/LifeAtlas/altiostar-tokyo-mro/tree/staging/results/cio_exports)
+  * Contains 17 CSV files (Shibuya baseline + 16 extra geographies) showing overrides for all 763 relations mapping: `source_cell`, `target_cell`, `initial_cio_dB`, `optimized_cio_dB`, and `cio_delta_dB`.
+
+---
+
+## 4. Email Draft to Copy & Paste
+
+```text
+Hi Nicolas,
+
+Apologies for the confusion! The previous CSV file was only a high-level summary validation sheet comparing the generalization splits. The actual multi-million row input datasets and optimized output parameter files are fully hosted in the repository.
+
+Here is how you can access the platform and the complete datasets for your meeting on Tuesday:
+
+1. How to Access the Live Platform (Dashboard)
+The live interactive dashboard is deployed and active:
+* URL: https://altiostar-mro-dashboard.streamlit.app/
+* Password: Winniio-2019
+
+During the meeting, you can navigate through the "Cell Map" tab (plotting the 75 cells and serving corridors) and the "Experiments" tab (to view heatmaps, failure breakdowns, and fingerprint radars for all 17 geographies).
+
+2. Accessing the Raw Telemetry (Input Files)
+The raw operator input files (including cell topologies, neighbor relations, and RSRP measurements) are stored in the /data folder on the staging branch:
+* Shibuya Cluster Inputs: https://github.com/LifeAtlas/altiostar-tokyo-mro/tree/staging/data/synthetic
+* Kyiv, Helsinki, Rural Japan, & Tokyo Inputs: https://github.com/LifeAtlas/altiostar-tokyo-mro/tree/staging/data/extra_geo
+
+3. Accessing the Optimized Parameters (Output Files)
+The optimized configurations (the actual Cell Individual Offset overrides that are sent to the controller) are located in:
+* Output Parameters Directory: https://github.com/LifeAtlas/altiostar-tokyo-mro/tree/staging/results/cio_exports
+* Shibuya CIO Changes CSV: https://github.com/LifeAtlas/altiostar-tokyo-mro/blob/staging/results/cio_exports/shibuya_cio_changes.csv
+
+These files contain the exact overrides for all 763 relations, mapping: source_cell, target_cell, initial_cio_dB, optimized_cio_dB, cio_delta_dB, and the HOSR improvements.
+
+Please let me know if you would like me to jump on a quick prep call before the Tuesday sync!
+
+Best regards,
+Shourya
+```
+
+
