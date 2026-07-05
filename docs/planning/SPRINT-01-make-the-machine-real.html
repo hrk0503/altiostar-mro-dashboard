@@ -51,7 +51,7 @@
 <div class="wrap">
 
 <h1>Sprint 01 — “Make the Machine Real (Synthetic)”</h1>
-<div class="sub">WINNIIO 5G MRO · 2-week TDD sprint · plan an intern can execute, judged by a brutal panel · 2026-07-05</div>
+<div class="sub">WINNIIO 5G MRO · 2-week TDD sprint · plan an intern can execute, judged by a brutal panel · <b>v1.1 · 2026-07-05</b> (research-backed; Wave 0–4 executed to DoD)</div>
 
 <div class="lead">
 <b>The rule that governs this whole sprint:</b> we cannot prove a real-network gain without Rakuten data — so we will not try. We will make the <b>machine</b> real, honest, reproducible, and demonstrable end-to-end on <b>synthetic</b> data, behind a visible SYNTHETIC watermark. Target: GLASS 4.4 → ~6.5. Every line is test-first. Nothing that can't be demoed live ships.
@@ -212,6 +212,19 @@
 <tr><td>Determinism</td><td>Same seed → identical result hash (Vitalik gate)</td></tr>
 </tbody>
 </table></div>
+
+<h2>Testing excellence — world-class QA lens (research-backed, v1.1)</h2>
+<div class="card persona"><h3>The best-testers-in-the-world lens + their AI agentic teams</h3>
+Deep-research inputs folded in (2026 state of the art):
+<ul>
+<li><b>Metamorphic testing</b> — the right tool when there is <i>no ground truth</i> (exactly our synthetic case). Instead of asserting a value, assert a <i>relation</i> under input transforms. <span class="grn">SHIPPED:</span> <code>tests/test_metamorphic.py</code> — output = max-success, permutation-invariant, adding a worse option never changes the pick.</li>
+<li><b>Mutation-guided testing</b> (Meta’s ACH pattern: generate a fault, prove a test catches it; LLM-as-judge for equivalent mutants). <span class="grn">SHIPPED:</span> a mutation smoke that flips the optimizer to argmin and asserts the golden expectation fails — proof the harness has teeth.</li>
+<li><b>Property-based testing</b> (Hypothesis) — invariants over generated inputs, not hand-picked examples.</li>
+<li><b>Golden / regression harness</b> — 20+ known-answer cases every optimizer change must pass.</li>
+<li><b>Agentic QA discipline</b> — autonomous test agents are fine, but only with <b>traceability, audit trails, and a human gate</b> (2026 best practice). Pilot on high-churn code first; every AI-generated test is reviewed, never merged blind.</li>
+<li><b>Determinism gate</b> — same seed → identical result hash, so any tester (human or agent) can reproduce a claim.</li>
+</ul>
+<div class="sub">Sources: Meta “Mutation-Guided LLM-based Test Generation” (arXiv 2501.12862) · agentic-QA guidance (Katalon/Autify 2026) · metamorphic-testing survey 2026.</div></div>
 
 <h2>End-to-end acceptance scenarios (must pass to call the sprint done)</h2>
 <div class="card">
