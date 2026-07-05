@@ -9,21 +9,28 @@ Usage:
 
 from __future__ import annotations
 
-import base64, json, math, os, sys, time
-from datetime import datetime, timezone, timedelta
+import base64
+import json
+import logging
+import math
+import os
+import sys
+import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+import hashlib
+import io
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.express as px
 import streamlit as st
 import streamlit.components.v1 as components
-import hashlib
-import io
-import traceback
 
 # ── Assets — load logos as base64 for embedding ──────────────────────
 ASSETS = Path(__file__).resolve().parent / "assets"
@@ -546,7 +553,8 @@ def ld_exp(geo_name=None):
                             "training": g.get("training", {}),
                             "evaluation": ev,
                         })
-                    except: pass
+                    except Exception:
+                        logger.debug("skipping unreadable geo result %s_%s_%s", geo_name, vn, sc)
         if not exps:
             geo_file = RDIR / "geo" / f"{geo_name}.json"
             if geo_file.exists():
@@ -562,22 +570,30 @@ def ld_exp(geo_name=None):
                         "training": g.get("training", {}),
                         "evaluation": ev,
                     })
-                except: pass
+                except Exception:
+                    logger.debug("skipping unreadable geo file %s", geo_file)
     else:
         for f in sorted(RDIR.glob("experiment_*.json")):
-            try: exps.append(json.loads(f.read_text()))
-            except: continue
+            try:
+                exps.append(json.loads(f.read_text()))
+            except Exception:
+                logger.debug("skipping unreadable experiment %s", f)
+                continue
     sw = {}
     sp = RDIR / "sweep_results.json"
     if sp.exists():
-        try: sw = json.loads(sp.read_text())
-        except: pass
+        try:
+            sw = json.loads(sp.read_text())
+        except Exception:
+            logger.debug("skipping unreadable sweep_results.json")
     # Load cross-geo summary for comparison
     geo_all = {}
     mg = RDIR / "multi_geo_training.json"
     if mg.exists():
-        try: geo_all = json.loads(mg.read_text())
-        except: pass
+        try:
+            geo_all = json.loads(mg.read_text())
+        except Exception:
+            logger.debug("skipping unreadable multi_geo_training.json")
     return {"experiments": exps, "sweep": sw, "geo_all": geo_all}
 
 def comp_df(exps):
@@ -756,12 +772,12 @@ with tc1:
         unsafe_allow_html=True)
 with tc2:
     st.markdown(
-        f'<div style="display:flex; align-items:center; justify-content:flex-end; gap:6px; flex-wrap:wrap; padding-top:2px;">'
-        f'<span class="topnav-chip" id="chip-live"><span class="live-dot"></span>Live Monitor</span>'
-        f'<span class="topnav-chip" id="chip-anomaly">🔍 Anomaly Scan</span>'
-        f'<span class="topnav-chip" id="chip-health">💊 Health Check</span>'
-        f'<span class="topnav-chip" id="chip-export">📤 Quick Export</span>'
-        f'</div>', unsafe_allow_html=True)
+        '<div style="display:flex; align-items:center; justify-content:flex-end; gap:6px; flex-wrap:wrap; padding-top:2px;">'
+        '<span class="topnav-chip" id="chip-live"><span class="live-dot"></span>Live Monitor</span>'
+        '<span class="topnav-chip" id="chip-anomaly">🔍 Anomaly Scan</span>'
+        '<span class="topnav-chip" id="chip-health">💊 Health Check</span>'
+        '<span class="topnav-chip" id="chip-export">📤 Quick Export</span>'
+        '</div>', unsafe_allow_html=True)
     # Real-time clock — JS ticking, auto-detects user timezone
     components.html(f"""
     <div id="live-clock" style="
@@ -813,7 +829,7 @@ with qa3:
 
 if st.session_state.show_anomaly:
     with st.container():
-        st.markdown(f'<div class="section-title">🔍 Anomaly Scan Results</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">🔍 Anomaly Scan Results</div>', unsafe_allow_html=True)
         anomalies = cm[cm["prob"]].sort_values("ho_sr")
         if len(anomalies) == 0:
             st.success("No anomalies detected — all cells within normal range.")
@@ -856,7 +872,7 @@ if st.session_state.show_anomaly:
 
 if st.session_state.show_health:
     with st.container():
-        st.markdown(f'<div class="section-title">💊 Network Health Report</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">💊 Network Health Report</div>', unsafe_allow_html=True)
         hc1, hc2, hc3, hc4, hc5 = st.columns(5)
         cells_online = n_total
         avg_rsrp = cm["rsrp"].mean()
@@ -888,7 +904,7 @@ if st.session_state.show_health:
 
 if st.session_state.show_quick_export:
     with st.container():
-        st.markdown(f'<div class="section-title">📤 Quick Export</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">📤 Quick Export</div>', unsafe_allow_html=True)
         qe1, qe2, qe3, qe4 = st.columns(4)
         with qe1:
             st.download_button("📊 Cell Data (CSV)", cm.to_csv(index=False), "cell_data.csv", "text/csv", use_container_width=True)
@@ -1116,14 +1132,14 @@ if page == "Dashboard":
         with tab1:
             tbl = cm.sort_values("ho_sr")
             st.markdown(
-                f'<div class="thead">'
-                f'<span style="flex:2">Cell ID</span>'
-                f'<span style="flex:2">Cell Tower</span>'
-                f'<span style="flex:1;text-align:center">Success %</span>'
-                f'<span style="flex:1;text-align:center">Failure %</span>'
-                f'<span style="flex:1;text-align:center">RSRP</span>'
-                f'<span style="flex:1;text-align:right">Status</span>'
-                f'</div>', unsafe_allow_html=True)
+                '<div class="thead">'
+                '<span style="flex:2">Cell ID</span>'
+                '<span style="flex:2">Cell Tower</span>'
+                '<span style="flex:1;text-align:center">Success %</span>'
+                '<span style="flex:1;text-align:center">Failure %</span>'
+                '<span style="flex:1;text-align:center">RSRP</span>'
+                '<span style="flex:1;text-align:right">Status</span>'
+                '</div>', unsafe_allow_html=True)
             with st.container(height=380):
                 for _, r in tbl.iterrows():
                     bcls, blbl = health_badge(r["ho_sr"])
@@ -1144,13 +1160,13 @@ if page == "Dashboard":
                 st.success("No problem cells detected!")
             else:
                 st.markdown(
-                    f'<div class="thead">'
-                    f'<span style="flex:2">Cell ID</span>'
-                    f'<span style="flex:2">Cell Tower</span>'
-                    f'<span style="flex:1;text-align:center">Success %</span>'
-                    f'<span style="flex:1;text-align:center">Failure %</span>'
-                    f'<span style="flex:1;text-align:right">Status</span>'
-                    f'</div>', unsafe_allow_html=True)
+                    '<div class="thead">'
+                    '<span style="flex:2">Cell ID</span>'
+                    '<span style="flex:2">Cell Tower</span>'
+                    '<span style="flex:1;text-align:center">Success %</span>'
+                    '<span style="flex:1;text-align:center">Failure %</span>'
+                    '<span style="flex:1;text-align:right">Status</span>'
+                    '</div>', unsafe_allow_html=True)
                 with st.container(height=380):
                     for _, r in prob_cells.iterrows():
                         bcls, blbl = health_badge(r["ho_sr"])
@@ -1167,13 +1183,13 @@ if page == "Dashboard":
         with tab3:
             top_cells = cm.sort_values("ho_sr", ascending=False).head(30)
             st.markdown(
-                f'<div class="thead">'
-                f'<span style="flex:2">Cell ID</span>'
-                f'<span style="flex:2">Cell Tower</span>'
-                f'<span style="flex:1;text-align:center">Success %</span>'
-                f'<span style="flex:1;text-align:center">PRB %</span>'
-                f'<span style="flex:1;text-align:right">Status</span>'
-                f'</div>', unsafe_allow_html=True)
+                '<div class="thead">'
+                '<span style="flex:2">Cell ID</span>'
+                '<span style="flex:2">Cell Tower</span>'
+                '<span style="flex:1;text-align:center">Success %</span>'
+                '<span style="flex:1;text-align:center">PRB %</span>'
+                '<span style="flex:1;text-align:right">Status</span>'
+                '</div>', unsafe_allow_html=True)
             with st.container(height=380):
                 for _, r in top_cells.iterrows():
                     bcls, blbl = health_badge(r["ho_sr"])
@@ -1537,13 +1553,18 @@ elif page == "Experiments":
                     tmeta = e.get("training", {})
                     cfg = e.get("config", {})
                     vcl = V_COLORS.get(v, PRIMARY)
-                    ts = cfg.get("total_timesteps", "?")
-                    tt = tmeta.get("time_s", "?")
+                    # Honest display: greedy CIO search records have no timesteps.
+                    method = tmeta.get("method") or cfg.get("algorithm", "?")
+                    tt = tmeta.get("search_time_s", tmeta.get("time_s", "?"))
                     n_eps = len(tmeta.get("episode_rewards", []))
+                    if "total_timesteps" in cfg:
+                        detail = f'{cfg["total_timesteps"]:,} steps · {n_eps} eps · {tt}s'
+                    else:
+                        detail = f'{method} · {tt}s'
                     st.markdown(
                         f'<div class="trow">'
                         f'<span style="color:{vcl};font-weight:700;font-family:JetBrains Mono,monospace;">{v}</span>'
-                        f'<span style="font-size:.78rem;color:{TEXT_SEC};">{ts:,} steps · {n_eps} eps · {tt}s</span>'
+                        f'<span style="font-size:.78rem;color:{TEXT_SEC};">{detail}</span>'
                         f'</div>', unsafe_allow_html=True)
 
         _baseline_path = ROOT / "results" / "random_baseline.json"
@@ -2303,10 +2324,10 @@ Synthetic data — real-cluster calibration pending sample data under NDA.</p>
             ("Multi-geo validation present (generalization bonus)",    _has_multi_geo),
         ]
         st.markdown(
-            f'<div class="thead">'
-            f'<span style="flex:3">Criterion</span>'
-            f'<span style="flex:1;text-align:right">Status</span>'
-            f'</div>', unsafe_allow_html=True)
+            '<div class="thead">'
+            '<span style="flex:3">Criterion</span>'
+            '<span style="flex:1;text-align:right">Status</span>'
+            '</div>', unsafe_allow_html=True)
 
         for lbl, ok in chks:
             bcls = "badge-green" if ok else "badge-red"
@@ -2332,11 +2353,14 @@ Synthetic data — real-cluster calibration pending sample data under NDA.</p>
 # PAGE: DATA UPLOAD
 # ══════════════════════════════════════════════════════════════════════
 elif page == "Data Upload":
-    from src.pipeline.schema_mapper import infer_schema, _SIGNATURES
     from src.pipeline.models import (
-        SiteRecord, NeighborRelation, PMRecord,
-        RelationPMRecord, ClusterKPISummary,
+        ClusterKPISummary,
+        NeighborRelation,
+        PMRecord,
+        RelationPMRecord,
+        SiteRecord,
     )
+    from src.pipeline.schema_mapper import _SIGNATURES, infer_schema
 
     _MODEL_MAP = {
         "SiteRecord": SiteRecord,
@@ -2422,11 +2446,15 @@ elif page == "Data Upload":
                 f'<div class="kpi-sub">{n_cols} columns detected</div>'
                 f'</div>', unsafe_allow_html=True)
 
-        # Schema detection
-        tmp_path = Path("/tmp/_upload_detect.csv")
-        tmp_path.write_bytes(raw_bytes)
-        match = infer_schema(tmp_path)
-        tmp_path.unlink(missing_ok=True)
+        # Schema detection (cross-platform temp file)
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as _tf:
+            _tf.write(raw_bytes)
+            tmp_path = Path(_tf.name)
+        try:
+            match = infer_schema(tmp_path)
+        finally:
+            tmp_path.unlink(missing_ok=True)
 
         with fi3:
             if match.matched_model:

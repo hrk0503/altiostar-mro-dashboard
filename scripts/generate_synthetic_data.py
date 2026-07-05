@@ -3,8 +3,8 @@ Generate 4 synthetic CSVs for Altiostar MRO pipeline.
 Based on specs: 25 sites x 3 sectors (75 cells), Shibuya area, Band 1/3/41.
 """
 import csv
-import random
 import math
+import random
 from datetime import datetime, timedelta
 
 random.seed(42)

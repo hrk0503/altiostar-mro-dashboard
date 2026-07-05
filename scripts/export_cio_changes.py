@@ -20,8 +20,8 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from src.env.mro_env import MROEnv
 from scripts.optimize_cio import find_optimal_cios
+from src.env.mro_env import MROEnv
 
 
 def export_single_geo(geo_dir: Path, out_dir: Path) -> dict:
@@ -106,7 +106,7 @@ def main():
     shibuya_pm = ROOT / "data" / "synthetic" / "pm_data_relation_level.csv"
     shibuya_kpi = ROOT / "data" / "synthetic" / "cluster_kpi_summary.csv"
     if shibuya_pm.exists():
-        print(f"  [+1] shibuya ...", end=" ", flush=True)
+        print("  [+1] shibuya ...", end=" ", flush=True)
         try:
             env = MROEnv(
                 pm_data_path=str(shibuya_pm),

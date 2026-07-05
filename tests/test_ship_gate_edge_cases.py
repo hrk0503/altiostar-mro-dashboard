@@ -6,16 +6,12 @@ float precision, extreme values, malformed inputs, config edge cases.
 from __future__ import annotations
 
 import json
-from pathlib import Path
-
-import pytest
 
 from src.pipeline.ship_gate import (
     check_gate_conditions,
     check_results_json,
     load_thresholds_from_config,
 )
-
 
 # ─────────────────────────────────────────────────────────
 # 1. BOUNDARY: HO_success exactly 99%

@@ -6,7 +6,6 @@ Generates directory structure and skeleton templates for:
 2. Workstream 2: Platform Migration (Next.js app directories)
 """
 
-import os
 from pathlib import Path
 
 # Define root paths

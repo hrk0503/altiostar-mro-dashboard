@@ -5,15 +5,15 @@ from __future__ import annotations
 
 import argparse
 import logging
-from pathlib import Path
 import sys
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import numpy as np
-import pandas as pd
-import optuna
 import mlflow
+import numpy as np
+import optuna
+import pandas as pd
 from stable_baselines3 import PPO
 
 from src.env.mro_env import MROEnv
@@ -61,7 +61,7 @@ def run_sweep(timesteps: int, n_trials: int, mode: str, seed: int, device: str) 
         )
 
         # Log trial to MLflow under active study run
-        with mlflow.start_run(run_name=f"trial_{trial.number}", nested=True) as run:
+        with mlflow.start_run(run_name=f"trial_{trial.number}", nested=True):
             mlflow.log_params({
                 "learning_rate": learning_rate,
                 "n_steps": n_steps,
@@ -111,7 +111,7 @@ def run_sweep(timesteps: int, n_trials: int, mode: str, seed: int, device: str) 
             return mean_reward
 
     # Start study run in MLflow to group trials
-    with mlflow.start_run(run_name=f"study_sweep_{mode}") as study_run:
+    with mlflow.start_run(run_name=f"study_sweep_{mode}"):
         study = optuna.create_study(direction="maximize")
         study.optimize(objective, n_trials=n_trials)
 

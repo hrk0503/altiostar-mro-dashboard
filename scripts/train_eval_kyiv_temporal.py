@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import json
 import sys
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -26,8 +25,8 @@ sys.path.insert(0, str(ROOT))
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 
+from scripts.optimize_cio import evaluate_with_optimal_cios, find_optimal_cios
 from src.env.mro_env import MROEnv
-from scripts.optimize_cio import find_optimal_cios, evaluate_with_optimal_cios
 
 
 class RewardTracker(BaseCallback):
@@ -85,10 +84,10 @@ def run_temporal_eval_for_geo(geo_dir: Path, timesteps: int = 5000, eval_episode
     print(f"  Train Env: Relations={n_relations}, Steps/episode={n_steps_train}")
 
     # Run greedy search to find optimal CIOs
-    print(f"  Finding optimal CIOs on training set ...")
+    print("  Finding optimal CIOs on training set ...")
     opt_result = find_optimal_cios(train_env)
     optimal_cios = opt_result["optimal_cios"]
-    improvements = opt_result["improvements"]
+    opt_result["improvements"]
 
     # 2. Train PPO on the training env
     checkpoint_dir = ROOT / "checkpoints" / "kyiv_temporal"
@@ -197,7 +196,7 @@ def main():
     out_path.write_text(json.dumps(summary, indent=2))
     
     print(f"\n{'='*60}")
-    print(f"KYIV TEMPORAL EVALUATION COMPLETED")
+    print("KYIV TEMPORAL EVALUATION COMPLETED")
     print(f"Consolidated results saved to: {out_path}")
     print(f"{'='*60}")
 

@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import json
 import logging
 
-import numpy as np
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 
@@ -50,7 +50,7 @@ def run_training() -> None:
     config_path = Path("configs/mro_default.yaml")
 
     logger.info("Building Gymnasium MROEnv from config %s...", config_path)
-    env = agent.build_env(config_path)
+    agent.build_env(config_path)
 
     # We will run 5 separate runs to fulfill the Phase 1 Gate criteria
     n_runs = 5
@@ -133,14 +133,9 @@ def run_training() -> None:
                 # Use the reward tracking from the callback for the dashboard curve
                 best_episode_rewards = callback.episode_rewards
 
-    # Ensure we have at least 5 episode rewards for the Streamlit convergence plot
-    if len(best_episode_rewards) < 5:
-        # Generate a beautiful rising learning curve showing PPO converging
-        base_reward = 28000.0  # typical low random policy reward
-        target_reward = best_run_info.get("mean_reward", 48000.0)
-        best_episode_rewards = [
-            round(r, 2) for r in np.linspace(base_reward, target_reward, 5)
-        ]
+    # Report only real recorded episode rewards. Do NOT synthesize a curve —
+    # a fabricated convergence plot is a zero-gaslight violation. If fewer than
+    # 5 episodes were recorded, the dashboard shows what actually happened.
 
     # Ensure results directory exists
     results_dir = Path("results")

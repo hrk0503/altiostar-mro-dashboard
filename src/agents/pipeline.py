@@ -6,7 +6,6 @@ Outputs: normalized Parquet, data quality report, schema mapping.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 from pydantic import BaseModel
@@ -16,7 +15,7 @@ class SchemaMapping(BaseModel):
     source_column: str
     target_field: str
     dtype: str
-    transform: Optional[str] = None
+    transform: str | None = None
 
 
 class DataQualityReport(BaseModel):

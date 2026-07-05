@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+
 def main():
     results_dir = Path("results")
     for version in ["v0", "v1", "v2", "v3"]:

@@ -14,7 +14,7 @@ def main() -> None:
     print(f"Total timesteps from CSV: {env.n_steps}")
 
     obs, info = env.reset()
-    print(f"\nStep 0 observation from real CSV:")
+    print("\nStep 0 observation from real CSV:")
     print(f"  RSRP:           {obs[0]:.2f} dBm")
     print(f"  RSRQ:           {obs[1]:.2f} dB")
     print(f"  SINR:           {obs[2]:.2f} dB")
@@ -24,7 +24,7 @@ def main() -> None:
     print(f"  HO Failure:     {obs[6]:.2f} %")
     print(f"  Ping-pong:      {obs[7]:.2f}")
 
-    print(f"\nRunning 5 steps with random actions...")
+    print("\nRunning 5 steps with random actions...")
     for i in range(5):
         action = env.action_space.sample()
         obs, reward, terminated, truncated, info = env.step(action)

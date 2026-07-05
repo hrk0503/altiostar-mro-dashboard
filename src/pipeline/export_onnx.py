@@ -59,7 +59,7 @@ def export_model(model_path: str | Path, output_path: str | Path) -> None:
     # Extract observation and action shapes
     obs_space = model.observation_space
     action_space = model.action_space
-    print(f"Model loaded successfully:")
+    print("Model loaded successfully:")
     print(f"  - Observation space: {obs_space}")
     print(f"  - Action space: {action_space}")
 

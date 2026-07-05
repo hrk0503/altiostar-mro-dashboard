@@ -24,8 +24,8 @@ sys.path.insert(0, str(ROOT))
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 
+from scripts.optimize_cio import evaluate_with_optimal_cios, find_optimal_cios
 from src.env.mro_env import MROEnv
-from scripts.optimize_cio import find_optimal_cios, evaluate_with_optimal_cios
 
 
 class RewardTracker(BaseCallback):
@@ -73,7 +73,7 @@ def train_single_geo(
     print(f"  Relations: {n_relations}, Steps/episode: {n_steps}")
 
     # 1. Find optimal CIOs (greedy search)
-    print(f"  Finding optimal CIOs ...")
+    print("  Finding optimal CIOs ...")
     opt_result = find_optimal_cios(env)
     optimal_cios = opt_result["optimal_cios"]
     improvements = opt_result["improvements"]
@@ -243,7 +243,7 @@ def main():
     out_path = ROOT / "results" / "multi_geo_training.json"
     out_path.write_text(json.dumps(summary, indent=2))
     print(f"\n{'='*60}")
-    print(f"MULTI-GEO TRAINING COMPLETE")
+    print("MULTI-GEO TRAINING COMPLETE")
     print(f"{'='*60}")
     print(f"Total: {len(geo_dirs)} datasets, {len(successful)} succeeded, "
           f"{len(failed)} failed, {total_time}s")

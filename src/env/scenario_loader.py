@@ -17,7 +17,7 @@ from __future__ import annotations
 import copy
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -26,7 +26,7 @@ import yaml
 logger = logging.getLogger(__name__)
 
 # ── Registry of supported modifier keys and their validation rules ──
-_MODIFIER_SCHEMA: Dict[str, Dict[str, Any]] = {
+_MODIFIER_SCHEMA: dict[str, dict[str, Any]] = {
     # Multipliers (must be > 0)
     "ue_multiplier": {"type": float, "min": 0.1, "max": 50.0, "default": 1.0},
     "ho_attempt_multiplier": {"type": float, "min": 0.1, "max": 50.0, "default": 1.0},
@@ -43,7 +43,7 @@ _MODIFIER_SCHEMA: Dict[str, Dict[str, Any]] = {
 }
 
 # Columns that each modifier type affects in PM data
-_MODIFIER_COLUMN_MAP: Dict[str, Dict[str, str]] = {
+_MODIFIER_COLUMN_MAP: dict[str, dict[str, str]] = {
     "ue_multiplier": {"cell": "connected_ues", "relation": "ho_attempts"},
     "ho_attempt_multiplier": {"cell": "ho_attempt", "relation": "ho_attempts"},
     "ho_failure_multiplier": {"cell": "ho_failure_intra", "relation": "ho_failures"},
@@ -80,14 +80,14 @@ class ScenarioLoader:
     >>> modified_df = loader.apply(pm_dataframe, "rain_fade")
     """
 
-    def __init__(self, scenarios_dir: Optional[Union[str, Path]] = None) -> None:
+    def __init__(self, scenarios_dir: str | Path | None = None) -> None:
         if scenarios_dir is None:
             self._dir = Path(__file__).resolve().parents[2] / "configs" / "scenarios"
         else:
             self._dir = Path(scenarios_dir)
 
         # Cache loaded scenarios
-        self._cache: Dict[str, Dict[str, Any]] = {}
+        self._cache: dict[str, dict[str, Any]] = {}
 
         # Always register the baseline (no modifications)
         self._cache["baseline"] = {
@@ -99,7 +99,7 @@ class ScenarioLoader:
     # Public API
     # ──────────────────────────────────────────────────────────────────
 
-    def available(self) -> List[str]:
+    def available(self) -> list[str]:
         """Return sorted list of all available scenario names.
 
         Scans the scenarios directory for YAML files and always includes
@@ -113,7 +113,7 @@ class ScenarioLoader:
                 names.add(f.stem)
         return sorted(names)
 
-    def load(self, scenario_name: str) -> Dict[str, Any]:
+    def load(self, scenario_name: str) -> dict[str, Any]:
         """Load and validate a scenario configuration by name.
 
         Parameters
@@ -180,7 +180,7 @@ class ScenarioLoader:
         scenario_name: str,
         *,
         mode: str = "auto",
-        rng: Optional[np.random.Generator] = None,
+        rng: np.random.Generator | None = None,
     ) -> pd.DataFrame:
         """Apply scenario modifiers to a copy of PM data.
 
@@ -273,7 +273,7 @@ class ScenarioLoader:
 
         return "\n".join(lines)
 
-    def load_all(self) -> Dict[str, Dict[str, Any]]:
+    def load_all(self) -> dict[str, dict[str, Any]]:
         """Load all available scenarios and return as a dict.
 
         Returns
@@ -290,9 +290,9 @@ class ScenarioLoader:
     # Validation
     # ──────────────────────────────────────────────────────────────────
 
-    def _validate(self, config: Dict[str, Any], scenario_name: str) -> Dict[str, Any]:
+    def _validate(self, config: dict[str, Any], scenario_name: str) -> dict[str, Any]:
         """Validate and normalize a scenario config dict."""
-        validated: Dict[str, Any] = {
+        validated: dict[str, Any] = {
             "name": config.get("name", scenario_name),
             "description": config.get("description", ""),
         }
@@ -334,7 +334,7 @@ class ScenarioLoader:
     # ──────────────────────────────────────────────────────────────────
 
     def _apply_multipliers(
-        self, df: pd.DataFrame, config: Dict[str, Any], mode: str
+        self, df: pd.DataFrame, config: dict[str, Any], mode: str
     ) -> pd.DataFrame:
         """Apply multiplicative modifiers (ue_multiplier, ho_attempt_multiplier, etc.)."""
         multiplier_keys = [
@@ -370,7 +370,7 @@ class ScenarioLoader:
         return df
 
     def _apply_offsets(
-        self, df: pd.DataFrame, config: Dict[str, Any], mode: str
+        self, df: pd.DataFrame, config: dict[str, Any], mode: str
     ) -> pd.DataFrame:
         """Apply additive offsets (rsrp_offset_db, sinr_offset_db)."""
         offset_keys = ["rsrp_offset_db", "sinr_offset_db"]
@@ -403,7 +403,7 @@ class ScenarioLoader:
         return df
 
     def _apply_floor_constraints(
-        self, df: pd.DataFrame, config: Dict[str, Any], mode: str
+        self, df: pd.DataFrame, config: dict[str, Any], mode: str
     ) -> pd.DataFrame:
         """Apply floor constraints (prb_floor)."""
         if "prb_floor" not in config:
@@ -424,7 +424,7 @@ class ScenarioLoader:
     def _apply_tower_failure(
         self,
         df: pd.DataFrame,
-        config: Dict[str, Any],
+        config: dict[str, Any],
         mode: str,
         rng: np.random.Generator,
     ) -> pd.DataFrame:
@@ -491,7 +491,7 @@ class ScenarioLoader:
         return df
 
     def _apply_ho_attempt_spike(
-        self, df: pd.DataFrame, config: Dict[str, Any], mode: str
+        self, df: pd.DataFrame, config: dict[str, Any], mode: str
     ) -> pd.DataFrame:
         """Apply HO attempt spike for neighbors of failed sites.
 
@@ -540,8 +540,8 @@ class ScenarioLoader:
 
 def load_scenario(
     scenario_name: str,
-    scenarios_dir: Optional[Union[str, Path]] = None,
-) -> Dict[str, Any]:
+    scenarios_dir: str | Path | None = None,
+) -> dict[str, Any]:
     """Convenience function — load a single scenario config.
 
     Parameters

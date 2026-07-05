@@ -17,11 +17,11 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
-import yaml
 
 # Add project root to path
 ROOT = Path(__file__).resolve().parent.parent
@@ -197,7 +197,9 @@ def main():
 
     # Find optimal CIOs
     print("\nSearching for optimal CIO per relation ...")
+    _t0 = time.time()
     result = find_optimal_cios(env)
+    _search_time_s = round(time.time() - _t0, 2)
     optimal_cios = result["optimal_cios"]
     improvements = result["improvements"]
 
@@ -210,7 +212,7 @@ def main():
 
     # Show top 10 improvements
     improvements.sort(key=lambda x: x["improvement"], reverse=True)
-    print(f"\n  Top 10 improvements:")
+    print("\n  Top 10 improvements:")
     for imp in improvements[:10]:
         print(f"    {imp['relation']}: {imp['current_success']:.1f}% -> {imp['optimal_success']:.1f}% "
               f"(+{imp['improvement']:.1f}%, CIO: {imp['initial_cio']:.0f} -> {imp['optimal_cio']:.0f})")
@@ -221,7 +223,7 @@ def main():
     eval_result = evaluate_with_optimal_cios(env, optimal_cios, n_episodes=args.eval_episodes, seed=args.seed)
 
     print(f"\n{'='*60}")
-    print(f"OPTIMIZED RESULTS:")
+    print("OPTIMIZED RESULTS:")
     print(f"  HO Success:  {eval_result['ho_success_rate']:.2f}%")
     print(f"  HO Failure:  {eval_result['ho_failure_rate']:.2f}%")
     print(f"  Ping-Pong:   {eval_result['pingpong_rate']:.2f}%")
@@ -235,19 +237,18 @@ def main():
         "scenario": args.scenario,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "config": {
-            "total_timesteps": 100000,
+            # HONEST: this is exhaustive per-relation CIO search, NOT PPO/RL.
+            # See docs/METHODOLOGY.md. No timesteps — nothing is trained here.
             "eval_episodes": args.eval_episodes,
             "seed": args.seed,
-            "algorithm": "PPO",
-            "policy": "MlpPolicy",
-            "optimization": "greedy_cio_search + PPO_100k",
+            "algorithm": "greedy_cio_search",
+            "optimization": "exhaustive per-relation CIO search over PM data",
         },
         "training": {
-            "time_s": 446.07,
-            "episode_rewards": [-119487.69, -114552.61, -111107.24, -107424.61,
-                                -104433.78, -101861.77, -100031.24, -97588.52],
-            "checkpoint_path": "checkpoints/ppo_v2_baseline.zip",
-            "cio_optimization": "greedy_search",
+            # No RL training occurs; these fields describe the search, honestly.
+            "method": "greedy_cio_search",
+            "search_time_s": _search_time_s,
+            "episode_rewards": [],  # no training curve exists for a search
             "relations_improved": len(non_zero),
             "mean_improvement_pct": round(float(np.mean(deltas)), 2),
         },

@@ -30,7 +30,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 import yaml
@@ -42,7 +42,6 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
 
 from src.env.mro_env import MROEnv
-from src.env.scenario_loader import ScenarioLoader
 
 logging.basicConfig(
     level=logging.INFO,
@@ -69,7 +68,7 @@ class RewardTracker(BaseCallback):
 
     def __init__(self, verbose: int = 0) -> None:
         super().__init__(verbose)
-        self.episode_rewards: List[float] = []
+        self.episode_rewards: list[float] = []
         self._current_reward = 0.0
 
     def _on_step(self) -> bool:
@@ -110,7 +109,7 @@ def train_ppo(
     total_timesteps: int = DEFAULT_TIMESTEPS,
     seed: int = DEFAULT_SEED,
     run_name: str = "experiment",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Train PPO agent and return training metadata.
 
     Returns
@@ -146,8 +145,29 @@ def train_ppo(
     )
 
     if env.mode == "relation":
-        from scripts.optimize_cio import find_optimal_cios
+        # ─────────────────────────────────────────────────────────────────
+        # HONEST DISCLOSURE (see docs/METHODOLOGY.md):
+        # This is NOT learned reinforcement learning. The relation-mode result
+        # is produced by DATA-DRIVEN CIO OPTIMIZATION: `find_optimal_cios`
+        # exhaustively searches the PM data for the failure-minimizing offset
+        # per relation, and that closed-form answer is injected directly into
+        # the policy weights. learning_rate=0.0 above means `model.learn()`
+        # below cannot change anything — it is a no-op kept only so the SB3
+        # save/ONNX-export path works.
+        #
+        # This technique is legitimate and defensible ON REAL DATA (where no
+        # optimum is planted). It must be REPORTED AS "data-driven CIO
+        # optimization", never as "PPO/RL". Restoring genuine RL (real
+        # learning_rate, non-empty net_arch, held-out evaluation) is Phase 2
+        # work, to be done once real Rakuten cluster data lands.
+        # ─────────────────────────────────────────────────────────────────
         import torch
+
+        from scripts.optimize_cio import find_optimal_cios
+        logger.warning(
+            "relation-mode: injecting data-driven optimal CIOs (NOT learned RL); "
+            "learning_rate=0.0 makes model.learn() a no-op. Report as 'CIO optimization'."
+        )
         env.reset(seed=seed)
         opt_res = find_optimal_cios(env)
         optimal_cios = opt_res["optimal_cios"]
@@ -176,7 +196,7 @@ def evaluate_model(
     model_path: str,
     env: MROEnv,
     n_episodes: int = DEFAULT_EVAL_EPISODES,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Evaluate trained PPO model and return KPI metrics.
 
     Returns
@@ -187,7 +207,7 @@ def evaluate_model(
     """
     model = PPO.load(model_path, device="cpu")
 
-    per_episode: List[Dict[str, float]] = []
+    per_episode: list[dict[str, float]] = []
 
     for ep in range(n_episodes):
         obs, info = env.reset(seed=DEFAULT_SEED + ep)
@@ -263,10 +283,10 @@ def log_to_mlflow(
     run_name: str,
     variant: str,
     scenario: str,
-    training_meta: Dict[str, Any],
-    eval_metrics: Dict[str, Any],
+    training_meta: dict[str, Any],
+    eval_metrics: dict[str, Any],
     timesteps: int,
-) -> Optional[str]:
+) -> str | None:
     """Log experiment to MLflow. Returns run_id or None if MLflow unavailable."""
     try:
         import mlflow
@@ -312,7 +332,7 @@ def log_to_mlflow(
 
 
 def save_results(
-    results: Dict[str, Any],
+    results: dict[str, Any],
     output_path: Path,
 ) -> None:
     """Save experiment results to JSON."""
@@ -332,7 +352,7 @@ def run_single_experiment(
     eval_episodes: int = DEFAULT_EVAL_EPISODES,
     seed: int = DEFAULT_SEED,
     run_name: str | None = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run one complete experiment: build -> train -> evaluate -> log -> save.
 
     Returns the full result dict.
@@ -392,12 +412,12 @@ def run_single_experiment(
 # ─────────────────────────────────────────────────────────────────────
 
 def run_sweep(
-    variants: List[str],
-    scenarios: List[str],
+    variants: list[str],
+    scenarios: list[str],
     timesteps: int = DEFAULT_TIMESTEPS,
     eval_episodes: int = DEFAULT_EVAL_EPISODES,
     seed: int = DEFAULT_SEED,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run all variant x scenario combinations and save consolidated results.
 
     Returns the full sweep result dict.
@@ -408,7 +428,7 @@ def run_sweep(
         len(variants), len(scenarios), total_combos,
     )
 
-    all_results: List[Dict[str, Any]] = []
+    all_results: list[dict[str, Any]] = []
     t0 = time.time()
 
     for i, variant in enumerate(variants):
@@ -466,7 +486,7 @@ def run_sweep(
     return sweep_result
 
 
-def _build_comparison_table(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _build_comparison_table(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Build a comparison table from experiment results."""
     table = []
     for r in results:
@@ -487,17 +507,17 @@ def _build_comparison_table(results: List[Dict[str, Any]]) -> List[Dict[str, Any
     return table
 
 
-def _find_best_variants(results: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+def _find_best_variants(results: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     """Find the best reward variant for each scenario (by HO success rate)."""
     from collections import defaultdict
-    by_scenario: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    by_scenario: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
     for r in results:
         if "error" in r:
             continue
         by_scenario[r["scenario"]].append(r)
 
-    best: Dict[str, Dict[str, Any]] = {}
+    best: dict[str, dict[str, Any]] = {}
     for scenario, exps in by_scenario.items():
         top = max(exps, key=lambda x: x.get("evaluation", {}).get("ho_success_rate", 0))
         ev = top.get("evaluation", {})
@@ -514,7 +534,7 @@ def _find_best_variants(results: List[Dict[str, Any]]) -> Dict[str, Dict[str, An
     return best
 
 
-def _print_summary(sweep: Dict[str, Any]) -> None:
+def _print_summary(sweep: dict[str, Any]) -> None:
     """Print a formatted sweep summary to console."""
     print("\n" + "=" * 70)
     print("SWEEP SUMMARY")
@@ -545,7 +565,7 @@ def _print_summary(sweep: Dict[str, Any]) -> None:
             print(f"  {scenario}: {info['variant']} (success={info['ho_success_rate']:.2f}%)")
 
     print("=" * 70)
-    print(f"Results saved to: results/sweep_results.json")
+    print("Results saved to: results/sweep_results.json")
     print("Individual results: results/experiment_{{variant}}_{{scenario}}.json")
     print("=" * 70 + "\n")
 
@@ -554,7 +574,7 @@ def _print_summary(sweep: Dict[str, Any]) -> None:
 # Config file runner
 # ─────────────────────────────────────────────────────────────────────
 
-def run_from_config(config_path: str) -> Dict[str, Any]:
+def run_from_config(config_path: str) -> dict[str, Any]:
     """Run experiment(s) from a YAML config file.
 
     Config format:
