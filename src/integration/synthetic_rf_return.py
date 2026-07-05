@@ -32,9 +32,21 @@ def _relation_optimal_cio(source: str, target: str, candidates: list[float]) -> 
 
 
 def _success_at(cio: float, optimal: float) -> float:
-    """Illustrative success curve: ~99.5% at optimal, degrading with |Δ| dB."""
-    dev = abs(cio - optimal)
-    return max(70.0, 99.5 - 3.2 * dev * dev ** 0.0 - 2.0 * dev)  # smooth, monotone in |dev|
+    """Illustrative, ASYMMETRIC success curve (DD hardening).
+
+    Real HOSR-vs-CIO is not a symmetric V: too-high CIO (past optimal) triggers
+    early handovers + ping-pong (gentler slope); too-low CIO triggers late
+    handovers + RLF (steeper slope). We reflect that with direction-dependent
+    quadratic slopes, and cap the peak at 99.0% with a residual-failure floor
+    (real networks never hit 100%). Still SYNTHETIC — shape is plausible, not
+    calibrated to any real cluster.
+    """
+    dev = cio - optimal
+    if dev >= 0:      # above optimal: early-HO / ping-pong side (gentler)
+        penalty = 1.6 * dev * dev + 1.0 * dev
+    else:             # below optimal: late-HO / RLF side (steeper)
+        penalty = 2.6 * dev * dev + 1.4 * abs(dev)
+    return max(72.0, 99.0 - penalty)
 
 
 def simulate_return(request: pd.DataFrame) -> pd.DataFrame:

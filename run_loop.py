@@ -39,6 +39,12 @@ def run_loop(data_dir: Path, out_dir: Path) -> dict:
     result.to_csv(result_path, index=False)
     summary = {
         "watermark": synthetic_badge("text"),
+        "NOT_A_PERFORMANCE_CLAIM": (
+            "The 'after' values come from a synthetic RF stand-in whose optimum "
+            "is planted; the optimizer recovers it by construction. This proves "
+            "the loop WIRING end-to-end, NOT any real-world handover gain. Real "
+            "gain requires real operator data + a real RF simulation."
+        ),
         "relations": int(len(result)),
         "mean_before_%": round(float(result["before_success_%"].mean()), 4),
         "mean_after_%": round(float(result["after_success_%"].mean()), 4),

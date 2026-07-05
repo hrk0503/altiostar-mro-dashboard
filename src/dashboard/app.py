@@ -451,11 +451,14 @@ if _PROFILE_PATH.exists():
 
 _DATASETS = {"Shibuya, Tokyo (LTE)": None}
 if EXTRA_GEO.exists():
+    # De-branded (DD hardening): synthetic data must NOT carry real operator/
+    # vendor names on fabricated KPIs — that is a misrepresentation/trademark
+    # exposure. Generic profile labels only.
     _GEO_LABELS = {
-        "helsinki": "Helsinki (Elisa · Nokia RAN)",
-        "kyiv": "Kyiv (Continental · Ericsson)",
-        "japan_rural": "Rural Nagano (Mountain · NEC)",
-        "tokyo": "Downtown Tokyo (Coastal · TDD)",
+        "helsinki": "Nordic Urban profile (synthetic)",
+        "kyiv": "Continental Urban profile (synthetic)",
+        "japan_rural": "Mountain Rural profile (synthetic)",
+        "tokyo": "Coastal Dense-Urban TDD profile (synthetic)",
     }
     _allowed_geos = _PROFILE.get("geographies")
     if _allowed_geos is not None:

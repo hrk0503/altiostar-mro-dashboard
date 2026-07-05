@@ -1,6 +1,7 @@
-fastapi>=0.100.0
-uvicorn>=0.22.0
-pydantic>=2.0.0
-pydantic-ai>=0.0.1
-langgraph>=0.1.0
-psycopg2-binary>=2.9.0
+# Pinned (DD hardening): reproducible backend builds, no unbounded floors.
+fastapi~=0.115.0
+uvicorn~=0.32.0
+pydantic~=2.9
+pydantic-ai~=0.0.14
+langgraph~=0.2.60
+psycopg2-binary~=2.9.10  # LGPL-3.0 (dynamically linked; no source-disclosure obligation)

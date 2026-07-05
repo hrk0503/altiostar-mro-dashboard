@@ -59,7 +59,9 @@ jobs:
           cache: pip
       - name: Install deps
         run: |
-          pip install -r requirements.txt
-          pip install pytest hypothesis
+          # DD hardening: install the FULL stack (pyproject), not the
+          # dashboard-only requirements.txt — else ML test modules error on
+          # import (gymnasium/SB3/torch/mlflow) and CI is falsely green.
+          pip install -e ".[dev,export]"
       - name: Run tests
         run: python -m pytest tests/ -q
