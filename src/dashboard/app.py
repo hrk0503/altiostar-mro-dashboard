@@ -32,6 +32,9 @@ import plotly.graph_objects as go
 import streamlit as st
 import streamlit.components.v1 as components
 
+from src.dashboard.geo import sector_wedge
+from src.dashboard.kpi import attempt_weighted_hosr
+
 # ── Assets — load logos as base64 for embedding ──────────────────────
 ASSETS = Path(__file__).resolve().parent / "assets"
 
@@ -658,7 +661,7 @@ cm["prob"] = cm["ho_sr"] < 99
 n_prob = int(cm["prob"].sum())
 n_total = len(cm)
 n_healthy = n_total - n_prob
-avg_sr = cm["ho_sr"].mean()
+avg_sr = attempt_weighted_hosr(cm["ho_sr"].fillna(0), cm["ho_att"].fillna(0))  # attempt-weighted (Epic 4.2)
 best_sr = cm["ho_sr"].max()
 worst_sr = cm["ho_sr"].min()
 avg_fr = cm["ho_fr"].mean()
@@ -1334,6 +1337,20 @@ elif page == "Cell Map":
                 lat=pr["latitude"], lon=pr["longitude"], mode="markers",
                 marker=dict(size=pr["bub"] + 14, color="rgba(239,68,68,.12)"),
                 hoverinfo="skip", showlegend=False))
+
+        # Sector wedges (Epic 4.1) — azimuth fans, not stacked circles.
+        if "azimuth_deg" in md.columns:
+            for _r in md.itertuples():
+                _az = getattr(_r, "azimuth_deg", None)
+                if _az is None or pd.isna(_az):
+                    continue
+                _w = sector_wedge(float(_r.latitude), float(_r.longitude), float(_az))
+                _c = health_color(_r.ho_sr) if not pd.isna(_r.ho_sr) else ORANGE
+                fm.add_trace(go.Scattermapbox(
+                    lat=[p[0] for p in _w], lon=[p[1] for p in _w],
+                    mode="lines", fill="toself",
+                    fillcolor="rgba(76,141,255,.10)", line=dict(width=.6, color=_c),
+                    hoverinfo="skip", showlegend=False))
 
         fm.add_trace(go.Scattermapbox(
             lat=md["latitude"], lon=md["longitude"], mode="markers",
