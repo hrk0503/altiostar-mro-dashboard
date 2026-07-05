@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sprint 01 — Make the Machine Real (Synthetic) · WINNIIO MRO</title>
+<style>
+  :root{--bg:#0b1020;--card:#121a30;--card2:#0e1526;--bd:#233150;--ink:#e9eef7;
+    --mut:#a2b3cf;--red:#ff5d6c;--amb:#ffb020;--grn:#37d39b;--pri:#4c8dff;--pri2:#7aa7ff;--cy:#22c1d6;--pur:#b98cff}
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#0b1020,#0a0e1c);color:var(--ink);
+    font:15px/1.62 "Segoe UI",system-ui,-apple-system,Arial,sans-serif}
+  .wrap{max-width:1080px;margin:0 auto;padding:32px 22px 90px}
+  h1{font-size:1.85rem;margin:0 0 4px}
+  h2{font-size:1.28rem;margin:34px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--bd);color:#fff}
+  h3{font-size:1.04rem;color:var(--pri2);margin:18px 0 6px}
+  .sub{color:var(--mut);font-size:.95rem}
+  code{background:#0a1226;border:1px solid var(--bd);border-radius:5px;padding:1px 6px;font-size:.84em;color:#bcd0ff}
+  .lead{font-size:1.02rem;background:linear-gradient(135deg,#15203a,#0f1830);border:1px solid var(--bd);
+    border-radius:12px;padding:16px 19px;margin-top:14px}
+  .card{background:var(--card);border:1px solid var(--bd);border-radius:11px;padding:14px 16px;margin:11px 0}
+  .persona{border-left:4px solid var(--pur)} .persona h3{color:var(--pur);margin-top:0}
+  .before{border-left-color:var(--amb)} .before h3{color:var(--amb)}
+  .after{border-left-color:var(--grn)} .after h3{color:var(--grn)}
+  table{width:100%;border-collapse:collapse;font-size:.87rem;margin-top:6px}
+  .tw{overflow-x:auto;border:1px solid var(--bd);border-radius:10px;margin-top:10px}
+  th,td{padding:8px 11px;text-align:left;border-bottom:1px solid var(--bd);vertical-align:top}
+  th{background:var(--card2);color:#cdd9f0;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em}
+  tr:last-child td{border-bottom:none}
+  .epic{background:var(--card);border:1px solid var(--bd);border-radius:11px;padding:14px 16px;margin:12px 0}
+  .epic .et{font-weight:800;font-size:1.05rem;color:#fff}
+  .tk{background:#0e1526;border:1px solid var(--bd);border-radius:8px;padding:10px 12px;margin:8px 0}
+  .tk .th{font-weight:700;color:var(--cy);font-size:.9rem}
+  .red{color:var(--red)}.grn{color:var(--grn)}.amb{color:var(--amb)}
+  .step{margin:4px 0 4px 0;padding-left:2px}
+  .rgr{display:inline-block;font-size:.68rem;font-weight:800;border-radius:4px;padding:1px 6px;margin-right:5px}
+  .r{background:#3a0d15;color:#ff8792}.g{background:#0d2a1c;color:#6ee7b0}.rf{background:#0d1f3a;color:#8fb8ff}
+  ul{margin:5px 0;padding-left:20px}li{margin:3px 0}
+  .cal{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:10px}
+  .day{background:var(--card);border:1px solid var(--bd);border-radius:9px;padding:9px 10px;font-size:.8rem;min-height:96px}
+  .day .dh{font-weight:700;color:var(--pri2);font-size:.72rem;text-transform:uppercase;margin-bottom:4px}
+  .pill{display:inline-block;font-size:.68rem;border:1px solid var(--bd);border-radius:20px;padding:1px 8px;margin:2px 2px 0 0;color:var(--mut)}
+  .kanban{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px}
+  .col{background:var(--card2);border:1px solid var(--bd);border-radius:9px;padding:9px;font-size:.78rem}
+  .col .ch{font-weight:700;color:#fff;font-size:.74rem;margin-bottom:5px}
+  .foot{color:#6b7da3;font-size:.8rem;margin-top:40px;border-top:1px solid var(--bd);padding-top:14px}
+  @media(max-width:820px){.cal,.kanban{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Sprint 01 — “Make the Machine Real (Synthetic)”</h1>
+<div class="sub">WINNIIO 5G MRO · 2-week TDD sprint · plan an intern can execute, judged by a brutal panel · 2026-07-05</div>
+
+<div class="lead">
+<b>The rule that governs this whole sprint:</b> we cannot prove a real-network gain without Rakuten data — so we will not try. We will make the <b>machine</b> real, honest, reproducible, and demonstrable end-to-end on <b>synthetic</b> data, behind a visible SYNTHETIC watermark. Target: GLASS 4.4 → ~6.5. Every line is test-first. Nothing that can't be demoed live ships.
+</div>
+
+<h2>Panel verdicts — BEFORE (brutal)</h2>
+
+<div class="card persona before"><h3>Vitalik Buterin — verifiability</h3>
+“You deleted the lie. Congratulations, that’s the floor, not an achievement. ‘Trust our synthetic loop’ is just a politer lie unless I can <b>reproduce every number from a seed</b> and every model is <b>content-addressed by hash</b>. If I can’t rebuild your before/after from a clean clone with one command, it’s theater with better manners. Determinism or it didn’t happen.”
+<div class="sub" style="margin-top:5px"><b>Demands:</b> seeded determinism, model + data hashing, one-command reproducible rebuild, a “verify-it-yourself” script.</div></div>
+
+<div class="card persona before"><h3>Loop programming team — tight-feedback TDD</h3>
+“Twenty tickets and not one failing test written? Then nothing starts. Red first, always. Your PRs will balloon to 800 lines and no one will review them honestly. WIP limit 2. Tickets no bigger than half a day. No ticket enters ‘In Progress’ without a named failing test. Trunk-based, CI-gated, or you’re just cowboys with a Jira board.”
+<div class="sub" style="margin-top:5px"><b>Demands:</b> red-green-refactor on every ticket, PRs &lt;200 lines, WIP≤2, CI green before merge, no long-lived branches.</div></div>
+
+<div class="card persona before"><h3>Claude founder — safety, evals, no overclaim</h3>
+“Where is the eval harness? You’re about to change an optimizer with <b>no golden set</b> — how would you even know if you regressed it? Build the eval before the feature. Every synthetic surface gets a visible SYNTHETIC watermark and a limitations paragraph. Measure groundedness: does each recommendation trace to a data row? Ship no capability you can’t demonstrate live, in front of me, right now.”
+<div class="sub" style="margin-top:5px"><b>Demands:</b> eval harness + golden Q&amp;A first, watermarks, explicit limitations, groundedness check, live-demo gate.</div></div>
+
+<div class="card persona before"><h3>Scrum Master — before</h3>
+“This is ~34 points across 5 epics for a 2-week sprint with an unproven team. <b>Overcommitted by half.</b> Set ONE sprint goal, cut RL machinery and half the prod-floor to Sprint 2, and write the Definition of Done before a single ticket moves. If ‘done’ isn’t defined, nothing is done.”</div>
+
+<div class="card persona before"><h3>Product Owner — before</h3>
+“Only Epic 1 (the live synthetic loop) wins the next Soumyadeep meeting — it’s the demo. Epic 2 (drop-in) is the close. Rank ruthlessly: <b>1 &gt; 2 &gt; 4 &gt; 3 &gt; 5</b>. If we finish only Epic 1 with real TDD + E2E and a watermark, the sprint is a success. Everything else is gravy. Do not let engineers gold-plate Epic 5 while Epic 1 is unfinished.”</div>
+
+<h2>Sprint goal &amp; scope (after the panel cut)</h2>
+<div class="card">
+<b>Sprint Goal:</b> “A judge can clone the repo and, with one command, watch the full MRO loop run end-to-end on synthetic data — CSV in → failing relations → counterfactual simulation → optimized CIO → before/after — reproducibly, watermarked, with every claim traceable to a data row.”
+<br><br>
+<b>Committed (this sprint):</b> Epic 1 (loop), Epic 2 (drop-in), Epic 4 (trust-gaps), plus the eval-harness + reproducibility spine.
+<b>Stretch:</b> Epic 3 (real RL machinery). <b>Sprint 2:</b> Epic 5 (full prod floor).
+</div>
+
+<h2>The epics → intern-followable TDD tickets</h2>
+<div class="sub">Every ticket: <span class="rgr r">RED</span> write the failing test first · <span class="rgr g">GREEN</span> minimum code to pass · <span class="rgr rf">REFACTOR</span> clean it. No code before a red test. PRs &lt;200 lines.</div>
+
+<div class="epic">
+<div class="et">EPIC 1 — Close the synthetic loop (the demo)</div>
+<div class="sub">Prove the machine works end-to-end. We simulate Blaretech’s return ourselves, honestly labeled.</div>
+
+<div class="tk"><div class="th">1.1 · Synthetic RF return generator (stand-in for Blaretech)</div>
+<div class="step"><span class="rgr r">RED</span> In <code>tests/test_synthetic_return.py</code>, assert: given <code>01_counterfactual_request.csv</code>, the generator outputs a filled RETURN_SCHEMA with the 7 <code>sim_*</code> columns, exactly 6,867 rows, and success = attempts − failures for every row.</div>
+<div class="step"><span class="rgr g">GREEN</span> Write <code>src/integration/synthetic_rf_return.py</code> that reads the request and fills counterfactual outcomes per (relation × CIO) using the documented seasonal model (reuse <code>augment_multi_cio</code> logic). Seed = 42, deterministic.</div>
+<div class="step"><span class="rgr rf">REFACTOR</span> Extract the outcome model into a pure function; add a <code># SYNTHETIC</code> banner to the output file header.</div>
+<div class="sub">DoD: test green · deterministic (same seed → identical bytes) · output labeled synthetic. <b>1 pt</b></div></div>
+
+<div class="tk"><div class="th">1.2 · Re-ingest counterfactuals → build the search space</div>
+<div class="step"><span class="rgr r">RED</span> Test: after ingesting the return CSV, a chosen relation exposes ≥2 candidate CIOs with distinct success rates.</div>
+<div class="step"><span class="rgr g">GREEN</span> <code>ingest_counterfactuals(return_csv)</code> → per-relation dict of {cio: outcome}.</div>
+<div class="sub">DoD: test green · handles missing rows gracefully (logs, no crash). <b>1 pt</b></div></div>
+
+<div class="tk"><div class="th">1.3 · Optimize over the returned space</div>
+<div class="step"><span class="rgr r">RED</span> Test: given a relation with CIO options where +2 dB has the highest success, the optimizer selects +2.</div>
+<div class="step"><span class="rgr g">GREEN</span> Reuse/extend <code>find_optimal_cios</code> to consume the counterfactual space instead of raw PM.</div>
+<div class="sub">DoD: test green · picks argmax-success per relation · records provenance (“from counterfactual sim”). <b>2 pt</b></div></div>
+
+<div class="tk"><div class="th">1.4 · Before/after dashboard panel (watermarked)</div>
+<div class="step"><span class="rgr r">RED</span> <code>AppTest</code>: a new “Loop (synthetic)” tab renders a before/after table and a visible SYNTHETIC badge.</div>
+<div class="step"><span class="rgr g">GREEN</span> Add the tab; show per-relation before → after from the loop; badge always on.</div>
+<div class="sub">DoD: AppTest green · badge present · numbers trace to the loop output, not hardcoded. <b>2 pt</b></div></div>
+
+<div class="tk"><div class="th">1.5 · One-command E2E + reproducibility</div>
+<div class="step"><span class="rgr r">RED</span> <code>tests/test_loop_e2e.py</code>: <code>run_loop.py</code> runs export → synthetic-return → ingest → optimize → writes result; assert result file exists, row counts match, and a second run is byte-identical (determinism).</div>
+<div class="step"><span class="rgr g">GREEN</span> Write <code>run_loop.py</code> orchestrating the chain; print a run hash (sha256 of the result).</div>
+<div class="sub">DoD: E2E green · deterministic hash · <code>VERIFY.md</code> tells a stranger how to reproduce in one command (Vitalik gate). <b>2 pt</b></div></div>
+</div>
+
+<div class="epic">
+<div class="et">EPIC 2 — Drop-in schema mapping (Soumyadeep Q9)</div>
+<div class="tk"><div class="th">2.1 · Alias/synonym mapper</div>
+<div class="step"><span class="rgr r">RED</span> Test: a CSV with <code>src_cell</code>, <code>tgt_cell</code>, <code>cio</code> maps to the canonical schema; unknown columns are reported, not silently dropped.</div>
+<div class="step"><span class="rgr g">GREEN</span> Add an alias table + case/underscore-insensitive match to <code>schema_mapper.py</code>; fuzzy fallback (Levenshtein ≤2) with a confidence flag.</div>
+<div class="sub">DoD: test green · no silent drops · confidence surfaced. <b>2 pt</b></div></div>
+<div class="tk"><div class="th">2.2 · Manual-mapping fallback in Data Upload</div>
+<div class="step"><span class="rgr r">RED</span> AppTest: an unmapped column shows a selectbox to map it; on submit, ingestion proceeds.</div>
+<div class="step"><span class="rgr g">GREEN</span> Add the mapping UI; persist the choice per session (not to shared files).</div>
+<div class="sub">DoD: AppTest green · writes to per-session staging, never canonical CSVs (security). <b>2 pt</b></div></div>
+<div class="tk"><div class="th">2.3 · E2E: scrambled-column CSV ingests clean</div>
+<div class="step"><span class="rgr r">RED</span> E2E: take the synthetic CSV, rename 5 columns, assert full ingest + validation pass via the mapper.</div>
+<div class="sub">DoD: E2E green. <b>1 pt</b></div></div>
+</div>
+
+<div class="epic">
+<div class="et">EPIC 4 — Dashboard trust-gaps (Soumyadeep Q6/Q7)</div>
+<div class="tk"><div class="th">4.1 · Sector wedges on Cell Map</div>
+<div class="step"><span class="rgr r">RED</span> Unit test: wedge-polygon function returns a fan of lat/lon around a site given azimuth ± beamwidth/2. AppTest: map renders per-sector wedges, not stacked circles.</div>
+<div class="step"><span class="rgr g">GREEN</span> Compute wedge polygons from <code>site_database</code> azimuths; render via Scattermapbox fill.</div>
+<div class="sub">DoD: both tests green · 3 sectors visibly distinct per site. <b>2 pt</b></div></div>
+<div class="tk"><div class="th">4.2 · Attempt-weighted headline KPI</div>
+<div class="step"><span class="rgr r">RED</span> Unit test: cluster HOSR = Σ successes / Σ attempts, not the mean of per-cell rates (fixture proves they differ).</div>
+<div class="step"><span class="rgr g">GREEN</span> Replace the unweighted mean in the Dashboard headline.</div>
+<div class="sub">DoD: test green · matches the drill-down’s method. <b>1 pt</b></div></div>
+</div>
+
+<div class="epic">
+<div class="et">EPIC 3 — Real RL machinery (STRETCH, honest-on-synthetic)</div>
+<div class="tk"><div class="th">3.1 · Genuine training entrypoint (no injection)</div>
+<div class="step"><span class="rgr r">RED</span> Test: after <code>train_real.py</code> runs N steps, policy weights differ from init (i.e. it actually learned) and <code>learning_rate &gt; 0</code>, <code>net_arch</code> non-empty.</div>
+<div class="step"><span class="rgr g">GREEN</span> New entrypoint with real PPO config; the injection path is quarantined and never used here.</div>
+<div class="sub">DoD: test green · labeled “trained on synthetic; real validation pending.” <b>3 pt</b></div></div>
+<div class="tk"><div class="th">3.2 · Train/test split + held-out eval + per-iteration CIO log</div>
+<div class="step"><span class="rgr r">RED</span> Test: train and test ROP sets are disjoint; eval runs on held-out; a CIO-trajectory CSV has one row per rollout.</div>
+<div class="sub">DoD: tests green · explainability tab can read the real trajectory. <b>3 pt</b></div></div>
+</div>
+
+<h2>Cross-cutting spine (built Day 1, before features — Claude-founder gate)</h2>
+<div class="card">
+<b>Eval harness first:</b> <code>tests/eval/golden_mro.py</code> — ≥20 golden cases (a relation’s known-best CIO given a fixture) that every optimizer change must still pass. <b>Reproducibility:</b> global seed, <code>VERIFY.md</code>, result-hash printing. <b>Watermark util:</b> one <code>synthetic_badge()</code> used by every synthetic surface. <b>Groundedness:</b> every recommendation carries the data rows it came from.
+</div>
+
+<h2>Definition of Ready / Done</h2>
+<div class="tw"><table>
+<thead><tr><th>Definition of Ready (enter “In Progress”)</th><th>Definition of Done (enter “Done”)</th></tr></thead>
+<tbody>
+<tr><td>Acceptance criteria written · a named failing test exists · estimate ≤ 3 pts · no blocker · watermark need identified</td>
+<td>Red test written first, now green · refactored · PR &lt; 200 lines · CI green (ruff + pytest) · reviewed by 1 human + 1 AI lens · docs/CHANGELOG updated · demoable live · zero fabricated data · SYNTHETIC badge if applicable · reproducible from seed</td></tr>
+</tbody>
+</table></div>
+
+<h2>Kanban board (WIP limits enforced)</h2>
+<div class="kanban">
+<div class="col"><div class="ch">Backlog</div>all tickets, ranked 1&gt;2&gt;4&gt;3&gt;5</div>
+<div class="col"><div class="ch">Ready · DoR met</div>criteria + failing test named</div>
+<div class="col"><div class="ch">In Progress · WIP≤2</div>red→green→refactor</div>
+<div class="col"><div class="ch">In Review · WIP≤3</div>PR &lt;200 ln, CI green, 2 reviewers</div>
+<div class="col"><div class="ch">Done · DoD met</div>demoable + reproducible</div>
+</div>
+
+<h2>Two-week calendar (10 working days)</h2>
+<h3>Week 1 — spine + the loop</h3>
+<div class="cal">
+<div class="day"><div class="dh">Day 1 Mon</div>Sprint planning · build the SPINE (eval harness, seed, watermark, VERIFY.md) · DoD ratified</div>
+<div class="day"><div class="dh">Day 2 Tue</div>1.1 synthetic return (RED→GREEN) · 2.1 alias mapper (RED)</div>
+<div class="day"><div class="dh">Day 3 Wed</div>1.2 ingest · 1.3 optimize (RED→GREEN) · daily demo</div>
+<div class="day"><div class="dh">Day 4 Thu</div>1.4 dashboard panel · 2.1 GREEN · mid-sprint check</div>
+<div class="day"><div class="dh">Day 5 Fri</div>1.5 E2E + reproducibility · <b>Week-1 demo:</b> loop runs end-to-end</div>
+</div>
+<h3>Week 2 — drop-in, trust-gaps, harden, ship</h3>
+<div class="cal">
+<div class="day"><div class="dh">Day 6 Mon</div>2.2 mapping UI · 2.3 E2E scrambled CSV</div>
+<div class="day"><div class="dh">Day 7 Tue</div>4.1 sector wedges · 4.2 weighted KPI</div>
+<div class="day"><div class="dh">Day 8 Wed</div>Stretch 3.1/3.2 if green-lit · bug burn-down</div>
+<div class="day"><div class="dh">Day 9 Thu</div>Full E2E pass · watermark audit · VERIFY dry-run by someone who didn’t build it</div>
+<div class="day"><div class="dh">Day 10 Fri</div><b>Sprint review + demo</b> · retro · Sprint-2 backlog</div>
+</div>
+<div class="sub" style="margin-top:8px">Ceremonies: 15-min standup daily (yesterday/today/blocker) · WIP limits hard · Fri demos are live-or-it-didn’t-happen.</div>
+
+<h2>Testing strategy (TDD throughout)</h2>
+<div class="tw"><table>
+<thead><tr><th>Layer</th><th>What · tool</th></tr></thead>
+<tbody>
+<tr><td>Unit (test-first)</td><td>Every function born from a failing test · pytest</td></tr>
+<tr><td>Property</td><td>Optimizer output CIO always in valid 3GPP range; KPI conservation · Hypothesis (reuse the spectrum engine’s rules)</td></tr>
+<tr><td>Golden / eval</td><td>≥20 known-answer cases; every optimizer change must still pass · the spine harness</td></tr>
+<tr><td>Integration</td><td>export → return → ingest → optimize wired · pytest</td></tr>
+<tr><td>Dashboard</td><td>Every tab renders, no exception · Streamlit AppTest</td></tr>
+<tr><td>E2E</td><td><code>run_loop.py</code> full chain + one Playwright happy-path (login → loop tab → before/after visible)</td></tr>
+<tr><td>Determinism</td><td>Same seed → identical result hash (Vitalik gate)</td></tr>
+</tbody>
+</table></div>
+
+<h2>End-to-end acceptance scenarios (must pass to call the sprint done)</h2>
+<div class="card">
+<b>E2E-1:</b> Clone clean → <code>python run_loop.py</code> → before/after result written, run-hash printed, second run identical.<br>
+<b>E2E-2:</b> Upload a scrambled-column synthetic CSV → mapper + manual UI → ingests and validates clean.<br>
+<b>E2E-3:</b> Dashboard → Cell Map shows 3 distinct sector wedges per site; headline KPI = attempt-weighted.<br>
+<b>E2E-4:</b> Every synthetic surface shows the SYNTHETIC badge; every recommendation links to its source rows.<br>
+<b>E2E-5 (Vitalik):</b> A stranger follows <code>VERIFY.md</code> and reproduces the demo numbers unaided.
+</div>
+
+<h2>Retrospective template (fill Day 10)</h2>
+<div class="card">
+<b>Keep:</b> ___ · <b>Drop:</b> ___ · <b>Try:</b> ___ · <b>Velocity:</b> committed vs done pts · <b>Carryover (named honestly):</b> ___ · <b>Did TDD hold?</b> tickets that skipped RED → why · <b>Biggest lie we almost shipped:</b> ___ (zero-gaslight review).
+</div>
+
+<h2>Panel verdicts — AFTER (if DoD is met)</h2>
+<div class="card persona after"><h3>Vitalik — after</h3>“One command, deterministic hash, I rebuilt your before/after from a clean clone. Models hashed, seeds fixed. This is honest infrastructure now, not a pitch. Ship it — and keep the VERIFY script in every release.”</div>
+<div class="card persona after"><h3>Loop team — after</h3>“Every ticket had a red test first. PRs stayed under 200 lines. CI never went red on trunk. WIP held at 2. This is how professionals build — do it again next sprint.”</div>
+<div class="card persona after"><h3>Claude founder — after</h3>“Eval harness catches regressions, watermarks are everywhere, limitations are explicit, every recommendation is grounded in data rows. No capability claimed that isn’t demoed live. Approved — and now you have the eval to safely add real data later.”</div>
+<div class="card persona after"><h3>Scrum Master — after</h3>“Committed subset delivered, DoD met on every ‘Done’ card, carryover (Epic 3/5) named honestly, not hidden. Velocity is now a real number to plan Sprint 2 with.”</div>
+<div class="card persona after"><h3>Product Owner — after</h3>“Epic 1 demos live, end-to-end, on synthetic, watermarked and reproducible. That’s the Soumyadeep story: ‘the machine is real and here it runs; your data replaces the synthetic.’ Accepted. Sprint succeeded.”</div>
+
+<div class="foot">
+WINNIIO AB · Sprint 01 plan · TDD · judged by Vitalik-verifiability / loop-team-discipline / Claude-founder-safety + Scrum Master + PO · reproducibility &amp; watermark non-negotiable · 2026-07-05. Committed to repo at <code>docs/planning/</code>.
+</div>
+
+</div>
+</body>
+</html>
