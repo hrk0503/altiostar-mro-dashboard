@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import difflib
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from dataclasses import field as dc_field
 from pathlib import Path
 
 import pandas as pd
@@ -120,9 +121,9 @@ _ALL_ALIASES = list(_REVERSE.keys())
 
 @dataclass
 class ColumnMapping:
-    rename: dict[str, str] = field(default_factory=dict)   # original -> canonical
-    unmapped: list[str] = field(default_factory=list)      # need human mapping
-    fuzzy: dict[str, str] = field(default_factory=dict)    # original -> canonical (low confidence)
+    rename: dict[str, str] = dc_field(default_factory=dict)   # original -> canonical
+    unmapped: list[str] = dc_field(default_factory=list)      # need human mapping
+    fuzzy: dict[str, str] = dc_field(default_factory=dict)    # original -> canonical (low confidence)
 
 
 def map_columns(columns: list[str], fuzzy_cutoff: float = 0.86) -> ColumnMapping:
