@@ -39,7 +39,20 @@ target-version = "py310"
 line-length = 100
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
-ignore = ["E501"]
+# Hard errors kept: all F-codes (unused imports/vars, undefined names) and E722
+# (bare except). Ignored below are accepted house style, not latent bugs:
+ignore = [
+    "E501",  # line length (formatter's job)
+    "E402",  # late imports — intentional (sys.path bootstrap, st.set_page_config first)
+    "E701",  # compact one-line if/return blocks used throughout the dashboard
+    "B007",  # unused loop control vars in enumerate/iterrows loops
+    "B905",  # zip() without strict= (py310 compat)
+    "E741",  # single-letter locals in short numeric scopes
+    "SIM102", "SIM105", "SIM108",  # style-only simplifications
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["F841"]  # tests occasionally bind intermediate values for clarity
 
 [tool.mypy]
 python_version = "3.10"

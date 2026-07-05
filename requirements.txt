@@ -1,6 +1,9 @@
-streamlit
-plotly
-pandas
-numpy
-pyyaml
-pydantic
+# Dashboard runtime deps (Streamlit Community Cloud + local + Docker).
+# Pinned to major.minor for reproducible deploys; verified with AppTest 2026-07-05.
+# Full dev/train deps: requirements-dashboard.txt (hash-pinned) and requirements.in.
+streamlit~=1.57.0
+plotly~=6.7
+pandas~=2.3
+numpy~=2.4
+pyyaml~=6.0
+pydantic~=2.12

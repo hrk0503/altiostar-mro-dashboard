@@ -94,7 +94,7 @@ def main() -> None:
         # Move and update results JSON
         if temp_json_path.exists():
             # Update json file with the new checkpoint path
-            with open(temp_json_path, "r") as f:
+            with open(temp_json_path) as f:
                 json_data = json.load(f)
             
             json_data["training"]["checkpoint_path"] = str(final_model_path)

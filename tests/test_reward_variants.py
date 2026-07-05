@@ -1,5 +1,5 @@
-import sys
 import json
+import sys
 from pathlib import Path
 
 # Add repo root to path so imports work from any location
@@ -7,8 +7,9 @@ repo_root = Path(__file__).resolve().parent.parent
 if str(repo_root) not in sys.path:
     sys.path.insert(0, str(repo_root))
 
-import pandas as pd
 import numpy as np
+import pandas as pd
+
 from src.env.mro_env import MROEnv
 
 
@@ -25,7 +26,7 @@ def run_reward_comparison(num_episodes: int = 3, steps_per_episode: int = 10, sc
     results = []
     
     print(f"\n{'=' * 85}")
-    print(f"  REWARD VARIANT COMPARISON")
+    print("  REWARD VARIANT COMPARISON")
     print(f"  Scenario: {scenario} | Episodes: {num_episodes} | Steps/Episode: {steps_per_episode}")
     print(f"{'=' * 85}\n")
     
@@ -37,9 +38,6 @@ def run_reward_comparison(num_episodes: int = 3, steps_per_episode: int = 10, sc
             env = MROEnv(reward_version=variant, scenario=scenario)
             
             variant_rewards = []
-            variant_success_rates = []
-            variant_failure_rates = []
-            variant_pingpong_metrics = []
             
             # Run multiple episodes
             for ep in range(num_episodes):
@@ -111,7 +109,7 @@ def run_reward_comparison(num_episodes: int = 3, steps_per_episode: int = 10, sc
     df = pd.DataFrame(results)
     
     print(f"\n{'-' * 85}")
-    print(f"  KPI SUMMARY TABLE")
+    print("  KPI SUMMARY TABLE")
     print(f"{'-' * 85}")
     print(df.to_string(index=False))
     print(f"{'-' * 85}\n")
@@ -120,7 +118,7 @@ def run_reward_comparison(num_episodes: int = 3, steps_per_episode: int = 10, sc
     if all(r["Avg Reward"] != "N/A" for r in results):
         normalized = [r for r in results if r["Variant"] != "V0"]
         best_variant = max(normalized, key=lambda x: float(x["Avg Reward"]))
-        print(f"  Note: V0 excluded from ranking (count-based, ~40x scale vs v1-v3)")
+        print("  Note: V0 excluded from ranking (count-based, ~40x scale vs v1-v3)")
         print(f"  Best Performer (v1-v3): {best_variant['Variant']} (avg reward: {best_variant['Avg Reward']})")
     
 

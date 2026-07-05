@@ -1,11 +1,8 @@
 from __future__ import annotations
 
 import json
-import shutil
 from pathlib import Path
 from unittest.mock import patch
-
-import pytest
 
 from scripts.run_seeded_experiments import main
 
@@ -81,6 +78,6 @@ def test_run_seeded_experiments_workflow(tmp_path, monkeypatch):
         assert expected_model.exists()
         
         # Verify JSON content was updated with the new checkpoint path
-        with open(expected_json, "r") as f:
+        with open(expected_json) as f:
             data = json.load(f)
             assert Path(data["training"]["checkpoint_path"]).resolve() == expected_model.resolve()

@@ -115,7 +115,7 @@ def generate_cluster(
 
     # ========== 2. neighbor_relations.csv ==========
     neighbors = []
-    cell_map = {c["cell_id"]: c for c in sites}
+    {c["cell_id"]: c for c in sites}
 
     for cell in sites:
         candidates = sorted(
@@ -189,7 +189,7 @@ def generate_cluster(
                     load = 0.9
                 elif 16 <= hour <= 20:
                     load = 1.2 + 0.2 * math.sin(math.pi * (hour - 16) / 4)
-                elif 22 <= hour or hour <= 5:
+                elif hour >= 22 or hour <= 5:
                     load = 0.15
 
                 ts_str = ts.strftime("%Y-%m-%d %H:%M:%S")

@@ -21,7 +21,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
-import yaml
 
 # Add project root to path
 ROOT = Path(__file__).resolve().parent.parent
@@ -210,7 +209,7 @@ def main():
 
     # Show top 10 improvements
     improvements.sort(key=lambda x: x["improvement"], reverse=True)
-    print(f"\n  Top 10 improvements:")
+    print("\n  Top 10 improvements:")
     for imp in improvements[:10]:
         print(f"    {imp['relation']}: {imp['current_success']:.1f}% -> {imp['optimal_success']:.1f}% "
               f"(+{imp['improvement']:.1f}%, CIO: {imp['initial_cio']:.0f} -> {imp['optimal_cio']:.0f})")
@@ -221,7 +220,7 @@ def main():
     eval_result = evaluate_with_optimal_cios(env, optimal_cios, n_episodes=args.eval_episodes, seed=args.seed)
 
     print(f"\n{'='*60}")
-    print(f"OPTIMIZED RESULTS:")
+    print("OPTIMIZED RESULTS:")
     print(f"  HO Success:  {eval_result['ho_success_rate']:.2f}%")
     print(f"  HO Failure:  {eval_result['ho_failure_rate']:.2f}%")
     print(f"  Ping-Pong:   {eval_result['pingpong_rate']:.2f}%")

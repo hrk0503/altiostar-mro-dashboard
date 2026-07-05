@@ -1,0 +1,17 @@
+.git
+.github
+.venv
+venv
+__pycache__
+*.pyc
+mlruns
+mlflow.db
+data/extra_geo
+*.ipynb
+node_modules
+frontend
+.streamlit/secrets.toml
+docs
+tests
+.pytest_cache
+.ruff_cache

@@ -99,7 +99,7 @@ def modulate_row(
     orig_late = int(row["too_late_ho"])
     orig_wrong = int(row["wrong_cell"])
     orig_ping = int(row["ping_pong"])
-    orig_succ = int(row["ho_successes"])
+    int(row["ho_successes"])
 
     # If original failures are 0, create some based on attempts
     base_fail_rate = orig_fail / att if att > 0 else 0.05

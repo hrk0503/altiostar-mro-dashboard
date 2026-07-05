@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [staging, main]
+    paths:
+      - "src/**"
+      - "scripts/**"
+      - "tests/**"
+      - "backend/**"
+      - "run_experiment.py"
+      - "configs/**"
+      - "requirements*.txt"
+      - "requirements*.in"
+      - "pyproject.toml"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    branches: [staging, main]
+    paths:
+      - "src/**"
+      - "scripts/**"
+      - "tests/**"
+      - "backend/**"
+      - "run_experiment.py"
+      - "configs/**"
+      - "requirements*.txt"
+      - "requirements*.in"
+      - "pyproject.toml"
+      - ".github/workflows/ci.yml"
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install ruff
+        run: pip install ruff
+      - name: Ruff check
+        run: ruff check src scripts tests run_experiment.py
+
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install deps
+        run: |
+          pip install -r requirements.txt
+          pip install pytest hypothesis
+      - name: Run tests
+        run: python -m pytest tests/ -q

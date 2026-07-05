@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import typing
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import gymnasium as gym
 import numpy as np
@@ -10,12 +10,12 @@ import pandas as pd
 import yaml
 from gymnasium import spaces
 
-_RELATION_GROUPS_CACHE: Dict[int, Any] = {}
-_ALL_RELATIONS_CACHE: Dict[int, Any] = {}
-_DF_CACHE: Dict[str, pd.DataFrame] = {}
+_RELATION_GROUPS_CACHE: dict[int, Any] = {}
+_ALL_RELATIONS_CACHE: dict[int, Any] = {}
+_DF_CACHE: dict[str, pd.DataFrame] = {}
 
 # Default reward weights — used when no YAML config is provided
-_DEFAULT_REWARD_WEIGHTS: Dict[str, float] = {
+_DEFAULT_REWARD_WEIGHTS: dict[str, float] = {
     "ho_success": 1.0,
     "ho_failure": -5.0,
     "ping_pong": -2.0,
@@ -25,7 +25,7 @@ _DEFAULT_REWARD_WEIGHTS: Dict[str, float] = {
 }
 
 
-def load_reward_config(config_path: Optional[str] = None) -> Dict[str, Any]:
+def load_reward_config(config_path: str | None = None) -> dict[str, Any]:
     """Load reward configuration from YAML file.
 
     Returns a dict with keys: version, weights.
@@ -77,24 +77,24 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
 
     def __init__(
         self,
-        pm_data_path: Optional[Union[str, pd.DataFrame]] = None,
-        kpi_path: Optional[Union[str, pd.DataFrame]] = None,
-        cell_id: Optional[str] = None,
-        reward_version: Optional[str] = None,
-        reward_config_path: Optional[str] = None,
-        scenario: Optional[Union[str, Dict[str, Any]]] = None,
-        scenario_seed: Optional[int] = None,
-        scenario_config: Optional[Dict[str, Any]] = None,
+        pm_data_path: str | pd.DataFrame | None = None,
+        kpi_path: str | pd.DataFrame | None = None,
+        cell_id: str | None = None,
+        reward_version: str | None = None,
+        reward_config_path: str | None = None,
+        scenario: str | dict[str, Any] | None = None,
+        scenario_seed: int | None = None,
+        scenario_config: dict[str, Any] | None = None,
     ):
         super().__init__()
 
         # ── Reward configuration ──
         reward_cfg = load_reward_config(reward_config_path)
         self.reward_version: str = reward_version or reward_cfg["version"]
-        self.reward_weights: Dict[str, float] = reward_cfg["weights"]
+        self.reward_weights: dict[str, float] = reward_cfg["weights"]
 
         # ── Scenario configuration ──
-        self._failed_sites_list: List[str] = []
+        self._failed_sites_list: list[str] = []
         if scenario_config is not None:
             self._scenario_config = scenario_config
             self.scenario_name = scenario_config.get("name", "custom_scenario")
@@ -110,7 +110,7 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
             self._scenario_config = {"name": "baseline", "description": "No modifications"}
             self.scenario_name = "baseline"
 
-        self._scenario_seed: Optional[int] = scenario_seed
+        self._scenario_seed: int | None = scenario_seed
 
         base_dir = Path(__file__).resolve().parents[2]
         if pm_data_path is None:
@@ -191,7 +191,7 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
 
             self.n_steps = len(self.pm_data_raw) // len(all_relations) if len(all_relations) > 0 else 0
             self.current_step = 0
-            self.episode_history: List[Dict[str, Any]] = []
+            self.episode_history: list[dict[str, Any]] = []
 
             # Observation matrix shape (n_relations, 9)
             low_rel = np.full((self.n_relations, 9), -1000.0, dtype=np.float32)
@@ -476,9 +476,9 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
     def reset(
         self,
         *,
-        seed: Optional[int] = None,
-        options: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[np.ndarray, Dict[str, Any]]:
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[np.ndarray, dict[str, Any]]:
         super().reset(seed=seed)
         self.episode_history = []
 
@@ -548,7 +548,7 @@ class MROEnv(gym.Env[typing.Any, typing.Any]):
 
     def step(
         self, action: Any
-    ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
+    ) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
         if self.mode == "relation":
             next_state = np.zeros((self.n_relations, 9), dtype=np.float32)
             total_successes = 0

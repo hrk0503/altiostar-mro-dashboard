@@ -2,21 +2,20 @@
 """
 from __future__ import annotations
 
-import sys
 import subprocess
+import sys
 from pathlib import Path
 
 # Programmatically check and install python-pptx if missing
 try:
-    import pptx
+    import pptx  # noqa: F401  (availability probe)
 except ImportError:
     print("python-pptx is not installed. Installing it via pip...")
     subprocess.check_call([sys.executable, "-m", "pip", "install", "python-pptx"])
-    import pptx
 
 from pptx import Presentation
-from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
+from pptx.util import Inches, Pt
 
 
 def create_presentation() -> None:
@@ -24,7 +23,7 @@ def create_presentation() -> None:
     
     # Define color scheme
     color_bg = RGBColor(11, 15, 25)        # Dark Blue
-    color_card = RGBColor(17, 24, 39)       # Card BG
+    RGBColor(17, 24, 39)       # Card BG
     color_text = RGBColor(243, 244, 246)    # Off-white
     color_sub = RGBColor(156, 163, 175)     # Gray text
     color_primary = RGBColor(56, 189, 248)  # Light Blue Accent

@@ -5,16 +5,16 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-from pathlib import Path
 import sys
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import mlflow
 import numpy as np
 import pandas as pd
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
-import mlflow
 
 from src.env.mro_env import MROEnv
 
@@ -88,8 +88,9 @@ def run_training(timesteps: int, seed: int, device: str) -> None:
         )
 
         if env.mode == "relation":
-            from scripts.optimize_cio import find_optimal_cios
             import torch
+
+            from scripts.optimize_cio import find_optimal_cios
             env.reset(seed=seed)
             opt_res = find_optimal_cios(env)
             optimal_cios = opt_res["optimal_cios"]
