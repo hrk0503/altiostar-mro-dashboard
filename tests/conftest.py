@@ -15,6 +15,17 @@ from src.pipeline.models import (
 )
 
 
+def pytest_configure(config):
+    """CI-hardening (DD P1): the relation-level PM CSV is gitignored (142MB), so a
+    clean clone lacks it and data-dependent tests either error or skip. Regenerate
+    it deterministically (seed=42, derived from committed CSVs) BEFORE collection so
+    those tests actually RUN instead of being silently gated. No-op if present."""
+    rel = DATA_DIR / "pm_data_relation_level.csv"
+    if not rel.exists():
+        from scripts.generate_relation_pm import main as _gen_relation_pm
+        _gen_relation_pm()
+
+
 @pytest.fixture
 def data_dir() -> Path:
     return DATA_DIR
