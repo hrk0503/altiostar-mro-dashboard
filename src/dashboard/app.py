@@ -9,7 +9,7 @@ Usage:
 
 from __future__ import annotations
 
-import base64, json, math, sys, time
+import base64, json, math, os, sys, time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -425,6 +425,20 @@ RDIR = ROOT / "results"
 DDIR = ROOT / "data" / "synthetic"
 EXTRA_GEO = ROOT / "data" / "extra_geo"
 
+# ── Deployment profile (config-driven — no hardcoded verticals) ─────
+# Select via WINNIIO_DASH_PROFILE env var (path to a profile JSON) or the
+# default configs/dashboard_profile.json. Controls which geographies are
+# exposed and the sidebar subtitle. See configs/dashboard_profile_all.json
+# for the unrestricted internal view.
+_PROFILE = {"name": "all", "subtitle": "MRO Optimization Platform", "geographies": None}
+_PROFILE_PATH = Path(os.environ.get("WINNIIO_DASH_PROFILE",
+                                    ROOT / "configs" / "dashboard_profile.json"))
+if _PROFILE_PATH.exists():
+    try:
+        _PROFILE.update(json.loads(_PROFILE_PATH.read_text()))
+    except Exception:
+        pass
+
 _DATASETS = {"Shibuya, Tokyo (LTE)": None}
 if EXTRA_GEO.exists():
     _GEO_LABELS = {
@@ -433,6 +447,9 @@ if EXTRA_GEO.exists():
         "japan_rural": "Rural Nagano (Mountain · NEC)",
         "tokyo": "Downtown Tokyo (Coastal · TDD)",
     }
+    _allowed_geos = _PROFILE.get("geographies")
+    if _allowed_geos is not None:
+        _GEO_LABELS = {k: v for k, v in _GEO_LABELS.items() if k in _allowed_geos}
     for city, label in _GEO_LABELS.items():
         for season in ["spring", "summer", "autumn", "winter"]:
             d = EXTRA_GEO / f"{city}_{season}"
@@ -478,6 +495,37 @@ def ld_rel(ddir=None):
     p = Path(ddir) if ddir else DDIR
     rel_file = p / "neighbor_relations.csv"
     return pd.read_csv(rel_file)
+
+@st.cache_data(ttl=600)
+def ld_relpm(ddir=None):
+    """Relation-level PM aggregated per source→target pair, attempt-weighted."""
+    p = Path(ddir) if ddir else DDIR
+    f = p / "pm_data_relation_level.csv"
+    if not f.exists():
+        return None
+    df = pd.read_csv(f)
+    agg = df.groupby(["source_cell_id", "target_cell_id"]).agg(
+        ho_att=("ho_attempts", "sum"),
+        ho_suc=("ho_successes", "sum"),
+        pp=("ping_pong", "sum"),
+        cio=("cio_db", "last"),
+    ).reset_index()
+    agg["success_pct"] = np.where(agg["ho_att"] > 0, agg["ho_suc"] / agg["ho_att"] * 100, np.nan)
+    return agg
+
+@st.cache_data(ttl=600)
+def ld_cio_export(geo_name=None):
+    """Optimizer CIO export (before/after per relation). Returns None if the
+    file is missing or fails the integrity check (baseline column unpopulated
+    — known issue on some multi-geo exports)."""
+    fname = f"{geo_name}_cio_changes.csv" if geo_name else "shibuya_cio_changes.csv"
+    f = RDIR / "cio_exports" / fname
+    if not f.exists():
+        return None
+    df = pd.read_csv(f)
+    if "before_success_%" not in df.columns or not (df["before_success_%"] > 0).any():
+        return None
+    return df
 @st.cache_data(ttl=600)
 def ld_exp(geo_name=None):
     exps = []
@@ -616,7 +664,7 @@ with st.sidebar:
         f'{crane_tag}'
         f'<div>'
         f'<div style="font-size:1.1rem; font-weight:700; color:#E2E8F0 !important; letter-spacing:.5px; line-height:1.2;">WINNIIO</div>'
-        f'<div style="font-size:.6rem; color:#64748B !important; letter-spacing:.1em;">MRO Optimization Platform</div>'
+        f'<div style="font-size:.6rem; color:#64748B !important; letter-spacing:.1em;">{_PROFILE.get("subtitle", "MRO Optimization Platform")}</div>'
         f'</div></div>', unsafe_allow_html=True)
 
     st.divider()
@@ -1335,12 +1383,38 @@ elif page == "Cell Map":
                 f'<span style="font-weight:600;color:{color};font-family:JetBrains Mono,monospace;">{val}</span>'
                 f'</div>', unsafe_allow_html=True)
 
-        cr = rels[rels["serving_cell"] == pk]
-        if len(cr) > 0:
-            st.markdown(f'<div style="font-size:.78rem;color:{TEXT_MUTED};margin-top:8px;padding:0 16px;">{len(cr)} neighbor relations</div>', unsafe_allow_html=True)
-            st.dataframe(
-                cr[["neighbor_cell", "distance_m", "cell_individual_offset_dB"]].head(8),
-                use_container_width=True, hide_index=True)
+        # ── Relation-level drill-down (source→target, attempt-weighted) ──
+        relpm = ld_relpm(str(_ds_dir) if _ds_dir else None)
+        cioex = ld_cio_export(_geo_name)
+        if relpm is not None:
+            crx = relpm[relpm["source_cell_id"] == pk].copy()
+            if len(crx) > 0:
+                st.markdown(
+                    f'<div style="font-size:.78rem;color:{TEXT_MUTED};margin-top:8px;padding:0 16px;">'
+                    f'{len(crx)} relations · attempt-weighted, relation level (source→target)</div>',
+                    unsafe_allow_html=True)
+                show = crx[["target_cell_id", "ho_att", "success_pct", "cio"]].rename(columns={
+                    "target_cell_id": "Target", "ho_att": "Attempts",
+                    "success_pct": "Success %", "cio": "CIO dB"})
+                if cioex is not None:
+                    opt = cioex[cioex["source_cell"] == pk][
+                        ["target_cell", "optimized_cio_dB", "after_success_%"]].rename(columns={
+                            "target_cell": "Target", "optimized_cio_dB": "Optimized CIO",
+                            "after_success_%": "After %"})
+                    show = show.merge(opt, on="Target", how="left")
+                _fmts = {c: f for c, f in {
+                    "Success %": "{:.2f}", "After %": "{:.2f}",
+                    "CIO dB": "{:.1f}", "Optimized CIO": "{:.1f}"}.items() if c in show.columns}
+                st.dataframe(
+                    show.sort_values("Success %").style.format(_fmts, na_rep="—"),
+                    use_container_width=True, hide_index=True, height=300)
+        else:
+            cr = rels[rels["serving_cell"] == pk]
+            if len(cr) > 0:
+                st.markdown(f'<div style="font-size:.78rem;color:{TEXT_MUTED};margin-top:8px;padding:0 16px;">{len(cr)} neighbor relations</div>', unsafe_allow_html=True)
+                st.dataframe(
+                    cr[["neighbor_cell", "distance_m", "cell_individual_offset_dB"]].head(8),
+                    use_container_width=True, hide_index=True)
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -1950,8 +2024,110 @@ elif page == "Reports":
         sel_s = st.multiselect("Scenarios", asc, default=asc, key="rs")
     filt = cdf[cdf["Variant"].isin(sel_v) & cdf["Scenario"].isin(sel_s)]
 
-    tab_delta, tab_rec, tab_export, tab_gate = st.tabs([
-        "KPI Delta Table", "Recommendations", "Export Data", "Gate G4 Checklist"])
+    tab_cio, tab_delta, tab_rec, tab_export, tab_gate = st.tabs([
+        "CIO Explainability", "KPI Delta Table", "Recommendations", "Export Data", "Gate G4 Checklist"])
+
+    with tab_cio:
+        sec("CIO Explainability — What Took the Cluster from 79% to 99.99%")
+        _rb_path = RDIR / "random_baseline.json"
+        _v2_path = RDIR / "experiment_v2_baseline.json"
+        if _is_geo:
+            st.info("The explainability report covers the Shibuya cluster (primary trained dataset). "
+                    "Switch the dataset selector to Shibuya, Tokyo (LTE).")
+        elif not (_rb_path.exists() and _v2_path.exists()):
+            st.warning("Baseline or training artifacts missing (random_baseline.json / experiment_v2_baseline.json).")
+        else:
+            _rb = json.loads(_rb_path.read_text())
+            _v2 = json.loads(_v2_path.read_text())
+            _ev = _v2.get("evaluation", {})
+            _before = _rb.get("cluster_ho_success_rate_pct", 0.0)
+            _after = _ev.get("ho_success_rate", 0.0)
+            _cioex_sh = ld_cio_export(None)
+            _changed = _cioex_sh[_cioex_sh["cio_delta_dB"].abs() > 1e-3].copy() if _cioex_sh is not None else pd.DataFrame()
+
+            k1, k2, k3 = st.columns(3)
+            for col, lbl, val, clr in [
+                (k1, "Baseline (random policy, seed 42)", f"{_before:.2f}%", RED),
+                (k2, "After PPO training (reward v2)", f"{_after:.2f}%", GREEN),
+                (k3, "Improvement", f"+{_after - _before:.2f} pp", PRIMARY),
+            ]:
+                with col:
+                    st.markdown(
+                        f'<div class="kpi" style="text-align:center;">'
+                        f'<div style="font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:{TEXT_SEC};margin-bottom:8px;">{lbl}</div>'
+                        f'<div style="font-size:1.6rem;font-weight:800;color:{clr};font-family:JetBrains Mono,monospace;">{val}</div>'
+                        f'</div>', unsafe_allow_html=True)
+
+            sec("Failure-Mode Breakdown — Before vs After")
+            _fm = pd.DataFrame([
+                {"Metric": "HO Failure %", "Before (random)": _rb.get("cluster_ho_failure_rate_pct"), "After (PPO v2)": _ev.get("ho_failure_rate")},
+                {"Metric": "Ping-Pong %", "Before (random)": _rb.get("cluster_pingpong_rate_pct"), "After (PPO v2)": _ev.get("pingpong_rate")},
+                {"Metric": "Too-Early %", "Before (random)": None, "After (PPO v2)": _ev.get("too_early_rate")},
+                {"Metric": "Too-Late %", "Before (random)": None, "After (PPO v2)": _ev.get("too_late_rate")},
+                {"Metric": "Wrong-Cell %", "Before (random)": None, "After (PPO v2)": _ev.get("wrong_cell_rate")},
+            ])
+            st.dataframe(_fm.style.format({"Before (random)": "{:.4f}", "After (PPO v2)": "{:.4f}"}, na_rep="—"),
+                         use_container_width=True, hide_index=True)
+
+            if len(_changed) > 0:
+                sec(f"The CIO Moves — {len(_changed)} of {len(_cioex_sh)} Relations Changed (±1–2 dB)")
+                _fig = go.Figure()
+                _lbls = _changed["source_cell"] + " → " + _changed["target_cell"]
+                _fig.add_trace(go.Bar(name="Before", x=_lbls, y=_changed["before_success_%"], marker_color=RED))
+                _fig.add_trace(go.Bar(name="After", x=_lbls, y=_changed["after_success_%"], marker_color=GREEN))
+                _fig.update_layout(barmode="group", height=380, paper_bgcolor=CARD, plot_bgcolor=CARD,
+                                   margin=dict(l=10, r=10, t=20, b=10),
+                                   yaxis=dict(title="HO Success %", range=[75, 100]),
+                                   legend=dict(orientation="h", y=1.1))
+                st.plotly_chart(_fig, use_container_width=True)
+                st.dataframe(
+                    _changed[["source_cell", "target_cell", "initial_cio_dB", "optimized_cio_dB",
+                              "cio_delta_dB", "before_success_%", "after_success_%", "improvement_%", "action"]],
+                    use_container_width=True, hide_index=True, height=300)
+
+            _curve = _v2.get("training", {}).get("episode_rewards", [])
+            if _curve:
+                sec("Training Convergence (PPO, reward v2)")
+                _cf = go.Figure(go.Scatter(y=_curve, mode="lines", line=dict(color=PRIMARY, width=2)))
+                _cf.update_layout(height=280, paper_bgcolor=CARD, plot_bgcolor=CARD,
+                                  margin=dict(l=10, r=10, t=10, b=10),
+                                  xaxis=dict(title="Episode"), yaxis=dict(title="Episode Reward"))
+                st.plotly_chart(_cf, use_container_width=True)
+
+            st.markdown(
+                f'<div style="font-size:.75rem;color:{TEXT_MUTED};line-height:1.7;padding:8px 4px;">'
+                f'<b>Methodology.</b> Cluster figures are environment-level Handover Success Rate over full '
+                f'evaluation episodes ({_ev.get("n_episodes", "—")} episodes) on the synthetic Shibuya cluster '
+                f'(75 cells, 763 relations, exact Rakuten PM schema). Per-relation before/after comes from the '
+                f'optimizer CIO export. The agent tunes CIO per source→target relation in a ±2 dB action space; '
+                f'relations it left unchanged are shown unchanged. Synthetic data — real-cluster calibration '
+                f'pending Rakuten sample data under NDA.</div>', unsafe_allow_html=True)
+
+            _rpt = io.StringIO()
+            _rpt.write(f"""<!doctype html><html><head><meta charset="utf-8"><title>WINNIIO — CIO Explainability Report</title>
+<style>body{{font-family:Segoe UI,Arial,sans-serif;max-width:900px;margin:40px auto;color:#1a202c;padding:0 20px}}
+h1{{font-size:1.5rem}} h2{{font-size:1.1rem;margin-top:2em;border-bottom:1px solid #e2e8f0;padding-bottom:4px}}
+table{{border-collapse:collapse;width:100%;font-size:.85rem}} td,th{{border:1px solid #e2e8f0;padding:6px 10px;text-align:right}}
+th{{background:#f7fafc}} td:first-child,th:first-child{{text-align:left}}
+.big{{font-size:2rem;font-weight:800}} .red{{color:#e53e3e}} .green{{color:#38a169}}
+.note{{font-size:.8rem;color:#718096;margin-top:2em}}</style></head><body>
+<h1>CIO Explainability Report — Shibuya MRO Cluster</h1>
+<p>Generated {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")} · WINNIIO MRO Optimization Platform</p>
+<h2>Headline</h2>
+<p><span class="big red">{_before:.2f}%</span> → <span class="big green">{_after:.2f}%</span> Handover Success Rate
+(random-policy baseline → PPO-trained agent, reward v2, +{_after - _before:.2f} pp)</p>
+<h2>Failure-mode breakdown</h2>
+{_fm.to_html(index=False, na_rep="—", float_format=lambda x: f"{x:.4f}")}
+<h2>CIO changes applied ({len(_changed)} of {len(_cioex_sh) if _cioex_sh is not None else 0} relations)</h2>
+{_changed.to_html(index=False) if len(_changed) > 0 else "<p>No export available.</p>"}
+<p class="note"><b>Methodology.</b> Environment-level HOSR over {_ev.get("n_episodes", "—")} evaluation episodes on the
+synthetic Shibuya cluster (75 cells / 763 relations, Rakuten PM schema: 15-min ROP, relation-level counters).
+CIO tuned per source→target relation, ±2 dB action space, PPO (Stable-Baselines3) with Optuna hyperparameter search.
+Synthetic data — real-cluster calibration pending sample data under NDA.</p>
+</body></html>""")
+            st.download_button("⬇ Download Explainability Report (HTML)", _rpt.getvalue(),
+                               "WINNIIO_CIO_Explainability_Report.html", "text/html",
+                               use_container_width=False)
 
     with tab_delta:
         sec("KPI Delta — vs v0 Baseline")
