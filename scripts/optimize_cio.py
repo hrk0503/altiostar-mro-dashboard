@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -196,7 +197,9 @@ def main():
 
     # Find optimal CIOs
     print("\nSearching for optimal CIO per relation ...")
+    _t0 = time.time()
     result = find_optimal_cios(env)
+    _search_time_s = round(time.time() - _t0, 2)
     optimal_cios = result["optimal_cios"]
     improvements = result["improvements"]
 
@@ -234,19 +237,18 @@ def main():
         "scenario": args.scenario,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "config": {
-            "total_timesteps": 100000,
+            # HONEST: this is exhaustive per-relation CIO search, NOT PPO/RL.
+            # See docs/METHODOLOGY.md. No timesteps — nothing is trained here.
             "eval_episodes": args.eval_episodes,
             "seed": args.seed,
-            "algorithm": "PPO",
-            "policy": "MlpPolicy",
-            "optimization": "greedy_cio_search + PPO_100k",
+            "algorithm": "greedy_cio_search",
+            "optimization": "exhaustive per-relation CIO search over PM data",
         },
         "training": {
-            "time_s": 446.07,
-            "episode_rewards": [-119487.69, -114552.61, -111107.24, -107424.61,
-                                -104433.78, -101861.77, -100031.24, -97588.52],
-            "checkpoint_path": "checkpoints/ppo_v2_baseline.zip",
-            "cio_optimization": "greedy_search",
+            # No RL training occurs; these fields describe the search, honestly.
+            "method": "greedy_cio_search",
+            "search_time_s": _search_time_s,
+            "episode_rewards": [],  # no training curve exists for a search
             "relations_improved": len(non_zero),
             "mean_improvement_pct": round(float(np.mean(deltas)), 2),
         },

@@ -1553,13 +1553,18 @@ elif page == "Experiments":
                     tmeta = e.get("training", {})
                     cfg = e.get("config", {})
                     vcl = V_COLORS.get(v, PRIMARY)
-                    ts = cfg.get("total_timesteps", "?")
-                    tt = tmeta.get("time_s", "?")
+                    # Honest display: greedy CIO search records have no timesteps.
+                    method = tmeta.get("method") or cfg.get("algorithm", "?")
+                    tt = tmeta.get("search_time_s", tmeta.get("time_s", "?"))
                     n_eps = len(tmeta.get("episode_rewards", []))
+                    if "total_timesteps" in cfg:
+                        detail = f'{cfg["total_timesteps"]:,} steps · {n_eps} eps · {tt}s'
+                    else:
+                        detail = f'{method} · {tt}s'
                     st.markdown(
                         f'<div class="trow">'
                         f'<span style="color:{vcl};font-weight:700;font-family:JetBrains Mono,monospace;">{v}</span>'
-                        f'<span style="font-size:.78rem;color:{TEXT_SEC};">{ts:,} steps · {n_eps} eps · {tt}s</span>'
+                        f'<span style="font-size:.78rem;color:{TEXT_SEC};">{detail}</span>'
                         f'</div>', unsafe_allow_html=True)
 
         _baseline_path = ROOT / "results" / "random_baseline.json"
