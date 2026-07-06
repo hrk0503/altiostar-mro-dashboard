@@ -29,11 +29,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-# user_type -> (speed km/h mean, speed jitter, path straightness 0..1, count)
+# user_type -> (speed km/h mean, speed jitter, path straightness 0..1, count,
+#               ue_height_agl_m). Heights per 3GPP TR 38.901 outdoor UT = 1.5 m
+# (train occupant slightly higher). AGL, not absolute — add the DEM surface.
 PROFILES = {
-    "pedestrian": (4.5, 1.0, 0.35, 10),
-    "car":        (38.0, 10.0, 0.85, 8),
-    "train":      (75.0, 8.0, 0.98, 3),
+    "pedestrian": (4.5, 1.0, 0.35, 10, 1.5),
+    "car":        (38.0, 10.0, 0.85, 8, 1.5),
+    "train":      (75.0, 8.0, 0.98, 3, 2.0),
 }
 _M_PER_DEG = 111_320.0
 SAMPLE_S = 1          # 1 Hz
@@ -61,7 +63,7 @@ def generate(data_dir: Path, out_dir: Path) -> dict:
 
     rows, features = [], []
     uid = 0
-    for utype, (spd_mean, spd_jit, straight, n) in PROFILES.items():
+    for utype, (spd_mean, spd_jit, straight, n, height_agl) in PROFILES.items():
         for _ in range(n):
             uid += 1
             ue = f"UE-{utype[:3].upper()}-{uid:03d}"
@@ -89,6 +91,8 @@ def generate(data_dir: Path, out_dir: Path) -> dict:
                     "ue_id": ue, "user_type": utype, "t_s": t,
                     "timestamp_utc": ts.strftime("%Y-%m-%d %H:%M:%S"),
                     "lat": round(lat, 6), "lon": round(lon, 6),
+                    "ue_height_agl_m": height_agl,   # AGL, add DEM for absolute
+                    "env": "outdoor",                # all outdoor; no O2I modelled
                     "speed_kmh": round(spd, 1), "heading_deg": round(heading % 360, 1),
                     "serving_cell": cell, "handover": ho,
                 })
@@ -116,7 +120,14 @@ def generate(data_dir: Path, out_dir: Path) -> dict:
         "rows": int(len(df)),
         "sample_hz": 1, "duration_s": DURATION_S,
         "handovers": int(df["handover"].sum()),
+        "crs": "WGS84 (EPSG:4326); ue_height_agl_m is Above-Ground-Level, add your DEM",
         "matches": "same Shibuya site geometry as the counterfactual package",
+        "caveats": [
+            "height is AGL (1.5 m ped/car, 2.0 m train per 3GPP TR 38.901), not absolute",
+            "all UEs outdoor — no outdoor-to-indoor (O2I) penetration modelled",
+            "paths are free-space random walks, NOT map-matched to roads/rails",
+            "1 Hz sampling is coarse for fast UEs (train ~21 m/sample) — tune if needed",
+        ],
     }
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
     return manifest
