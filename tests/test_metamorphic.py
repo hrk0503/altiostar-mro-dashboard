@@ -20,9 +20,11 @@ _cios = st.lists(
 
 @given(_cios)
 def test_mr_output_is_max_success(options):
-    space = {("S", "T"): {c: s for c, s in options}}
-    df = optimize(space)
-    assert abs(df.iloc[0]["after_success_%"] - round(max(s for _, s in options), 2)) < 0.011
+    # Build the dict first and compare against ITS values (optimize sees the dict,
+    # not the raw list) — near-equal float cios can collide as dict keys.
+    opts = {c: s for c, s in options}
+    df = optimize({("S", "T"): opts})
+    assert df.iloc[0]["after_success_%"] == round(max(opts.values()), 2)
 
 
 @given(_cios)
