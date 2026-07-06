@@ -383,8 +383,13 @@ st.markdown(f"""
     box-shadow: {SHADOW};
   }}
 
-  /* === TOP NAV CHIPS === */
-  .topnav-chip {{
+  /* === TOP BAR STATUS LABEL ===
+     Non-interactive status indicator only (no backend behind it — never
+     give this hover/pointer affordance, or it reads as a dead button
+     again). The three actionable chips (Anomaly Scan / Health Check /
+     Quick Export) are real st.button widgets styled via .stButton below,
+     not this class. See tests/test_no_dead_controls.py. */
+  .status-label {{
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -396,12 +401,6 @@ st.markdown(f"""
     border: 1px solid {BORDER};
     color: {TEXT_SEC};
     cursor: default;
-    transition: all .15s;
-  }}
-  .topnav-chip:hover {{
-    border-color: {PRIMARY};
-    color: {PRIMARY};
-    box-shadow: 0 2px 8px rgba(0,150,170,.1);
   }}
 
   /* === BUTTON === */
@@ -748,6 +747,16 @@ def sec(title):
 # ══════════════════════════════════════════════════════════════════════
 # TOP BAR
 # ══════════════════════════════════════════════════════════════════════
+# Panel-toggle state — initialized before the header so the top-bar chip
+# buttons below can flip it (QA hardening: chips are now real controls,
+# not decorative spans — see tests/test_no_dead_controls.py).
+if "show_anomaly" not in st.session_state:
+    st.session_state.show_anomaly = False
+if "show_health" not in st.session_state:
+    st.session_state.show_health = False
+if "show_quick_export" not in st.session_state:
+    st.session_state.show_quick_export = False
+
 now_utc = datetime.now(timezone.utc)
 now_jst = now_utc + timedelta(hours=9)
 
@@ -777,13 +786,23 @@ with tc1:
         f'<div class="page-subtitle">{_ds_choice.split("—")[0].strip()} · {n_total} Cells · {len(rels)} Relations</div>',
         unsafe_allow_html=True)
 with tc2:
-    st.markdown(
-        '<div style="display:flex; align-items:center; justify-content:flex-end; gap:6px; flex-wrap:wrap; padding-top:2px;">'
-        '<span class="topnav-chip" id="chip-live"><span class="live-dot"></span>Live Monitor</span>'
-        '<span class="topnav-chip" id="chip-anomaly">🔍 Anomaly Scan</span>'
-        '<span class="topnav-chip" id="chip-health">💊 Health Check</span>'
-        '<span class="topnav-chip" id="chip-export">📤 Quick Export</span>'
-        '</div>', unsafe_allow_html=True)
+    chip_live, chip_a, chip_h, chip_e = st.columns([1.3, 1, 1, 1.1])
+    with chip_live:
+        # Honest status label — no backend behind this, so it is NOT styled
+        # or wired as a button (QA hardening, see .status-label CSS below).
+        st.markdown(
+            '<div style="display:flex; align-items:center; height:38px;">'
+            '<span class="status-label"><span class="live-dot"></span>Live Monitor</span>'
+            '</div>', unsafe_allow_html=True)
+    with chip_a:
+        if st.button("🔍 Anomaly Scan", use_container_width=True, key="btn_anomaly"):
+            st.session_state.show_anomaly = not st.session_state.show_anomaly
+    with chip_h:
+        if st.button("💊 Health Check", use_container_width=True, key="btn_health"):
+            st.session_state.show_health = not st.session_state.show_health
+    with chip_e:
+        if st.button("📤 Quick Export", use_container_width=True, key="btn_export"):
+            st.session_state.show_quick_export = not st.session_state.show_quick_export
     # Real-time clock — JS ticking, auto-detects user timezone
     components.html(f"""
     <div id="live-clock" style="
@@ -815,23 +834,10 @@ with tc2:
     </script>
     """, height=34)
 
-if "show_anomaly" not in st.session_state:
-    st.session_state.show_anomaly = False
-if "show_health" not in st.session_state:
-    st.session_state.show_health = False
-if "show_quick_export" not in st.session_state:
-    st.session_state.show_quick_export = False
-
-qa1, qa2, qa3 = st.columns(3)
-with qa1:
-    if st.button("🔍 Run Anomaly Scan", use_container_width=True, key="btn_anomaly"):
-        st.session_state.show_anomaly = not st.session_state.show_anomaly
-with qa2:
-    if st.button("💊 Network Health Check", use_container_width=True, key="btn_health"):
-        st.session_state.show_health = not st.session_state.show_health
-with qa3:
-    if st.button("📤 Quick Export All", use_container_width=True, key="btn_export"):
-        st.session_state.show_quick_export = not st.session_state.show_quick_export
+# NOTE: the "Run Anomaly Scan" / "Network Health Check" / "Quick Export All"
+# actions are now driven exclusively by the top-bar chip buttons above
+# (single control per action — the former duplicate row here was removed
+# during QA hardening, see tests/test_no_dead_controls.py).
 
 if st.session_state.show_anomaly:
     with st.container():

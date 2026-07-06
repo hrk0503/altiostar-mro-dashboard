@@ -43,6 +43,9 @@ mlflow.db
 data/synthetic/pm_data_relation_level_single_cio.csv
 src/dashboard/.streamlit/config.toml
 src/dashboard/.streamlit/secrets.toml
+# Root .streamlit/secrets.toml holds DASHBOARD_PASSWORD (docs/deployment-guide.md
+# §Secrets) — was NOT gitignored (gap found during QA hardening). Never commit.
+.streamlit/secrets.toml
 
 # Local presentation script
 docs/presentation.pptx
