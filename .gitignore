@@ -52,3 +52,8 @@ docs/presentation.pptx
 docs/screenshots/
 # Legacy Cesium worktree
 legacy_cesium/
+
+# Reality Canvas backend runtime artifacts (uploads, cache, job results)
+data/cache/
+data/uploads/
+data/results/

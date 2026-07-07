@@ -10,6 +10,7 @@ This is a minimal scaffold gate; production needs a real IdP/JWT + rate limiting
 """
 from __future__ import annotations
 
+import json
 import os
 
 from fastapi import Depends, FastAPI, Header, HTTPException, WebSocket, status
@@ -76,12 +77,28 @@ async def retrain(scenario: str, _: None = Depends(require_token)) -> dict:
 
 @app.websocket("/api/v1/ws/noc-copilot")
 async def websocket_noc_copilot(websocket: WebSocket) -> None:
-    """NOC copilot socket — honest stub, token-gated."""
+    """NOC copilot socket — honest stub, token-gated.
+
+    SECURITY: the token is never accepted via query string (query strings leak
+    into proxy/access logs, browser history, Referer headers). The client
+    sends it as the FIRST websocket message: {"token": "..."}. The socket is
+    accepted only to read that first frame, then closed immediately if auth
+    fails.
+    """
     expected = os.environ.get("WINNIIO_API_TOKEN")
-    if not expected or websocket.query_params.get("token") != expected:
+    await websocket.accept()
+    if not expected:
+        await websocket.close(code=1008)
+        return
+    try:
+        first = await websocket.receive_text()
+        token = json.loads(first).get("token") if first else None
+    except Exception:
+        await websocket.close(code=1008)
+        return
+    if token != expected:
         await websocket.close(code=1008)  # policy violation
         return
-    await websocket.accept()
     try:
         while True:
             data = await websocket.receive_text()
@@ -92,3 +109,12 @@ async def websocket_noc_copilot(websocket: WebSocket) -> None:
             })
     except Exception:
         await websocket.close()
+
+
+# Routers registered at the bottom to avoid circular imports (routers import
+# `require_token` from this module).
+from backend.app.routers import czml, datasets, simulate  # noqa: E402
+
+app.include_router(czml.router)
+app.include_router(datasets.router)
+app.include_router(simulate.router)
