@@ -77,9 +77,10 @@ def _scaled_profiles(n_ues: int | None):
 
 
 def generate(data_dir: Path, out_dir: Path, n_ues: int | None = None,
-             duration_s: int = DURATION_S, sample_s: int = SAMPLE_S) -> dict:
+             duration_s: int = DURATION_S, sample_s: int = SAMPLE_S,
+             seed: int = 42) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
-    rng = np.random.default_rng(42)
+    rng = np.random.default_rng(seed)
     profiles = _scaled_profiles(n_ues)
     sites = _sites(data_dir)
     cells = pd.read_csv(data_dir / "site_database.csv")[["cell_id", "latitude", "longitude"]]
@@ -168,11 +169,12 @@ def main() -> None:
     ap.add_argument("--n-ues", type=int, default=None, help="total UE count (mix kept); default 21")
     ap.add_argument("--duration-s", type=int, default=DURATION_S)
     ap.add_argument("--sample-hz", type=float, default=1.0, help="samples/sec (e.g. 2 for fast UEs)")
+    ap.add_argument("--seed", type=int, default=42, help="RNG seed — new seed = new UE placements")
     args = ap.parse_args()
     sample_s = max(1, round(1.0 / args.sample_hz))
     print(json.dumps(generate(Path(args.data_dir), Path(args.out_dir),
                               n_ues=args.n_ues, duration_s=args.duration_s,
-                              sample_s=sample_s), indent=2))
+                              sample_s=sample_s, seed=args.seed), indent=2))
 
 
 if __name__ == "__main__":
