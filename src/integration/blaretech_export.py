@@ -95,12 +95,29 @@ def build_export(
                      "ho_attempts"]],
         on=["source_cell_id", "target_cell_id"], how="left")
 
+    # Serving-cell RSRP context (SD asked: CIO acts on the RSRP-based A3 event).
+    # We carry the current serving/neighbor RSRP where available; the RF layer
+    # returns the RSRP margin per candidate CIO (see RETURN_SCHEMA).
+    kpi_path = data_dir / "cluster_kpi_summary.csv"
+    if kpi_path.exists():
+        rsrp = pd.read_csv(kpi_path)[["cell_id", "avg_rsrp_dBm"]]
+        df = df.merge(rsrp.rename(columns={"cell_id": "source_cell_id",
+                                           "avg_rsrp_dBm": "src_serving_rsrp_dbm"}),
+                      on="source_cell_id", how="left")
+        df = df.merge(rsrp.rename(columns={"cell_id": "target_cell_id",
+                                           "avg_rsrp_dBm": "tgt_serving_rsrp_dbm"}),
+                      on="target_cell_id", how="left")
+    else:
+        df["src_serving_rsrp_dbm"] = None
+        df["tgt_serving_rsrp_dbm"] = None
+
     df["current_cio_db"] = df["cell_individual_offset_dB"]
     df["priority"] = df["current_success_pct"] < failure_threshold_pct
 
     # ── 01: counterfactual request — one row per (relation × candidate CIO) ──
     keep = ["source_cell_id", "target_cell_id", "current_cio_db",
             "current_success_pct", "ho_attempts", "distance_m",
+            "src_serving_rsrp_dbm", "tgt_serving_rsrp_dbm",
             "src_latitude", "src_longitude", "src_azimuth_deg",
             "src_antenna_height_m", "src_total_tilt_deg", "src_frequency_band",
             "src_clutter_type", "tgt_latitude", "tgt_longitude",
@@ -145,9 +162,13 @@ def build_export(
         {"type": "FeatureCollection", "features": rel_features}, indent=1))
 
     # ── RETURN schema template — the columns Blaretech fills and sends back ──
+    # RSRP context (SD): CIO shifts the RSRP-based A3 trigger, so the RF layer
+    # returns the resulting serving/neighbor RSRP per candidate CIO — lets the
+    # optimizer work at signal level, not just outcome level.
     ret_cols = ["source_cell_id", "target_cell_id", "candidate_cio_db",
                 "sim_ho_attempts", "sim_ho_successes", "sim_ho_failures",
-                "sim_too_early", "sim_too_late", "sim_wrong_cell", "sim_ping_pong"]
+                "sim_too_early", "sim_too_late", "sim_wrong_cell", "sim_ping_pong",
+                "sim_serving_rsrp_dbm", "sim_neighbor_rsrp_dbm"]
     pd.DataFrame(columns=ret_cols).to_csv(out_dir / "RETURN_SCHEMA.csv", index=False)
 
     manifest = {
