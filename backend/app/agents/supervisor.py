@@ -1,12 +1,12 @@
-from typing import Dict, Any, List
+from typing import Any
+
 from pydantic import BaseModel
-from pydantic_ai import Agent  # Pydantic AI placeholder
-import os
+
 
 # Supervisor state node (Task A2)
 class SupervisorState(BaseModel):
-    history: List[Dict[str, Any]] = []
-    current_action: Dict[str, Any] = {}
+    history: list[dict[str, Any]] = []
+    current_action: dict[str, Any] = {}
     requires_approval: bool = False
     is_approved: bool = False
 
@@ -23,7 +23,7 @@ class Supervisor:
         else:
             return "noc_copilot"
 
-    def gate_action(self, action: Dict[str, Any]) -> bool:
+    def gate_action(self, action: dict[str, Any]) -> bool:
         """Interrupt gate for safety validation before updating baseband settings."""
         self.state.current_action = action
         # Trigger human intervention if offset is significant

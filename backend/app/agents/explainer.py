@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+
 class ExplainerRequest(BaseModel):
     relation_id: str
     initial_cio: float
