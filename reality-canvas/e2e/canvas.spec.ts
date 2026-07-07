@@ -94,3 +94,158 @@ test("unchecking relations layer hides polylines", async ({ page }) => {
   });
   expect(anyVisible).toBe(false);
 });
+
+// ── P4: live API mode ──
+//
+// The dev server (see playwright.config.ts webServer.env) always bakes in
+// VITE_API_URL=http://localhost:8601 — an address nothing listens on. That
+// means every test above naturally exercises the "API unreachable, offline
+// fallback" path with zero extra setup. The tests below mock that exact
+// origin with page.route so live mode can be exercised without a real
+// backend process.
+
+const API = "http://localhost:8601";
+
+const FAKE_CZML = [
+  { id: "document", name: "e2e-live", version: "1.0" },
+  {
+    id: "site/RKSB-001-1",
+    position: { cartographicDegrees: [139.68735, 35.662183, 30] },
+    point: { pixelSize: 8 },
+  },
+];
+
+function mockHealthOk(page: import("@playwright/test").Page) {
+  return page.route(`${API}/`, (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "healthy" }) }),
+  );
+}
+
+function mockCzml(page: import("@playwright/test").Page) {
+  return page.route(`${API}/api/v1/czml**`, (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(FAKE_CZML) }),
+  );
+}
+
+test("offline mode: API unreachable, mode indicator shows offline, scenes still render", async ({ page }) => {
+  await login(page);
+  await expect(page.getByTestId("cesium-container")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId("mode-indicator")).toHaveText("Pre-generated (offline)");
+  await expect(
+    page.getByText("MRO Optimization requires the live API — offline mode active."),
+  ).toBeVisible();
+});
+
+test("live mode: healthy API flips the mode indicator and enables the simulate button", async ({ page }) => {
+  await mockHealthOk(page);
+  await mockCzml(page);
+  await login(page);
+  await expect(page.getByTestId("mode-indicator")).toHaveText("Live API", { timeout: 10_000 });
+  await expect(page.getByRole("button", { name: "Run MRO Optimization (synthetic)" })).toBeVisible();
+});
+
+test("live mode: simulate button shows the summary card with the honesty banner", async ({ page }) => {
+  await mockHealthOk(page);
+  await mockCzml(page);
+  await page.route(`${API}/api/v1/simulate`, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        job_id: "e2e-job-1",
+        status: "done",
+        summary: {
+          relations: 2,
+          avg_before: 81.0,
+          avg_after: 96.5,
+          banner: "NOT_A_PERFORMANCE_CLAIM — synthetic counterfactuals",
+        },
+      }),
+    }),
+  );
+  await page.route(`${API}/api/v1/jobs/e2e-job-1/result`, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([
+        {
+          source_cell: "RKSB-001-1",
+          target_cell: "RKSB-001-2",
+          current_cio_db: 2,
+          before_success_pct: 81.61,
+          optimal_cio_db: 6,
+          after_success_pct: 98.0,
+          improvement_pp: 16.39,
+          source: "counterfactual_sim",
+        },
+      ]),
+    }),
+  );
+
+  await login(page);
+  await expect(page.getByTestId("mode-indicator")).toHaveText("Live API", { timeout: 10_000 });
+
+  await page.getByRole("button", { name: "Run MRO Optimization (synthetic)" }).click();
+  await expect(page.getByTestId("simulate-summary")).toBeVisible({ timeout: 10_000 });
+  await expect(
+    page.getByText("NOT_A_PERFORMANCE_CLAIM — synthetic counterfactuals"),
+  ).toBeVisible();
+});
+
+test("live mode: before/after toggle recolors the mapped relation polyline", async ({ page }) => {
+  await mockHealthOk(page);
+  await mockCzml(page);
+  await page.route(`${API}/api/v1/simulate`, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        job_id: "e2e-job-2",
+        status: "done",
+        summary: { relations: 1, avg_before: 81.61, avg_after: 98.0, banner: "NOT_A_PERFORMANCE_CLAIM" },
+      }),
+    }),
+  );
+  await page.route(`${API}/api/v1/jobs/e2e-job-2/result`, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([
+        {
+          // matches the first entry in public/data/relations.json (before=81.61% -> amber,
+          // after=98% -> green), so the toggle produces a visibly different color.
+          source_cell: "RKSB-001-1",
+          target_cell: "RKSB-001-2",
+          current_cio_db: 2,
+          before_success_pct: 81.61,
+          optimal_cio_db: 6,
+          after_success_pct: 98.0,
+          improvement_pp: 16.39,
+          source: "counterfactual_sim",
+        },
+      ]),
+    }),
+  );
+
+  await login(page);
+  await expect(page.getByTestId("mode-indicator")).toHaveText("Live API", { timeout: 10_000 });
+  await page.getByRole("button", { name: "Run MRO Optimization (synthetic)" }).click();
+  await expect(page.getByTestId("simulate-summary")).toBeVisible({ timeout: 10_000 });
+
+  const relationColor = () =>
+    page.evaluate(() => {
+      const viewer = (window as any).__viewer;
+      const relDs = viewer.dataSources._dataSources.find((d: any) => d.name === "relations");
+      const entity = relDs.entities.getById("relation/RKSB-001-1->RKSB-001-2");
+      const c = entity.polyline.material.color.getValue(viewer.clock.currentTime);
+      return [c.red, c.green, c.blue, c.alpha];
+    });
+
+  const beforeColor = await relationColor();
+  // Button label is the destination state, so from the initial "before" view
+  // the button reads "Show: After".
+  await page.getByRole("button", { name: "Show: After" }).click();
+  await page.waitForTimeout(200);
+  const afterColor = await relationColor();
+  expect(afterColor).not.toEqual(beforeColor);
+});

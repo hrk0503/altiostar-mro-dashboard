@@ -7,6 +7,8 @@ import { isAuthenticated } from "./lib/auth";
 import { loadCzml, loadRelations, loadSceneManifest, loadSites } from "./lib/loadData";
 import { computeStats } from "./lib/stats";
 import { findScene } from "./lib/geo";
+import { checkApiHealth, fetchLiveCzml, getApiConfig, type ApiConfig, type JobRelationResult } from "./lib/api";
+import { indexResultsByRelation, type RelationResultMap } from "./lib/results";
 import type { RelationRecord, SceneManifestEntry, SiteRecord } from "./types";
 import { ERROR_DATA_LOAD } from "./constants";
 
@@ -46,6 +48,26 @@ function Canvas() {
   const [dimBasemap, setDimBasemap] = useState(false);
   const [error, setError] = useState(false);
 
+  const [apiConfig] = useState<ApiConfig | null>(() => getApiConfig());
+  const [isLive, setIsLive] = useState(false);
+  const [resultsByRelation, setResultsByRelation] = useState<RelationResultMap | null>(null);
+  const [showAfter, setShowAfter] = useState(false);
+
+  // ── P4: detect a reachable live API; offline fallback if unset/unreachable ──
+  useEffect(() => {
+    if (!apiConfig) {
+      setIsLive(false);
+      return;
+    }
+    let cancelled = false;
+    checkApiHealth(apiConfig).then((ok) => {
+      if (!cancelled) setIsLive(ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [apiConfig]);
+
   useEffect(() => {
     Promise.all([loadSites(), loadRelations(), loadSceneManifest()])
       .then(([s, r, manifest]) => {
@@ -63,13 +85,38 @@ function Canvas() {
 
   useEffect(() => {
     if (!activeScene) return;
+
+    if (isLive && apiConfig) {
+      fetchLiveCzml(apiConfig, activeScene.nUes, activeScene.seed)
+        .then(setCzml)
+        .catch((err) => {
+          console.debug("[Canvas] live czml load failed, falling back to offline", err);
+          setIsLive(false);
+        });
+      return;
+    }
+
     loadCzml(activeScene.file)
       .then(setCzml)
       .catch((err) => {
         console.debug("[Canvas] czml load failed", err);
         setError(true);
       });
-  }, [activeScene]);
+  }, [activeScene, isLive, apiConfig]);
+
+  function handleSceneChange(nUes: number, seed: number) {
+    if (isLive) {
+      setActiveScene({ nUes, seed, file: "" });
+      return;
+    }
+    const scene = findScene(scenes, nUes, seed);
+    if (scene) setActiveScene(scene);
+  }
+
+  function handleSimulateResults(results: JobRelationResult[] | null) {
+    setResultsByRelation(results ? indexResultsByRelation(results) : null);
+    setShowAfter(false);
+  }
 
   if (error) {
     return (
@@ -93,14 +140,16 @@ function Canvas() {
         onLayersChange={setLayers}
         scenes={scenes}
         activeScene={activeScene}
-        onSceneChange={(nUes, seed) => {
-          const scene = findScene(scenes, nUes, seed);
-          if (scene) setActiveScene(scene);
-        }}
+        onSceneChange={handleSceneChange}
         relationsThreshold={relationsThreshold}
         onRelationsThresholdChange={setRelationsThreshold}
         dimBasemap={dimBasemap}
         onDimBasemapChange={setDimBasemap}
+        isLive={isLive}
+        apiConfig={isLive ? apiConfig : null}
+        showAfter={showAfter}
+        onShowAfterChange={setShowAfter}
+        onSimulateResults={handleSimulateResults}
       />
       <CesiumCanvas
         sites={sites}
@@ -109,6 +158,8 @@ function Canvas() {
         layers={layers}
         relationsThreshold={relationsThreshold}
         dimBasemap={dimBasemap}
+        resultsByRelation={resultsByRelation}
+        showAfter={showAfter}
       />
     </main>
   );

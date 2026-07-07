@@ -1,5 +1,7 @@
 import type { LayerVisibility } from "./CesiumCanvas";
+import type { ApiConfig, JobRelationResult } from "../lib/api";
 import type { SceneManifestEntry, Stats } from "../types";
+import { SimulatePanel } from "./SimulatePanel";
 import {
   APP_SUBTITLE,
   APP_TITLE,
@@ -10,9 +12,12 @@ import {
   LAYER_RELATIONS,
   LAYER_SITES,
   LAYER_UES,
+  LIVE_MODE_LABEL,
+  OFFLINE_MODE_LABEL,
   RELATIONS_THRESHOLD_LABEL,
   SCENE_PANEL_TITLE,
   SCENE_REGENERATE_NOTE,
+  SCENE_REGENERATE_NOTE_LIVE,
   SCENE_SEED_LABEL,
   SCENE_UE_COUNT_LABEL,
   STATS_CELLS,
@@ -33,6 +38,11 @@ interface Props {
   onRelationsThresholdChange: (value: number) => void;
   dimBasemap: boolean;
   onDimBasemapChange: (value: boolean) => void;
+  isLive: boolean;
+  apiConfig: ApiConfig | null;
+  showAfter: boolean;
+  onShowAfterChange: (v: boolean) => void;
+  onSimulateResults: (results: JobRelationResult[] | null) => void;
 }
 
 export function ControlPanel({
@@ -46,6 +56,11 @@ export function ControlPanel({
   onRelationsThresholdChange,
   dimBasemap,
   onDimBasemapChange,
+  isLive,
+  apiConfig,
+  showAfter,
+  onShowAfterChange,
+  onSimulateResults,
 }: Props) {
   const ueCounts = Array.from(new Set(scenes.map((s) => s.nUes))).sort((a, b) => a - b);
   const seeds = scenes.filter((s) => s.nUes === activeScene?.nUes).map((s) => s.seed);
@@ -68,7 +83,18 @@ export function ControlPanel({
       }}
     >
       <h1 style={{ fontSize: 16, margin: "0 0 4px" }}>{APP_TITLE}</h1>
-      <p style={{ fontSize: 11, opacity: 0.65, margin: "0 0 16px" }}>{APP_SUBTITLE}</p>
+      <p style={{ fontSize: 11, opacity: 0.65, margin: "0 0 4px" }}>{APP_SUBTITLE}</p>
+      <p
+        data-testid="mode-indicator"
+        style={{
+          fontSize: 10,
+          margin: "0 0 16px",
+          color: isLive ? "#28c878" : "#ffb020",
+          fontWeight: 700,
+        }}
+      >
+        {isLive ? LIVE_MODE_LABEL : OFFLINE_MODE_LABEL}
+      </p>
 
       <section style={{ marginBottom: 16 }} aria-label="stats">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
@@ -114,37 +140,72 @@ export function ControlPanel({
         </label>
       </section>
 
-      <section>
+      <section style={{ marginBottom: 16 }}>
         <h2 style={{ fontSize: 13, margin: "0 0 8px", color: "var(--canvas-cyan)" }}>{SCENE_PANEL_TITLE}</h2>
-        <label htmlFor="ue-count">{SCENE_UE_COUNT_LABEL}</label>
-        <select
-          id="ue-count"
-          value={activeScene?.nUes ?? ueCounts[0]}
-          onChange={(e) => onSceneChange(Number(e.target.value), seeds[0] ?? 42)}
-          style={{ width: "100%", marginBottom: 8 }}
-        >
-          {ueCounts.map((n) => (
-            <option key={n} value={n}>
-              {n}
-            </option>
-          ))}
-        </select>
+        {isLive ? (
+          <>
+            <label htmlFor="ue-count">{SCENE_UE_COUNT_LABEL}</label>
+            <input
+              id="ue-count"
+              type="number"
+              min={1}
+              max={500}
+              value={activeScene?.nUes ?? 21}
+              onChange={(e) => onSceneChange(Number(e.target.value), activeScene?.seed ?? 42)}
+              style={{ width: "100%", marginBottom: 8 }}
+            />
+            <label htmlFor="seed">{SCENE_SEED_LABEL}</label>
+            <input
+              id="seed"
+              type="number"
+              min={0}
+              value={activeScene?.seed ?? 42}
+              onChange={(e) => onSceneChange(activeScene?.nUes ?? 21, Number(e.target.value))}
+              style={{ width: "100%" }}
+            />
+          </>
+        ) : (
+          <>
+            <label htmlFor="ue-count">{SCENE_UE_COUNT_LABEL}</label>
+            <select
+              id="ue-count"
+              value={activeScene?.nUes ?? ueCounts[0]}
+              onChange={(e) => onSceneChange(Number(e.target.value), seeds[0] ?? 42)}
+              style={{ width: "100%", marginBottom: 8 }}
+            >
+              {ueCounts.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
 
-        <label htmlFor="seed">{SCENE_SEED_LABEL}</label>
-        <select
-          id="seed"
-          value={activeScene?.seed ?? 42}
-          onChange={(e) => onSceneChange(activeScene?.nUes ?? ueCounts[0], Number(e.target.value))}
-          style={{ width: "100%" }}
-        >
-          {seeds.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-        <p style={{ fontSize: 10, opacity: 0.6, marginTop: 8 }}>{SCENE_REGENERATE_NOTE}</p>
+            <label htmlFor="seed">{SCENE_SEED_LABEL}</label>
+            <select
+              id="seed"
+              value={activeScene?.seed ?? 42}
+              onChange={(e) => onSceneChange(activeScene?.nUes ?? ueCounts[0], Number(e.target.value))}
+              style={{ width: "100%" }}
+            >
+              {seeds.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+        <p style={{ fontSize: 10, opacity: 0.6, marginTop: 8 }}>
+          {isLive ? SCENE_REGENERATE_NOTE_LIVE : SCENE_REGENERATE_NOTE}
+        </p>
       </section>
+
+      <SimulatePanel
+        apiConfig={apiConfig}
+        showAfter={showAfter}
+        onShowAfterChange={onShowAfterChange}
+        onResults={onSimulateResults}
+      />
     </aside>
   );
 }

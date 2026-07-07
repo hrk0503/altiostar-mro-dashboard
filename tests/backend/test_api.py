@@ -180,6 +180,34 @@ def test_jobs_unknown_id_is_404(client):
     assert resp.status_code == 404
 
 
+# ── /jobs/{id}/result ─────────────────────────────────────────────────────
+
+def test_job_result_returns_per_relation_rows_with_pct_keys(client):
+    resp = client.post("/api/v1/simulate", headers=_auth(), json={"rf_provider": "synthetic"})
+    assert resp.status_code == 200, resp.text
+    job_id = resp.json()["job_id"]
+
+    result = client.get(f"/api/v1/jobs/{job_id}/result", headers=_auth())
+    assert result.status_code == 200, result.text
+    rows = result.json()
+    assert len(rows) == resp.json()["summary"]["relations"]
+    row = rows[0]
+    assert "before_success_pct" in row
+    assert "after_success_pct" in row
+    assert "before_success_%" not in row
+    assert {"source_cell", "target_cell", "optimal_cio_db", "improvement_pp"} <= row.keys()
+
+
+def test_job_result_unknown_id_is_404(client):
+    resp = client.get("/api/v1/jobs/nonexistent-job/result", headers=_auth())
+    assert resp.status_code == 404
+
+
+def test_job_result_requires_auth(client):
+    resp = client.get("/api/v1/jobs/nonexistent-job/result")
+    assert resp.status_code == 401
+
+
 # ── websocket ─────────────────────────────────────────────────────────────
 
 def test_websocket_query_string_token_is_rejected(client):
