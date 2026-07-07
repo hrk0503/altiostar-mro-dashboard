@@ -38,3 +38,20 @@ export const ERROR_BOUNDARY_RETRY = "Reload";
 
 export const DEMO_PASSWORD_DEFAULT = "Winniio-2019";
 export const SESSION_STORAGE_KEY = "reality-canvas-auth";
+
+// ── P4: live API mode ──
+export const LIVE_MODE_LABEL = "Live API";
+export const OFFLINE_MODE_LABEL = "Pre-generated (offline)";
+export const SCENE_REGENERATE_NOTE_LIVE = "live scene generation via API";
+
+export const SIMULATE_PANEL_TITLE = "MRO Optimization";
+export const SIMULATE_BUTTON = "Run MRO Optimization (synthetic)";
+export const SIMULATE_BUTTON_RUNNING = "Running…";
+export const SIMULATE_ERROR = "Optimization run failed. Check the API connection and try again.";
+export const SIMULATE_ERROR_OFFLINE = "MRO Optimization requires the live API — offline mode active.";
+export const SIMULATE_RELATIONS_LABEL = "Relations optimized";
+export const SIMULATE_AVG_LABEL = "Avg success rate";
+export const SIMULATE_TOGGLE_BEFORE = "Show: Before";
+export const SIMULATE_TOGGLE_AFTER = "Show: After";
+
+export const API_HEALTH_ERROR = "Live API unreachable — using pre-generated scenes.";

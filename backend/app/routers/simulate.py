@@ -12,6 +12,7 @@ import tempfile
 import uuid
 from pathlib import Path
 
+import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
@@ -90,3 +91,26 @@ async def get_job(job_id: str, _: None = Depends(require_token)) -> dict:
     if not manifest_path.exists():
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"job '{job_id}' not found")
     return json.loads(manifest_path.read_text())
+
+
+@router.get("/jobs/{job_id}/result")
+async def get_job_result(job_id: str, _: None = Depends(require_token)) -> list[dict]:
+    """Per-relation before/after rows for a completed simulate job.
+
+    Renames the CSV's `%`-suffixed columns to `_pct` so the JSON keys are
+    valid, unquoted JS identifiers on the frontend.
+    """
+    manifest_path = RESULTS_DIR / f"{job_id}.json"
+    if not manifest_path.exists():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"job '{job_id}' not found")
+    manifest = json.loads(manifest_path.read_text())
+    results_csv = Path(manifest["results_csv"])
+    if not results_csv.exists():
+        raise HTTPException(status.HTTP_404_NOT_FOUND,
+                            f"job '{job_id}' has no results file")
+
+    df = pd.read_csv(results_csv).rename(columns={
+        "before_success_%": "before_success_pct",
+        "after_success_%": "after_success_pct",
+    })
+    return df.to_dict(orient="records")

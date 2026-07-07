@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import * as Cesium from "cesium";
 import type { RelationRecord, SiteRecord } from "../types";
 import { frequencyBandColor, sectorWedgePoints, successRateColor } from "../lib/geo";
+import { relationKey, resultColor, type RelationResultMap } from "../lib/results";
 
 export interface LayerVisibility {
   sites: boolean;
@@ -18,6 +19,8 @@ interface Props {
   layers: LayerVisibility;
   relationsThreshold: number; // 0..1 — hide relations with successRate above this
   dimBasemap: boolean;
+  resultsByRelation?: RelationResultMap | null; // P4: simulate-job before/after overlay
+  showAfter?: boolean;
   onReady?: (viewer: Cesium.Viewer) => void;
 }
 
@@ -35,6 +38,8 @@ export function CesiumCanvas({
   layers,
   relationsThreshold,
   dimBasemap,
+  resultsByRelation = null,
+  showAfter = false,
   onReady,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -130,7 +135,8 @@ export function CesiumCanvas({
     relationsDs.entities.removeAll();
     for (const rel of relations) {
       if (rel.successRate > relationsThreshold) continue;
-      const color = successRateColor(rel.successRate);
+      const result = resultsByRelation?.get(relationKey(rel.servingCell, rel.neighborCell));
+      const color = resultColor(result, showAfter) ?? successRateColor(rel.successRate);
       relationsDs.entities.add({
         id: `relation/${rel.servingCell}->${rel.neighborCell}`,
         show: layers.relations,
@@ -147,7 +153,7 @@ export function CesiumCanvas({
         properties: { successRate: rel.successRate },
       });
     }
-  }, [relations, relationsThreshold, layers.relations]);
+  }, [relations, relationsThreshold, layers.relations, resultsByRelation, showAfter]);
 
   // ── CZML scene (UEs + handovers) ──
   useEffect(() => {
