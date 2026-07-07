@@ -53,38 +53,66 @@ def _nearest_cell(lat: float, lon: float, cells: pd.DataFrame) -> str:
     return str(cells.loc[d.idxmin(), "cell_id"])
 
 
-def generate(data_dir: Path, out_dir: Path) -> dict:
+def _nearest_np(lat: float, lon: float, clat, clon, cids) -> str:
+    """Fast numpy nearest-cell for the hot loop (avoids pandas per-call overhead)."""
+    i = int(((clat - lat) ** 2 + (clon - lon) ** 2).argmin())
+    return cids[i]
+
+
+def _scaled_profiles(n_ues: int | None):
+    """Scale the ped/car/train counts to a target total UE count, keeping the mix."""
+    if not n_ues:
+        return {k: v for k, v in PROFILES.items()}
+    base = {k: v[3] for k, v in PROFILES.items()}
+    tot = sum(base.values())
+    out, assigned = {}, 0
+    keys = list(PROFILES)
+    for i, k in enumerate(keys):
+        cnt = round(n_ues * base[k] / tot) if i < len(keys) - 1 else n_ues - assigned
+        assigned += cnt
+        p = list(PROFILES[k])
+        p[3] = max(1, cnt)
+        out[k] = tuple(p)
+    return out
+
+
+def generate(data_dir: Path, out_dir: Path, n_ues: int | None = None,
+             duration_s: int = DURATION_S, sample_s: int = SAMPLE_S) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(42)
+    profiles = _scaled_profiles(n_ues)
     sites = _sites(data_dir)
     cells = pd.read_csv(data_dir / "site_database.csv")[["cell_id", "latitude", "longitude"]]
+    _clat = cells["latitude"].to_numpy()
+    _clon = cells["longitude"].to_numpy()
+    _cids = cells["cell_id"].to_numpy()
     lat0, lat1 = sites["latitude"].min(), sites["latitude"].max()
     lon0, lon1 = sites["longitude"].min(), sites["longitude"].max()
 
     rows, features = [], []
     uid = 0
-    for utype, (spd_mean, spd_jit, straight, n, height_agl) in PROFILES.items():
+    for utype, (spd_mean, spd_jit, straight, n, height_agl) in profiles.items():
         for _ in range(n):
             uid += 1
-            ue = f"UE-{utype[:3].upper()}-{uid:03d}"
+            ue = f"UE-{utype[:3].upper()}-{uid:04d}"
             # start at a random edge point, head across the cluster
             lat = float(rng.uniform(lat0, lat1))
             lon = float(rng.uniform(lon0, lon1))
             heading = float(rng.uniform(0, 360))
-            prev_cell = _nearest_cell(lat, lon, cells)
+            prev_cell = _nearest_np(lat, lon, _clat, _clon, _cids)
             t0 = START + timedelta(seconds=int(rng.integers(0, 3600)))
             path = []
-            for t in range(0, DURATION_S, SAMPLE_S):
+            for t in range(0, duration_s, sample_s):
                 spd = max(0.3, float(rng.normal(spd_mean, spd_jit)))          # km/h
                 # turn: pedestrians wander, trains go straight
                 heading += float(rng.normal(0, (1 - straight) * 25))
-                step_m = spd * 1000 / 3600 * SAMPLE_S
+                step_m = spd * 1000 / 3600 * sample_s
                 rad = math.radians(heading)
                 lat += step_m * math.cos(rad) / _M_PER_DEG
                 lon += step_m * math.sin(rad) / (_M_PER_DEG * math.cos(math.radians(lat)))
                 lat = min(max(lat, lat0 - 0.01), lat1 + 0.01)
                 lon = min(max(lon, lon0 - 0.01), lon1 + 0.01)
-                cell = _nearest_cell(lat, lon, cells)
+                cell = _nearest_np(lat, lon, _clat, _clon, _cids)
                 ho = int(cell != prev_cell)
                 ts = t0 + timedelta(seconds=t)
                 rows.append({
@@ -118,7 +146,7 @@ def generate(data_dir: Path, out_dir: Path) -> dict:
         "ues": int(df["ue_id"].nunique()),
         "by_type": df.groupby("user_type")["ue_id"].nunique().to_dict(),
         "rows": int(len(df)),
-        "sample_hz": 1, "duration_s": DURATION_S,
+        "sample_hz": round(1.0 / sample_s, 3), "duration_s": duration_s,
         "handovers": int(df["handover"].sum()),
         "crs": "WGS84 (EPSG:4326); ue_height_agl_m is Above-Ground-Level, add your DEM",
         "matches": "same Shibuya site geometry as the counterfactual package",
@@ -137,8 +165,14 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--data-dir", default="data/synthetic")
     ap.add_argument("--out-dir", required=True)
+    ap.add_argument("--n-ues", type=int, default=None, help="total UE count (mix kept); default 21")
+    ap.add_argument("--duration-s", type=int, default=DURATION_S)
+    ap.add_argument("--sample-hz", type=float, default=1.0, help="samples/sec (e.g. 2 for fast UEs)")
     args = ap.parse_args()
-    print(json.dumps(generate(Path(args.data_dir), Path(args.out_dir)), indent=2))
+    sample_s = max(1, round(1.0 / args.sample_hz))
+    print(json.dumps(generate(Path(args.data_dir), Path(args.out_dir),
+                              n_ues=args.n_ues, duration_s=args.duration_s,
+                              sample_s=sample_s), indent=2))
 
 
 if __name__ == "__main__":
