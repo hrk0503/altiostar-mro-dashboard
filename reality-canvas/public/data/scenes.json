@@ -1,0 +1,22 @@
+[
+  {
+    "nUes": 21,
+    "seed": 42,
+    "file": "scene-21-42.czml"
+  },
+  {
+    "nUes": 100,
+    "seed": 42,
+    "file": "scene-100-42.czml"
+  },
+  {
+    "nUes": 100,
+    "seed": 99,
+    "file": "scene-100-99.czml"
+  },
+  {
+    "nUes": 500,
+    "seed": 42,
+    "file": "scene-500-42.czml"
+  }
+]
